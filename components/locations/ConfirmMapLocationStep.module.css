@@ -1,0 +1,73 @@
+.container {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.mapWrapper {
+  width: 100%;
+  height: 500px;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 2rem;
+  border: 1px solid var(--grey-300);
+}
+
+.mapContainer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.loadingIndicator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: rgba(255, 255, 255, 0.8);
+  padding: 10px 16px;
+  border-radius: 4px;
+  font-size: 14px;
+  z-index: 5;
+}
+
+/* Ensure MapBox controls display properly */
+.mapContainer :global(.mapboxgl-ctrl-top-right) {
+  top: 10px;
+  right: 10px;
+}
+
+.mapContainer :global(.mapboxgl-ctrl-zoom-in),
+.mapContainer :global(.mapboxgl-ctrl-zoom-out) {
+  background-color: white;
+  border-radius: 4px;
+}
+
+/* Fix attribution styling */
+.mapContainer :global(.mapboxgl-ctrl-attrib) {
+  font-size: 10px;
+  line-height: 1.2;
+  padding: 2px 4px;
+  background-color: rgba(255, 255, 255, 0.7);
+  max-width: 100%;
+}
+
+/* Compact map attribution */
+.mapContainer :global(.mapboxgl-ctrl-attrib-inner) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+/* Marker styling to ensure visibility */
+.mapContainer :global(.mapboxgl-marker) {
+  cursor: grab;
+}
+
+.mapContainer :global(.mapboxgl-marker:active) {
+  cursor: grabbing;
+}

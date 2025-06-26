@@ -1,0 +1,30 @@
+.detailsContent {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.detailRow {
+  display: flex;
+  flex-direction: column;
+}
+
+.detailLabel {
+  color: var(--for-medium);
+  font-size: var(--font-size-sm);
+  font-weight: 400;
+  margin-bottom: 4px;
+}
+
+.detailValue {
+  font-size: var(--font-size-md);
+  color: var(--for-darkest);
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.sportsList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}

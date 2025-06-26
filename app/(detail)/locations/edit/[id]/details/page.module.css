@@ -1,0 +1,39 @@
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.formField {
+  margin-bottom: 24px;
+}
+
+.loadingContainer,
+.errorContainer {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 300px;
+  text-align: center;
+}
+
+.backButton {
+  margin-top: 16px;
+  padding: 8px 16px;
+  border-radius: var(--border-radius-md);
+  border: 1px solid var(--out-light);
+  background-color: var(--con-lightest);
+  color: var(--for-dark);
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.backButton:hover {
+  background-color: var(--hover-bg);
+}
+
+.sportOptions {
+  margin-top: 20px;
+}

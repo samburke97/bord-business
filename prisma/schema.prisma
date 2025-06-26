@@ -1,0 +1,428 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// Authentication Models
+model Account {
+  id                String    @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?   @db.Text
+  access_token      String?   @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?   @db.Text
+  session_state     String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  role          UserRole  @default(USER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  accounts      Account[]
+  sessions      Session[]
+
+  @@index([email])
+  @@map("users")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+  createdAt  DateTime @default(now())
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// Enum for User Roles
+enum UserRole {
+  USER
+  ADMIN
+  SUPER_ADMIN
+}
+
+// Enum for Group Types
+enum GroupType {
+  FACILITY
+  SPORT
+  CATEGORY
+  ACTIVITY
+  GENERAL
+}
+
+// Core Domain Models
+model Tag {
+  id         String    @id @default(uuid())
+  name       String
+  imageUrl   String?
+  lastEdited DateTime  @default(now()) @map("last_edited")
+  lastSeeded DateTime? @map("last_seeded")
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  isDeleted  Boolean   @default(false)
+  deletedAt  DateTime? 
+
+  // Relationships
+  centers               CenterTag[]
+  centerAsFacility      CenterFacility[]
+  centerAsEstablishment Center[]         @relation("establishment")
+  groups                GroupTag[]
+  images                TagImage[]       
+  sports                SportTag[]
+  
+  // Activity relationships
+  activitiesAsType      Activity[]       @relation("activity_type")
+
+  @@index([name])
+  @@map("tags")
+}
+
+model Center {
+  id              String    @id @default(uuid())
+  name            String
+  address         String?
+  latitude        Decimal?
+  longitude       Decimal?
+  description     String?
+  highlights      Json?     @map("highlights")
+  logoUrl         String?   @map("logo_url")
+  lastEdited      DateTime  @default(now()) @map("last_edited")
+  lastSeeded      DateTime? @map("last_seeded")
+  phone           String?
+  email           String?
+  establishment   Tag?      @relation("establishment", fields: [establishmentId], references: [id])
+  establishmentId String?   @map("establishment")
+  isActive        Boolean   @default(false) @map("is_active")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  isDeleted       Boolean   @default(false)
+  deletedAt       DateTime?
+
+  // Relationships
+  tags         CenterTag[]
+  facilities   CenterFacility[]
+  images       CenterImage[]
+  links        CenterLink[]
+  socials      CenterSocial[]
+  openingHours OpeningHours[]
+  sportCenters SportCenter[]
+  activities   CenterActivity[] // Relation to activities
+
+  @@index([name])
+  @@index([establishmentId])
+  @@index([isActive])
+  @@index([latitude, longitude]) // For geo queries
+  @@map("centers")
+}
+
+model OpeningHours {
+  id        String   @id @default(uuid())
+  centerId  String   @map("center_id")
+  dayOfWeek Int      // 0 = Monday, 1 = Tuesday, etc.
+  isOpen    Boolean  @default(true)
+  openTime  String   // Time format "HH:MM" 
+  closeTime String   // Time format "HH:MM"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relationships
+  center Center @relation(fields: [centerId], references: [id], onDelete: Cascade)
+  
+  @@index([centerId, dayOfWeek])
+  @@map("center_opening_hours")
+}
+
+model CenterImage {
+  id         String    @id @default(uuid())
+  centerId   String    @map("center_id")
+  imageUrl   String    @map("image_url")
+  order      Int       @default(0) @map("display_order") 
+  lastSeeded DateTime? @map("last_seeded")
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  // Relationships
+  center Center @relation(fields: [centerId], references: [id], onDelete: Cascade)
+
+  @@index([centerId, order]) // Add index for efficient ordering queries
+  @@map("center_images")
+}
+
+model CenterTag {
+  centerId   String    @map("center_id")
+  tagId      String    @map("tag_id")
+  lastSeeded DateTime? @map("last_seeded")
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  // Relationships
+  center Center @relation(fields: [centerId], references: [id], onDelete: Cascade)
+  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([centerId, tagId])
+  @@index([centerId])
+  @@index([tagId])
+  @@map("center_tags")
+}
+
+model CenterFacility {
+  centerId   String    @map("center_id")
+  tagId      String    @map("tag_id")
+  lastSeeded DateTime? @map("last_seeded")
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  // Relationships
+  center Center @relation(fields: [centerId], references: [id], onDelete: Cascade)
+  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([centerId, tagId])
+  @@index([centerId])
+  @@index([tagId])
+  @@map("center_facilities")
+}
+
+model CenterLink {
+  id        String   @id @default(uuid())
+  centerId  String   @map("center_id")
+  type      String?
+  url       String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  center Center @relation(fields: [centerId], references: [id], onDelete: Cascade)
+
+  @@index([centerId])
+  @@map("center_links")
+}
+
+model CenterSocial {
+  id         String    @id @default(uuid())
+  centerId   String    @map("center_id")
+  platform   String?
+  url        String?
+  lastSeeded DateTime? @map("last_seeded")
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  // Relationships
+  center Center @relation(fields: [centerId], references: [id], onDelete: Cascade)
+
+  @@index([centerId])
+  @@map("center_socials")
+}
+
+model Group {
+  id         String    @id @default(uuid())
+  name       String
+  type       GroupType @default(GENERAL)
+  tagCount   Int       @default(0) @map("tag_count")
+  lastEdited DateTime  @default(now()) @map("last_edited")
+  lastSeeded DateTime? @map("last_seeded")
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  isDeleted  Boolean   @default(false)
+  deletedAt  DateTime?
+
+  // Relationships
+  tags GroupTag[]
+
+  @@index([name])
+  @@index([type])
+  @@map("groups")
+}
+
+model GroupTag {
+  groupId    String    @map("group_id")
+  tagId      String    @map("tag_id")
+  lastSeeded DateTime? @map("last_seeded")
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  // Relationships
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  tag   Tag   @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([groupId, tagId])
+  @@index([groupId])
+  @@index([tagId])
+  @@map("group_tags")
+}
+
+model TagImage {
+  id         String    @id @default(uuid())
+  tagId      String    @map("tag_id")
+  imageUrl   String    @map("image_url")
+  lastSeeded DateTime? @map("last_seeded")
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  // Relationships
+  tag Tag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@index([tagId])
+  @@map("tag_images")
+}
+
+// New models for Sports
+model Sport {
+  id          String    @id @default(uuid())
+  name        String
+  imageUrl    String?
+  tagCount    Int       @default(0) @map("tag_count")
+  centerCount Int       @default(0) @map("center_count") 
+  lastEdited  DateTime  @default(now()) @map("last_edited")
+  lastSeeded  DateTime? @map("last_seeded")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  isDeleted   Boolean   @default(false)
+  deletedAt   DateTime?
+
+  // Relationships
+  tags        SportTag[]
+  centers     SportCenter[]
+
+  @@index([name])
+  @@map("sports")
+}
+
+model SportTag {
+  sportId    String    @map("sport_id")
+  tagId      String    @map("tag_id")
+  lastSeeded DateTime? @map("last_seeded")
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  // Relationships
+  sport Sport @relation(fields: [sportId], references: [id], onDelete: Cascade)
+  tag   Tag   @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([sportId, tagId])
+  @@index([sportId])
+  @@index([tagId])
+  @@map("sport_tags")
+}
+
+model SportCenter {
+  sportId    String    @map("sport_id")
+  centerId   String    @map("center_id")
+  lastSeeded DateTime? @map("last_seeded")
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  // Relationships
+  sport  Sport  @relation(fields: [sportId], references: [id], onDelete: Cascade)
+  center Center @relation(fields: [centerId], references: [id], onDelete: Cascade)
+
+  @@id([sportId, centerId])
+  @@index([sportId])
+  @@index([centerId])
+  @@map("sport_centers")
+}
+
+// Activity models
+model Activity {
+  id           String    @id @default(uuid())
+  title        String    @db.VarChar(20)  // Max 20 characters
+  description  String?   @db.VarChar(500) // Max 500 characters
+  imageUrl     String?
+  buttonTitle  String?   @db.VarChar(30)  // Max 30 characters
+  buttonLink   String?
+  lastEdited   DateTime  @default(now()) @map("last_edited")
+  lastSeeded   DateTime? @map("last_seeded")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  isDeleted    Boolean   @default(false)
+  deletedAt    DateTime?
+  
+  // Relationships
+  activityType   Tag?       @relation("activity_type", fields: [activityTypeId], references: [id])
+  activityTypeId String?    @map("activity_type_id")
+  centers        CenterActivity[]
+  pricingVariants ActivityPricing[]
+
+  @@index([title])
+  @@index([activityTypeId])
+  @@map("activities")
+}
+
+// Junction table for Centers and Activities (many-to-many)
+model CenterActivity {
+  centerId     String    @map("center_id")
+  activityId   String    @map("activity_id")
+  displayOrder Int       @default(0) @map("display_order")
+  lastSeeded   DateTime? @map("last_seeded")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Relationships
+  center   Center   @relation(fields: [centerId], references: [id], onDelete: Cascade)
+  activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  @@id([centerId, activityId])
+  @@index([centerId, displayOrder]) 
+  @@index([activityId])
+  @@map("center_activities")
+}
+
+// Pricing variants for Activities - now with string fields instead of references
+model ActivityPricing {
+  id           String   @id @default(uuid())
+  activityId   String   @map("activity_id")
+  price        Decimal  @db.Decimal(10, 2)
+  
+  // New string fields replacing relationships
+  playerType   String   @map("player_type") 
+  duration     String?  @map("duration")    
+  priceType    String   @map("price_type")  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  // Relationship to parent activity
+  activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  @@index([activityId])
+  @@index([playerType])
+  @@index([priceType])
+  @@map("activity_pricing")
+}

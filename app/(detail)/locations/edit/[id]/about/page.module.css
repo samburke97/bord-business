@@ -1,0 +1,64 @@
+.container {
+  width: 100%;
+  max-width: 896px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+.content {
+  padding: 24px 0;
+}
+
+.section {
+  margin-bottom: 32px;
+}
+
+.sectionTitle {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  margin-bottom: 16px;
+  color: var(--text-color);
+}
+
+.highlightsContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Logo styling */
+.logoContainer {
+  position: relative;
+  display: inline-block;
+}
+
+.logoWrapper {
+  position: relative;
+  display: inline-block;
+}
+
+/* Loading and error states */
+.loadingContainer,
+.errorContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  gap: 16px;
+}
+
+.backButton {
+  padding: 8px 16px;
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 0 12px;
+  }
+}

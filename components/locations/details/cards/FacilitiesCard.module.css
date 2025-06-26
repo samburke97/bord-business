@@ -1,0 +1,13 @@
+.facilitiesGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.facilityTag {
+  display: flex;
+  height: 40px;
+  align-items: center;
+  gap: 8px;
+  flex: 1 0 0;
+}

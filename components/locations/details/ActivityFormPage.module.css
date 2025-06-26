@@ -1,0 +1,116 @@
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  background-color: #ffffff;
+  margin-bottom: 10rem;
+}
+
+.sectionTitle {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 24px;
+  color: var(--for-darkest);
+}
+
+.formGroup {
+  margin-bottom: 24px;
+}
+
+.imageUploadContainer {
+  max-width: 96px;
+}
+
+.previewContainer {
+  width: 100px;
+  height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+.uploadedImage {
+  width: 100%;
+  height: 96px;
+  object-fit: cover;
+}
+
+.pricingRow {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  align-items: start; /* Changed to start to avoid misalignment with errors */
+}
+
+/* This ensures all pricing fields maintain the same vertical spacing */
+.pricingField {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 85px; /* Add minimum height to accommodate error messages */
+}
+
+.fieldLabel {
+  margin-bottom: 0.5rem;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+}
+
+.inputContainer {
+  min-height: 48px;
+}
+
+/* Ensure the action button aligns with the form inputs */
+.actionButton {
+  margin-bottom: 8px;
+  margin-top: auto; /* Push to bottom of container */
+  height: 40px; /* Match height of inputs */
+  align-self: flex-end;
+}
+
+.loadingState {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 300px;
+  font-size: 16px;
+  color: var(--grey-600);
+}
+
+@media (max-width: 768px) {
+  .pricingRow {
+    grid-template-columns: 1fr 1fr auto;
+    grid-gap: 16px;
+    padding: 16px;
+  }
+
+  .actionButton {
+    grid-column: 3;
+    justify-self: end;
+    align-self: flex-end;
+  }
+
+  .pricingField {
+    min-height: 90px;
+  }
+}
+
+@media (max-width: 480px) {
+  .pricingRow {
+    grid-template-columns: 1fr auto;
+  }
+
+  .pricingField {
+    grid-column: 1;
+    margin-bottom: 1rem;
+  }
+
+  .actionButton {
+    grid-column: 2;
+    grid-row: 1;
+    height: 40px;
+    align-self: flex-end;
+  }
+}

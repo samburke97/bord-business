@@ -1,0 +1,26 @@
+.container {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.formField {
+  margin-bottom: 1.5rem;
+  width: 100%;
+}
+
+.label {
+  display: block;
+  font-weight: 500;
+  margin-bottom: 0.75rem;
+}
+
+.categoryContainer {
+  position: relative;
+  width: 100%;
+}
+
+.categoryContainer > div {
+  width: 100%;
+}

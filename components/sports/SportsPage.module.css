@@ -1,0 +1,52 @@
+.pageContainer {
+  display: flex;
+  justify-content: center;
+  padding: 1.5rem;
+  width: 100%;
+  min-height: calc(100vh - 64px); /* Adjust based on your header height */
+}
+
+.container {
+  width: 100%;
+  max-width: 896px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.searchContainer {
+  margin-bottom: 1.5rem;
+}
+
+.sportNameCell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.iconContainer {
+  display: flex;
+  width: 40px;
+  height: 40px;
+  padding: 10px;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  aspect-ratio: 1/1;
+  background-color: var(--con-light, #fafafa);
+  border-radius: 4px;
+}
+
+.sportImage {
+  object-fit: cover;
+}

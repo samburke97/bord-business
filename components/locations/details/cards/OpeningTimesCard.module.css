@@ -1,0 +1,44 @@
+.openingHoursList {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.dayRow {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  color: var(--grey-500, #7e807f);
+  align-items: flex-start;
+}
+
+.dayName {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  align-self: stretch;
+  color: var(--grey-500, #7e807f);
+}
+
+.dayHours {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  align-self: stretch;
+  color: var(--grey-500, #7e807f);
+  text-align: right;
+}
+
+.closedText {
+  color: var(--grey-500, #7e807f);
+  text-align: right;
+}
+
+.loadingState,
+.errorState,
+.emptyState {
+  text-align: center;
+  color: var(--grey-500, #7e807f);
+  font-style: italic;
+}

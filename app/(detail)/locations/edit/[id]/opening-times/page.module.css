@@ -1,0 +1,166 @@
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.dayRow {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--grey-400);
+}
+
+.dayContent {
+  display: flex;
+  align-items: flex-start;
+}
+
+.dayCheckContainer {
+  width: 150px;
+  flex-shrink: 0;
+  padding-top: 8px;
+}
+
+.checkboxContainer {
+  display: flex;
+  align-items: center;
+  position: relative;
+  padding-left: 30px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkbox {
+  position: absolute;
+  opacity: 0;
+  height: 0;
+  width: 0;
+  cursor: pointer;
+}
+
+.checkmark {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 20px;
+  width: 20px;
+  background-color: var(--grey-100);
+  border: 1px solid var(--grey-400);
+  border-radius: 4px;
+}
+
+.checkboxContainer:hover .checkbox ~ .checkmark {
+  background-color: var(--grey-200);
+}
+
+.checkbox:checked ~ .checkmark {
+  background-color: var(--primary-400);
+  border-color: var(--primary-400);
+}
+
+.checkmark:after {
+  content: "";
+  position: absolute;
+  display: none;
+}
+
+.checkbox:checked ~ .checkmark:after {
+  display: block;
+  left: 7px;
+  top: 3px;
+  width: 6px;
+  height: 10px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.timeSlotRow {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+.timeSlotRow:last-child {
+  margin-bottom: 0;
+}
+
+.timeSelectGroup {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  position: relative;
+}
+
+.timeSeparator {
+  font-size: 14px;
+  color: var(--grey-500);
+  padding: 0 12px;
+}
+
+.buttonContainer {
+  margin-left: 24px;
+  display: flex;
+  align-items: center;
+}
+
+.timeSlotButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 600px) {
+  .dayContent {
+    flex-direction: column;
+  }
+
+  .dayCheckContainer {
+    width: 100%;
+    margin-bottom: 12px;
+  }
+
+  .timeSlots {
+    width: 100%;
+  }
+
+  .timeSelectGroup {
+    flex: 1;
+  }
+
+  .buttonContainer {
+    margin-left: 12px;
+  }
+}
+
+.loadingContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  font-size: 18px;
+  color: var(--grey-600);
+}
+
+.toastContainer {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+}
+
+.closed {
+  display: flex;
+  padding: 12px 20px;
+  border-radius: 8px;
+  background: var(--grey-200);
+}
+.closedText {
+  color: var(--grey-500);
+}
+
+.timeSlots {
+  width: 100%;
+}

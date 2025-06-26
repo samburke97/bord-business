@@ -1,0 +1,31 @@
+.contactInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.contactRow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.contactLabel {
+  color: var(--for-medium);
+  font-size: var(--font-size-sm);
+  font-weight: 400;
+  margin-bottom: 4px;
+}
+
+.contactValue {
+  font-size: var(--font-size-md);
+  color: var(--for-darkest);
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.emptyState {
+  color: var(--grey-500, #7e807f);
+  font-style: italic;
+  text-align: center;
+}

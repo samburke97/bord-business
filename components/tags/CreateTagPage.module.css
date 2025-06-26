@@ -1,0 +1,190 @@
+.pageContainer {
+  display: flex;
+  justify-content: center;
+  padding: 1.5rem;
+  width: 100%;
+  min-height: calc(
+    100vh - 136px
+  ); /* 64px for top nav + 72px for action header */
+}
+
+.container {
+  width: 100%;
+  max-width: 896px;
+}
+
+.formSection {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.inputGroup {
+  margin-bottom: 2rem;
+}
+
+.label {
+  display: block;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--text-color);
+  margin-bottom: 0.5rem;
+}
+
+/* New wrapper to ensure stable layout */
+.iconNameWrapper {
+  display: flex;
+  align-items: flex-start; /* Changed from center to flex-start to align top */
+  gap: 1rem;
+  position: relative;
+}
+
+/* Fixed width container for icon to prevent shifting */
+.iconContainer {
+  flex-shrink: 0;
+  width: 48px; /* Adjust based on your icon button size */
+}
+
+/* Container for the input that takes remaining width */
+.inputContainer {
+  flex: 1;
+  min-width: 0; /* Prevents flexbox from overflowing */
+}
+
+.uploadedImage {
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+/* Legacy class kept for compatibility */
+.iconNameContainer {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  position: relative;
+}
+
+.groupsSection {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 2rem;
+}
+
+.searchContainer {
+  margin-bottom: 1rem;
+}
+
+.groupsTable {
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  overflow: hidden;
+  background-color: var(--white);
+}
+
+.tableHeader {
+  display: grid;
+  grid-template-columns: 1fr 100px 100px;
+  padding: 0.75rem 1rem;
+  background-color: var(--hover-bg);
+  border-bottom: 1px solid var(--border-color);
+  font-weight: 500;
+  font-size: var(--font-size-sm);
+}
+
+.groupNameHeader {
+  text-align: left;
+}
+
+.statusHeader {
+  text-align: center;
+}
+
+.editHeader {
+  text-align: right;
+}
+
+.tableBody {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.tableRow {
+  display: grid;
+  grid-template-columns: 1fr 100px 100px;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+  align-items: center;
+}
+
+.tableRow:last-child {
+  border-bottom: none;
+}
+
+.groupName {
+  font-size: var(--font-size-sm);
+}
+
+.groupStatus {
+  text-align: center;
+}
+
+.groupAction {
+  text-align: right;
+}
+
+.addedStatus {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  background-color: rgba(16, 185, 129, 0.1);
+  color: var(--primary-color);
+  border-radius: var(--border-radius-full);
+  font-size: var(--font-size-xs);
+}
+
+.notAddedStatus {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  color: var(--text-light);
+  font-size: var(--font-size-xs);
+}
+
+.addButton {
+  background: none;
+  border: none;
+  color: var(--primary-color);
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  font-size: var(--font-size-xs);
+  transition: color var(--transition-fast);
+}
+
+.removeButton {
+  background: none;
+  border: none;
+  color: var(--text-light);
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  font-size: var(--font-size-xs);
+  transition: color var(--transition-fast);
+}
+
+.removeButton:hover {
+  color: #ef4444;
+}
+
+.emptyState {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  color: var(--text-light);
+  font-size: var(--font-size-sm);
+}
+
+.loadingState {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  color: var(--text-light);
+}

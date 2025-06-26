@@ -1,0 +1,74 @@
+.pricingSection {
+  margin-bottom: 32px;
+}
+
+.sectionTitle {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 24px;
+  color: var(--for-darkest);
+}
+
+.pricingRow {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+  position: relative;
+}
+
+.formFields {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  width: 100%;
+}
+
+.buttonContainer {
+  display: flex;
+  align-items: flex-start;
+  margin-top: 30px;
+}
+
+.pricingField {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.actionButton {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+}
+
+@media (max-width: 1024px) {
+  .formFields {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .pricingRow {
+    flex-wrap: wrap;
+  }
+
+  .buttonContainer {
+    position: absolute;
+    right: 0;
+    top: 30px;
+  }
+}
+
+@media (max-width: 640px) {
+  .formFields {
+    grid-template-columns: 1fr;
+  }
+
+  .pricingRow {
+    padding-right: 50px;
+  }
+
+  .buttonContainer {
+    position: absolute;
+    right: 0;
+    top: 30px;
+  }
+}

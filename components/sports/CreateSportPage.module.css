@@ -1,0 +1,92 @@
+.pageContainer {
+  display: flex;
+  justify-content: center;
+  padding: 1.5rem;
+  width: 100%;
+  min-height: calc(
+    100vh - 136px
+  ); /* 64px for top nav + 72px for action header */
+}
+
+.container {
+  width: 100%;
+  max-width: 896px;
+}
+
+.formSection {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.inputGroup {
+  margin-bottom: 2rem;
+}
+
+.label {
+  display: block;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--text-color);
+  margin-bottom: 0.5rem;
+}
+
+/* New wrapper structure to fix the layout */
+.iconNameWrapper {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  position: relative;
+}
+
+/* Fixed width container for icon to prevent shifting */
+.iconContainer {
+  flex-shrink: 0;
+  width: 48px; /* Adjust based on your icon button size */
+}
+
+/* Container for the input that takes remaining width */
+.inputContainer {
+  flex: 1;
+  min-width: 0; /* Prevents flexbox from overflowing */
+}
+
+/* Original class kept for compatibility */
+.iconNameContainer {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  position: relative;
+}
+
+.uploadedImage {
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.tagsSection {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 2rem;
+}
+
+.searchContainer {
+  margin-bottom: 1rem;
+}
+
+.emptyState {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  color: var(--text-light);
+  font-size: var(--font-size-sm);
+}
+
+.loadingState {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  color: var(--text-light);
+}
