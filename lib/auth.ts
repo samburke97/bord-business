@@ -1,4 +1,4 @@
-// lib/auth.ts
+// lib/auth.ts (Updated)
 import { AuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import FacebookProvider from "next-auth/providers/facebook";
@@ -89,6 +89,43 @@ export const authOptions: AuthOptions = {
   ],
 
   callbacks: {
+    async signIn({ user, account, profile }) {
+      // Handle OAuth sign-in attempts when email already exists
+      if (account?.provider === "google" || account?.provider === "facebook") {
+        try {
+          const existingUser = await prisma.user.findUnique({
+            where: { email: user.email! },
+            include: { accounts: true },
+          });
+
+          if (existingUser) {
+            // Check if this OAuth provider is already linked to the account
+            const existingAccount = existingUser.accounts.find(
+              (acc) => acc.provider === account.provider
+            );
+
+            if (existingAccount) {
+              // Provider already linked, allow sign in
+              return true;
+            } else {
+              // Email exists but this provider isn't linked
+              // Redirect with a specific error
+              return `/auth/error?error=AccountExistsWithDifferentProvider&email=${encodeURIComponent(user.email!)}&provider=${account.provider}`;
+            }
+          }
+
+          // New user, allow sign in
+          return true;
+        } catch (error) {
+          console.error("Error checking existing user:", error);
+          return false;
+        }
+      }
+
+      // For email provider, always allow (it handles its own verification)
+      return true;
+    },
+
     async session({ session, token, user }) {
       if (session.user) {
         session.user.id = token.sub || user?.id;
@@ -110,12 +147,14 @@ export const authOptions: AuthOptions = {
       return token;
     },
 
-    async signIn({ user, account, profile }) {
-      // For business users, we'll handle business setup after authentication
-      return true;
-    },
-
     async redirect({ url, baseUrl }) {
+      // Handle custom error redirects
+      if (
+        url.includes("/auth/error?error=AccountExistsWithDifferentProvider")
+      ) {
+        return url;
+      }
+
       // Business-specific redirect logic
       if (url.startsWith("/")) return `${baseUrl}${url}`;
       if (new URL(url).origin === baseUrl) return url;

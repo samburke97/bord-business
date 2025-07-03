@@ -1,4 +1,4 @@
-// components/auth/LoginForm.tsx
+// components/auth/LoginForm.tsx (Updated)
 "use client";
 
 import { useState } from "react";
@@ -85,13 +85,41 @@ export default function LoginForm({
 
     setIsLoading(true);
     try {
-      await signIn("email", {
-        email,
-        callbackUrl,
-        redirect: true,
-      });
+      // For business accounts, check if user exists and redirect accordingly
+      if (accountType === "business") {
+        const response = await fetch("/api/auth/check-user-status", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ email }),
+        });
+
+        const userData = await response.json();
+
+        if (userData.exists && userData.isVerified) {
+          // Existing verified user - proceed with normal sign in
+          await signIn("email", {
+            email,
+            callbackUrl,
+            redirect: true,
+          });
+        } else {
+          // New user or unverified user - redirect to verification flow
+          router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+          return;
+        }
+      } else {
+        // For player accounts, use normal flow
+        await signIn("email", {
+          email,
+          callbackUrl,
+          redirect: true,
+        });
+      }
     } catch (error) {
       console.error("Email sign-in error:", error);
+      setEmailError("Something went wrong. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -130,8 +158,8 @@ export default function LoginForm({
                   alt="Google"
                   width={32}
                   height={32}
-                  unoptimized={true} // Add this for SVGs
-                  style={{ width: "auto", height: "auto" }} // Fix aspect ratio warning
+                  unoptimized={true}
+                  style={{ width: "auto", height: "auto" }}
                 />
                 <span className={styles.buttonText}>Continue with Google</span>
               </button>

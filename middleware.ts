@@ -1,3 +1,4 @@
+// middleware.ts (Updated)
 import { NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { NextRequest } from "next/server";
@@ -7,10 +8,13 @@ export async function middleware(req: NextRequest) {
   const publicRoutes = [
     "/login",
     "/api/auth",
+    "/auth/error", // Add this line
+    "/auth/verify-request", // Add this too if you haven't
+    "/verify-email", // Add this for your new flow
     "/_next",
     "/favicon.ico",
-    "/icons", // Added this line
-    "/images", // Added this line
+    "/icons",
+    "/images",
   ];
 
   // Check if the current path is in the public routes

@@ -1,0 +1,135 @@
+/* app/(auth)/auth/error/page.module.css */
+.container {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--con-lightest, #fff);
+}
+
+.headerOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+}
+
+.content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  margin-top: 80px;
+}
+
+.errorContainer {
+  width: 100%;
+  max-width: 500px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 2rem;
+}
+
+.iconContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--con-light, #fafafa);
+  margin-bottom: 1rem;
+}
+
+.icon {
+  font-size: 2.5rem;
+}
+
+.emailInfo {
+  padding: 1.5rem;
+  background: var(--con-light, #fafafa);
+  border-radius: 8px;
+  border-left: 4px solid var(--primary-300, #7ceb92);
+  width: 100%;
+}
+
+.emailText {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.875rem;
+  color: var(--for-medium, #7e807f);
+}
+
+.emailHighlight {
+  color: var(--for-darkest, #171717);
+  font-weight: 500;
+  font-family: monospace;
+}
+
+.providerText {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--for-medium, #7e807f);
+  text-transform: capitalize;
+}
+
+.actions {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.helpText {
+  margin-top: 1rem;
+}
+
+.helpText p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--for-medium, #7e807f);
+}
+
+.helpLink {
+  color: var(--primary-300, #7ceb92);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.helpLink:hover {
+  text-decoration: underline;
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  font-size: 0.875rem;
+  color: var(--for-medium, #7e807f);
+}
+
+@media (max-width: 640px) {
+  .content {
+    padding: 1rem;
+    margin-top: 60px;
+  }
+
+  .errorContainer {
+    max-width: 100%;
+  }
+
+  .iconContainer {
+    width: 64px;
+    height: 64px;
+  }
+
+  .icon {
+    font-size: 2rem;
+  }
+}

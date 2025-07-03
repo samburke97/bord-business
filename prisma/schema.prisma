@@ -97,9 +97,13 @@ model Session {
   @@map("sessions")
 }
 
+
 model User {
   id            String    @id @default(cuid())
   name          String?
+  firstName     String?   @map("first_name")     // New field
+  lastName      String?   @map("last_name")      // New field
+  username      String?   @unique                // New field for public username
   email         String?   @unique
   emailVerified DateTime?
   image         String?
@@ -116,6 +120,7 @@ model User {
   // Account status
   isActive      Boolean   @default(true) @map("is_active")
   isVerified    Boolean   @default(false) @map("is_verified")
+  hasCompletedSignup Boolean @default(false) @map("has_completed_signup") // New field
   
   // Timestamps
   createdAt     DateTime  @default(now()) @map("created_at")
@@ -136,6 +141,7 @@ model User {
   favorites         UserFavorite[]
 
   @@index([email])
+  @@index([username])
   @@index([globalRole])
   @@index([isActive])
   @@map("users")
@@ -582,10 +588,6 @@ model ActivityPricing {
   @@index([priceType])
   @@map("activity_pricing")
 }
-
-// ============================================================================
-// USER ACTIVITY MODELS
-// ============================================================================
 
 model Booking {
   id          String        @id @default(uuid())

@@ -1,0 +1,99 @@
+/* components/auth/EmailVerification.module.css */
+.container {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--con-lightest, #fff);
+}
+
+.headerOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+}
+
+.content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  margin-top: 80px;
+}
+
+.formContainer {
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.codeInputContainer {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin: 2rem 0;
+}
+
+.codeInput {
+  width: 56px;
+  height: 56px;
+  border: 1px solid var(--out-medium, #d9dbdb);
+  border-radius: 8px;
+  background: var(--con-lightest, #fff);
+  text-align: center;
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--for-darkest, #171717);
+  transition: all var(--transition-fast, 0.15s ease);
+}
+
+.codeInput:hover {
+  background-color: var(--con-light, #fafafa);
+}
+
+.codeInput:focus {
+  outline: none;
+  background-color: var(--con-light, #fafafa);
+  border-color: var(--grey-500, #7e807f);
+}
+
+.codeInput:focus-within {
+  border-color: var(--primary-300, #7ceb92);
+}
+
+.errorMessage {
+  text-align: center;
+  color: var(--red-wine-300, #900c40);
+  font-size: 0.875rem;
+  margin-top: -1rem;
+}
+
+.buttonContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+@media (max-width: 640px) {
+  .content {
+    padding: 1rem;
+    margin-top: 60px;
+  }
+
+  .codeInputContainer {
+    gap: 0.75rem;
+  }
+
+  .codeInput {
+    width: 48px;
+    height: 48px;
+    font-size: 20px;
+  }
+}

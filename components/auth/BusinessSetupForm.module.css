@@ -1,0 +1,139 @@
+/* components/auth/BusinessSetupForm.module.css */
+.container {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--con-lightest, #fff);
+}
+
+.headerOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+}
+
+.content {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 2rem 1rem;
+  margin-top: 80px;
+  overflow-y: auto;
+}
+
+.formContainer {
+  width: 100%;
+  max-width: 500px;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.formFields {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.label {
+  font-size: var(--font-size-sm, 0.875rem);
+  font-weight: 500;
+  color: var(--for-dark);
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+.usernameField {
+  position: relative;
+}
+
+.checkingText {
+  font-size: 0.75rem;
+  color: var(--for-medium, #7e807f);
+  margin-top: 0.25rem;
+  font-style: italic;
+}
+
+.mobileField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.mobileInputContainer {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.mobileInputContainer > :first-child {
+  flex-shrink: 0;
+  width: 120px;
+}
+
+.mobileInputContainer > :last-child {
+  flex: 1;
+}
+
+.passwordField {
+  position: relative;
+}
+
+.passwordToggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.25rem;
+  padding: 0.25rem;
+  color: var(--for-medium, #7e807f);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.passwordToggle:hover {
+  color: var(--for-dark, #666);
+}
+
+.termsText {
+  padding: 1rem;
+  background: var(--con-light, #fafafa);
+  border-radius: 8px;
+  font-size: 0.875rem;
+  color: var(--for-medium, #7e807f);
+  line-height: 1.5;
+}
+
+.termsText p {
+  margin: 0;
+}
+
+.emailHighlight {
+  color: var(--for-darkest, #171717);
+  font-weight: 500;
+}
+
+@media (max-width: 640px) {
+  .content {
+    padding: 1rem;
+    margin-top: 60px;
+  }
+
+  .formContainer {
+    max-width: 100%;
+  }
+
+  .mobileInputContainer {
+    gap: 0.5rem;
+  }
+
+  .mobileInputContainer > :first-child {
+    width: 100px;
+  }
+}
