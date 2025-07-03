@@ -1,4 +1,4 @@
-// app/(auth)/auth/password/page.tsx
+// app/(auth)/auth/password/page.tsx (FIXED)
 "use client";
 
 import { useSearchParams } from "next/navigation";
@@ -15,8 +15,8 @@ function PasswordContent() {
 
   const handlePasswordComplete = () => {
     if (isNewUser) {
-      // New users go to email verification after setting password
-      window.location.href = `/auth/verify-email?email=${encodeURIComponent(email)}`;
+      // FIX: Change this redirect to match your actual route
+      window.location.href = `/verify-email?email=${encodeURIComponent(email)}`;
     } else {
       // Existing users go to dashboard (handled in PasswordScreen)
       // This shouldn't be called for existing users

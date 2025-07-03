@@ -1,7 +1,47 @@
-// app/api/auth/create-business-account/route.ts
+// app/api/auth/create-business-account/route.ts (UPDATED WITH AUTO SIGNIN)
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
+
+// Enterprise password policy (same as set-password)
+const PASSWORD_POLICY = {
+  minLength: 8,
+  requireUppercase: true,
+  requireLowercase: true,
+  requireNumbers: true,
+  requireSpecialChars: false,
+};
+
+function validatePasswordStrength(password: string): {
+  valid: boolean;
+  errors: string[];
+} {
+  const errors: string[] = [];
+
+  if (password.length < PASSWORD_POLICY.minLength) {
+    errors.push(
+      `Password must be at least ${PASSWORD_POLICY.minLength} characters`
+    );
+  }
+
+  if (PASSWORD_POLICY.requireUppercase && !/[A-Z]/.test(password)) {
+    errors.push("Password must contain at least one uppercase letter");
+  }
+
+  if (PASSWORD_POLICY.requireLowercase && !/[a-z]/.test(password)) {
+    errors.push("Password must contain at least one lowercase letter");
+  }
+
+  if (PASSWORD_POLICY.requireNumbers && !/\d/.test(password)) {
+    errors.push("Password must contain at least one number");
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+  };
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -31,54 +71,110 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if user already exists
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return NextResponse.json(
+        { message: "Invalid email format" },
+        { status: 400 }
+      );
+    }
+
+    // Validate password strength
+    const passwordValidation = validatePasswordStrength(password);
+    if (!passwordValidation.valid) {
+      return NextResponse.json(
+        {
+          message: "Password does not meet requirements",
+          errors: passwordValidation.errors,
+        },
+        { status: 400 }
+      );
+    }
+
+    // Check if username is available
+    const existingUsername = await prisma.user.findFirst({
+      where: { username },
+    });
+
+    if (existingUsername) {
+      return NextResponse.json(
+        { message: "Username is already taken" },
+        { status: 400 }
+      );
+    }
+
+    // Check if user already exists with this email
     const existingUser = await prisma.user.findUnique({
       where: { email },
     });
 
     if (existingUser && existingUser.isVerified) {
       return NextResponse.json(
-        { message: "User already exists" },
+        { message: "An account with this email already exists" },
         { status: 400 }
       );
     }
 
     // Hash password
-    const hashedPassword = await bcrypt.hash(password, 12);
+    const saltRounds = 12;
+    const additionalSalt = crypto.randomBytes(32).toString("hex");
+    const passwordHash = await bcrypt.hash(
+      password + additionalSalt,
+      saltRounds
+    );
 
-    // Create or update user
+    // Create user data
     const userData = {
       email,
       name: `${firstName} ${lastName}`,
-      // If you have separate firstName/lastName fields, add them here
+      firstName,
+      lastName,
+      username,
       phone: fullMobile,
       dateOfBirth: new Date(dateOfBirth),
-      isVerified: true, // Since they just verified their email
+      isVerified: false, // They still need to verify email
       isActive: true,
       globalRole: "USER" as const,
     };
 
-    let user;
-    if (existingUser) {
-      // Update existing user
-      user = await prisma.user.update({
-        where: { email },
-        data: userData,
-      });
-    } else {
-      // Create new user
-      user = await prisma.user.create({
-        data: userData,
-      });
-    }
+    // Use transaction to create user and credentials
+    const result = await prisma.$transaction(async (tx) => {
+      let user;
 
-    // You might want to create a default business for the user
-    // or handle business creation separately
+      if (existingUser) {
+        // Update existing unverified user
+        user = await tx.user.update({
+          where: { email },
+          data: userData,
+        });
+      } else {
+        // Create new user
+        user = await tx.user.create({
+          data: userData,
+        });
+      }
+
+      // Create user credentials
+      await tx.userCredentials.create({
+        data: {
+          userId: user.id,
+          email,
+          passwordHash,
+          passwordSalt: additionalSalt,
+          passwordChangedAt: new Date(),
+          failedAttempts: 0,
+        },
+      });
+
+      return user;
+    });
 
     return NextResponse.json(
       {
         message: "Account created successfully",
-        userId: user.id,
+        userId: result.id,
+        success: true,
       },
       { status: 201 }
     );

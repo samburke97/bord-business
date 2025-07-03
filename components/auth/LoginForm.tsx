@@ -1,4 +1,4 @@
-// components/auth/LoginForm.tsx (Option 2 Flow)
+// components/auth/LoginForm.tsx (FIXED WITH PROPER STYLING)
 "use client";
 
 import { useState } from "react";
@@ -103,28 +103,19 @@ export default function LoginForm({
       const userData = await response.json();
 
       if (userData.exists && userData.isVerified) {
-        // Existing verified user → Password login screen
+        // EXISTING USER FLOW: Go to password login screen
         router.push(
           `/auth/password?email=${encodeURIComponent(email)}&type=login&name=${encodeURIComponent(userData.name || "")}`
         );
       } else {
-        // New user or unverified user → Password setup screen
-        router.push(
-          `/auth/password?email=${encodeURIComponent(email)}&type=setup`
-        );
+        // NEW USER FLOW: Go directly to business setup (with password included)
+        router.push(`/auth/setup?email=${encodeURIComponent(email)}`);
       }
     } catch (error) {
       console.error("Email continue error:", error);
       setEmailError("Something went wrong. Please try again.");
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setEmail(e.target.value);
-    if (emailError) {
-      setEmailError(null);
     }
   };
 
@@ -137,39 +128,35 @@ export default function LoginForm({
       />
 
       <div className={styles.content}>
-        {/* Left side: Login Form */}
         <div className={styles.formContainer}>
           <div className={styles.formWrapper}>
             <TitleDescription title={title} description={description} />
 
-            {/* Social Login Buttons */}
             <div className={styles.authButtons}>
               <button
+                className={styles.socialButton}
                 onClick={handleGoogleSignIn}
                 disabled={isLoading}
-                className={styles.socialButton}
               >
                 <Image
                   src="/icons/login/google.svg"
                   alt="Google"
-                  width={32}
-                  height={32}
-                  unoptimized={true}
-                  style={{ width: "auto", height: "auto" }}
+                  width={20}
+                  height={20}
                 />
                 <span className={styles.buttonText}>Continue with Google</span>
               </button>
 
               <button
+                className={styles.socialButton}
                 onClick={handleFacebookSignIn}
                 disabled={isLoading}
-                className={styles.socialButton}
               >
                 <Image
                   src="/icons/login/facebook.svg"
                   alt="Facebook"
-                  width={32}
-                  height={32}
+                  width={20}
+                  height={20}
                 />
                 <span className={styles.buttonText}>
                   Continue with Facebook
@@ -177,22 +164,20 @@ export default function LoginForm({
               </button>
             </div>
 
-            {/* Divider */}
             <div className={styles.divider}>
-              <span>OR</span>
+              <span>or</span>
             </div>
 
-            {/* Email Form */}
             <div className={styles.emailForm}>
               <TextInput
                 id="email"
-                label=""
-                value={email}
-                onChange={handleEmailChange}
-                placeholder="Enter email address"
-                error={emailError}
+                label="Email"
                 type="email"
-                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter your email address"
+                error={emailError}
+                required
               />
 
               <div className={styles.continueButtonContainer}>
@@ -202,18 +187,17 @@ export default function LoginForm({
                   disabled={isLoading || !email}
                   fullWidth
                 >
-                  {isLoading ? "Loading..." : "Continue"}
+                  {isLoading ? "Checking..." : "Continue"}
                 </Button>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Right side: Hero image */}
         <div className={styles.imageContainer}>
           <Image
-            src="/images/login/login-hero.png"
-            alt="Basketball players"
+            src="/images/login/auth-bg.png"
+            alt="Sports facility background"
             fill
             style={{ objectFit: "cover" }}
             priority

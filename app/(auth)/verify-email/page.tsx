@@ -1,4 +1,4 @@
-// app/(auth)/auth/verify-email/page.tsx
+// app/(auth)/verify-email/page.tsx (FIXED)
 "use client";
 
 import { useSearchParams } from "next/navigation";
@@ -10,8 +10,10 @@ function VerifyEmailContent() {
   const email = searchParams.get("email") || "";
 
   const handleVerificationComplete = () => {
-    // After email verification, go to business setup
-    window.location.href = `/auth/setup?email=${encodeURIComponent(email)}`;
+    // FIXED: After email verification, go to congratulations page
+    // Since the user already created their account in the business setup form,
+    // email verification is the final step before congratulations
+    window.location.href = `/auth/congratulations`;
   };
 
   return (
