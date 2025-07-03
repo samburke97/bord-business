@@ -48,7 +48,7 @@ export default function ConfirmAddressStep({
   // Expose the continue handler for the header button
   useEffect(() => {
     // @ts-ignore
-    window.handleAddressContinue = handleContinue;
+    window.handleStepContinue = handleContinue;
 
     return () => {
       // @ts-ignore

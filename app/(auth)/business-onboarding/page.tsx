@@ -1,4 +1,4 @@
-// app/(auth)/business-onboarding/page.tsx
+// app/(auth)/business-onboarding/page.tsx - UPDATED
 "use client";
 
 import { useState, useRef } from "react";
@@ -47,6 +47,9 @@ const STEPS = [
 export default function BusinessOnboardingPage() {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(0);
+  const [isCreating, setIsCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   const [formData, setFormData] = useState<BusinessFormData>({
     businessName: "",
     businessCategory: "",
@@ -88,7 +91,11 @@ export default function BusinessOnboardingPage() {
 
   const createBusiness = async (data: BusinessFormData) => {
     try {
-      const response = await fetch("/api/business/create", {
+      setIsCreating(true);
+      setError(null);
+
+      // Call the USER business creation API (not admin API)
+      const response = await fetch("/api/user/business", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -108,15 +115,22 @@ export default function BusinessOnboardingPage() {
         }),
       });
 
+      const responseData = await response.json();
+
       if (!response.ok) {
-        throw new Error("Failed to create business");
+        throw new Error(responseData.error || "Failed to create business");
       }
 
       // Show congratulations step
       setCurrentStep(STEPS.length);
     } catch (error) {
       console.error("Error creating business:", error);
-      // Handle error - maybe show an error message
+      setError(
+        error instanceof Error ? error.message : "Failed to create business"
+      );
+      // Don't advance to congratulations step on error
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -212,7 +226,7 @@ export default function BusinessOnboardingPage() {
           <div ref={stepRef}>
             <BusinessCongratulationsStep
               businessName={formData.businessName}
-              onContinue={() => router.push("/dashboard")}
+              onContinue={() => router.push("/dashboard")} // Route to admin dashboard
             />
           </div>
         );
@@ -232,10 +246,26 @@ export default function BusinessOnboardingPage() {
           className={styles.header}
           onClose={handleClose}
           mode="create"
+          disableContinue={isCreating} // Disable while creating
         />
       )}
 
-      <div className={styles.formContainer}>{renderStep()}</div>
+      {error && (
+        <div className={styles.errorBanner}>
+          <p>Error: {error}</p>
+          <button onClick={() => setError(null)}>Dismiss</button>
+        </div>
+      )}
+
+      <div className={styles.formContainer}>
+        {isCreating ? (
+          <div className={styles.creatingState}>
+            <p>Creating your business...</p>
+          </div>
+        ) : (
+          renderStep()
+        )}
+      </div>
     </div>
   );
 }
