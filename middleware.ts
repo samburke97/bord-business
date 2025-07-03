@@ -8,9 +8,13 @@ export async function middleware(req: NextRequest) {
   const publicRoutes = [
     "/login",
     "/api/auth",
-    "/auth/error", // Add this line
-    "/auth/verify-request", // Add this too if you haven't
-    "/verify-email", // Add this for your new flow
+    "/auth/error",
+    "/auth/verify-request",
+    "/auth/password", // Add password page
+    "/auth/verify-email", // Add email verification page
+    "/auth/setup", // Add business setup page
+    "/auth/congratulations", // Add congratulations page
+    "/verify-email", // Keep old route for compatibility
     "/_next",
     "/favicon.ico",
     "/icons",

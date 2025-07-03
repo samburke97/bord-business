@@ -1,4 +1,4 @@
-// components/auth/LoginForm.tsx (Updated)
+// components/auth/LoginForm.tsx (Option 2 Flow)
 "use client";
 
 import { useState } from "react";
@@ -84,41 +84,37 @@ export default function LoginForm({
     }
 
     setIsLoading(true);
+    setEmailError(null);
+
     try {
-      // For business accounts, check if user exists and redirect accordingly
-      if (accountType === "business") {
-        const response = await fetch("/api/auth/check-user-status", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ email }),
-        });
+      // Check if user exists and route accordingly
+      const response = await fetch("/api/auth/check-user-status", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email }),
+      });
 
-        const userData = await response.json();
+      if (!response.ok) {
+        throw new Error("Failed to check user status");
+      }
 
-        if (userData.exists && userData.isVerified) {
-          // Existing verified user - proceed with normal sign in
-          await signIn("email", {
-            email,
-            callbackUrl,
-            redirect: true,
-          });
-        } else {
-          // New user or unverified user - redirect to verification flow
-          router.push(`/verify-email?email=${encodeURIComponent(email)}`);
-          return;
-        }
+      const userData = await response.json();
+
+      if (userData.exists && userData.isVerified) {
+        // Existing verified user → Password login screen
+        router.push(
+          `/auth/password?email=${encodeURIComponent(email)}&type=login&name=${encodeURIComponent(userData.name || "")}`
+        );
       } else {
-        // For player accounts, use normal flow
-        await signIn("email", {
-          email,
-          callbackUrl,
-          redirect: true,
-        });
+        // New user or unverified user → Password setup screen
+        router.push(
+          `/auth/password?email=${encodeURIComponent(email)}&type=setup`
+        );
       }
     } catch (error) {
-      console.error("Email sign-in error:", error);
+      console.error("Email continue error:", error);
       setEmailError("Something went wrong. Please try again.");
     } finally {
       setIsLoading(false);

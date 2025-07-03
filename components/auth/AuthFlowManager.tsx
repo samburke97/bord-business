@@ -5,10 +5,11 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import EmailVerification from "./EmailVerification";
+import PasswordScreen from "./PasswordScreen";
 import BusinessSetupForm from "./BusinessSetupForm";
 import Congratulations from "./Congratulations";
 
-type FlowStep = "verification" | "setup" | "complete";
+type FlowStep = "verification" | "password" | "setup" | "complete";
 
 interface AuthFlowManagerProps {
   initialEmail?: string;
@@ -27,6 +28,10 @@ export default function AuthFlowManager({
   );
   const [isInitializing, setIsInitializing] = useState(true);
   const [hasInitialized, setHasInitialized] = useState(false);
+  const [userInfo, setUserInfo] = useState<{
+    isNewUser: boolean;
+    userName?: string;
+  }>({ isNewUser: true });
 
   // Memoize the business status check to prevent re-renders
   const checkBusinessStatus = useCallback(async () => {
@@ -72,6 +77,12 @@ export default function AuthFlowManager({
             "Failed to send initial verification code:",
             errorData.message
           );
+        } else {
+          const data = await response.json();
+          setUserInfo({
+            isNewUser: !data.isNewUser, // API returns isNewUser, we want the opposite logic
+            userName: data.userName,
+          });
         }
       } catch (error) {
         console.error("Error sending initial verification code:", error);
@@ -121,9 +132,29 @@ export default function AuthFlowManager({
     currentStep,
   ]);
 
-  const handleVerificationComplete = useCallback(() => {
-    setCurrentStep("setup");
-  }, []);
+  const handleVerificationComplete = useCallback(
+    (data: { isExistingUser: boolean }) => {
+      // Update user info based on verification response
+      setUserInfo({
+        isNewUser: !data.isExistingUser,
+        userName: userInfo.userName,
+      });
+
+      // Always go to password step after verification
+      setCurrentStep("password");
+    },
+    [userInfo.userName]
+  );
+
+  const handlePasswordComplete = useCallback(() => {
+    if (userInfo.isNewUser) {
+      // New users go to setup
+      setCurrentStep("setup");
+    } else {
+      // Existing users go straight to dashboard (handled in PasswordScreen)
+      // This callback shouldn't be called for existing users
+    }
+  }, [userInfo.isNewUser]);
 
   const handleSetupComplete = useCallback(() => {
     setCurrentStep("complete");
@@ -161,6 +192,16 @@ export default function AuthFlowManager({
         <EmailVerification
           email={email}
           onVerificationComplete={handleVerificationComplete}
+        />
+      );
+
+    case "password":
+      return (
+        <PasswordScreen
+          email={email}
+          userName={userInfo.userName}
+          isNewUser={userInfo.isNewUser}
+          onPasswordComplete={handlePasswordComplete}
         />
       );
 

@@ -99,6 +99,7 @@ export default function EmailVerification({
       }
 
       if (data.success) {
+        // Call the completion handler
         onVerificationComplete();
       } else {
         throw new Error(data.message || "Verification failed");

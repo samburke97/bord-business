@@ -97,6 +97,60 @@ model Session {
   @@map("sessions")
 }
 
+// ============================================================================
+// USER CREDENTIALS (Enterprise Security Model)
+// ============================================================================
+
+model UserCredentials {
+  id                String    @id @default(cuid())
+  userId            String    @unique @map("user_id")
+  email             String    @unique
+  
+  // Password fields
+  passwordHash      String    @map("password_hash")
+  passwordSalt      String?   @map("password_salt") // Optional additional salt
+  
+  // Security fields
+  passwordChangedAt DateTime? @map("password_changed_at")
+  failedAttempts    Int       @default(0) @map("failed_attempts")
+  lockedAt          DateTime? @map("locked_at")
+  lockoutUntil      DateTime? @map("lockout_until")
+  
+  // Password policy compliance
+  mustChangePassword Boolean  @default(false) @map("must_change_password")
+  passwordExpiresAt  DateTime? @map("password_expires_at")
+  
+  // Audit fields
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  lastLoginAt       DateTime? @map("last_login_at")
+  lastLoginIp       String?   @map("last_login_ip")
+  
+  // Relationships
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  passwordHistory   PasswordHistory[]
+  
+  // Indexes for performance and security
+  @@index([email])
+  @@index([userId])
+  @@index([failedAttempts, lockedAt])
+  @@map("user_credentials")
+}
+
+// Password history for preventing reuse (enterprise compliance)
+model PasswordHistory {
+  id                String          @id @default(cuid())
+  credentialsId     String          @map("credentials_id")
+  passwordHash      String          @map("password_hash")
+  createdAt         DateTime        @default(now()) @map("created_at")
+  
+  // Relationships
+  credentials       UserCredentials @relation(fields: [credentialsId], references: [id], onDelete: Cascade)
+  
+  @@index([credentialsId])
+  @@index([createdAt])
+  @@map("password_history")
+}
 
 model User {
   id            String    @id @default(cuid())
@@ -134,6 +188,7 @@ model User {
   // Business relationships
   ownedBusinesses    Business[]     @relation("BusinessOwner")
   businessMemberships UserBusiness[]
+  credentials       UserCredentials?
   
   // Activity relationships  
   bookings          Booking[]

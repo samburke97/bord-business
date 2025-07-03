@@ -18,6 +18,7 @@ export async function POST(request: NextRequest) {
       where: { email },
       select: {
         id: true,
+        name: true,
         email: true,
         isVerified: true,
         isActive: true,
@@ -35,6 +36,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       exists: true,
+      name: user.name,
       isVerified: user.isVerified,
       isActive: user.isActive,
       needsVerification: !user.isVerified,

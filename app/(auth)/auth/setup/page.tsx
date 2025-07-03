@@ -1,28 +1,25 @@
-// app/(auth)/auth/verify-email/page.tsx
+// app/(auth)/auth/setup/page.tsx
 "use client";
 
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
-import EmailVerification from "@/components/auth/EmailVerification";
+import BusinessSetupForm from "@/components/auth/BusinessSetupForm";
 
-function VerifyEmailContent() {
+function BusinessSetupContent() {
   const searchParams = useSearchParams();
   const email = searchParams.get("email") || "";
 
-  const handleVerificationComplete = () => {
-    // After email verification, go to business setup
-    window.location.href = `/auth/setup?email=${encodeURIComponent(email)}`;
+  const handleSetupComplete = () => {
+    // After setup, go to congratulations
+    window.location.href = `/auth/congratulations`;
   };
 
   return (
-    <EmailVerification
-      email={email}
-      onVerificationComplete={handleVerificationComplete}
-    />
+    <BusinessSetupForm email={email} onSetupComplete={handleSetupComplete} />
   );
 }
 
-export default function VerifyEmailPage() {
+export default function BusinessSetupPage() {
   return (
     <Suspense
       fallback={
@@ -38,7 +35,7 @@ export default function VerifyEmailPage() {
         </div>
       }
     >
-      <VerifyEmailContent />
+      <BusinessSetupContent />
     </Suspense>
   );
 }

@@ -30,13 +30,9 @@ export async function POST(request: NextRequest) {
       where: { email },
     });
 
-    // If user exists and is already verified, they should use normal sign in
-    if (existingUser && existingUser.isVerified) {
-      return NextResponse.json(
-        { message: "Account already verified. Please sign in normally." },
-        { status: 400 }
-      );
-    }
+    // For Bord Business, we always allow sending verification codes
+    // This handles both new users and existing users who want to sign in
+    // The verification step will determine the next action
 
     // Clean up any old verification tokens for this email
     await prisma.verificationToken.deleteMany({
@@ -65,7 +61,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Create user if they don't exist
+    // Create user if they don't exist (unverified initially)
     if (!existingUser) {
       await prisma.user.create({
         data: {
@@ -76,31 +72,49 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Customize email content based on user status
+    const isNewUser = !existingUser;
+    const emailSubject = isNewUser
+      ? "Welcome to Bord Business - Verify Your Email"
+      : "Sign in to Bord Business - Verification Required";
+
+    const emailTitle = isNewUser
+      ? "Welcome to Bord Business!"
+      : "Sign in to Bord Business";
+
+    const emailDescription = isNewUser
+      ? "Let's verify your email address"
+      : "Please verify your identity to continue";
+
+    const emailInstructions = isNewUser
+      ? "Enter this 4-digit code to verify your email and continue setting up your business account:"
+      : "Enter this 4-digit code to sign in to your business account:";
+
     // Send verification email
     try {
       await resend.emails.send({
         from: "onboarding@resend.dev",
         to: email,
-        subject: "Welcome to Bord Business - Verify Your Email",
+        subject: emailSubject,
         html: `
           <!DOCTYPE html>
           <html>
             <head>
               <meta charset="utf-8">
               <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              <title>Welcome to Bord Business</title>
+              <title>${emailSubject}</title>
             </head>
             <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff;">
               <div style="text-align: center; margin-bottom: 30px; padding: 20px; background: linear-gradient(135deg, #7ceb92 0%, #59d472 100%); border-radius: 12px;">
-                <h1 style="color: #000; margin: 0; font-size: 28px; font-weight: 600;">Welcome to Bord Business!</h1>
-                <p style="color: #000; margin: 5px 0 0 0; opacity: 0.8; font-size: 16px;">Let's verify your email address</p>
+                <h1 style="color: #000; margin: 0; font-size: 28px; font-weight: 600;">${emailTitle}</h1>
+                <p style="color: #000; margin: 5px 0 0 0; opacity: 0.8; font-size: 16px;">${emailDescription}</p>
               </div>
               
               <div style="background: #f8f9fa; border-radius: 12px; padding: 30px; margin-bottom: 30px;">
                 <h2 style="color: #333; margin: 0 0 20px 0; font-size: 24px; text-align: center;">Your Verification Code</h2>
                 
                 <p style="margin-bottom: 30px; font-size: 16px; color: #666; text-align: center;">
-                  Enter this 4-digit code to verify your email and continue setting up your business account:
+                  ${emailInstructions}
                 </p>
                 
                 <div style="text-align: center; margin: 30px 0;">
@@ -118,7 +132,7 @@ export async function POST(request: NextRequest) {
               
               <div style="background: #f5f5f5; border-radius: 8px; padding: 20px; text-align: center;">
                 <p style="color: #666; font-size: 14px; margin: 0;">
-                  If you didn't create a Bord Business account, please ignore this email or contact our support team.
+                  If you didn't ${isNewUser ? "create a Bord Business account" : "request this sign-in"}, please ignore this email or contact our support team.
                 </p>
               </div>
               
@@ -137,6 +151,7 @@ export async function POST(request: NextRequest) {
         {
           message: "Verification code sent successfully",
           expiresIn: 600, // 10 minutes in seconds
+          isNewUser,
         },
         { status: 200 }
       );

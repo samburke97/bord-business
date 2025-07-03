@@ -52,9 +52,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: "User not found" }, { status: 404 });
     }
 
+    // Check if this is an existing verified user (sign-in) vs new user (setup)
+    const wasAlreadyVerified = user.isVerified;
+
     // Update user verification status and clean up token
     await prisma.$transaction([
-      // Mark user as verified
+      // Mark user as verified (in case they weren't before)
       prisma.user.update({
         where: { email },
         data: {
@@ -87,6 +90,7 @@ export async function POST(request: NextRequest) {
       {
         message: "Email verified successfully",
         success: true,
+        isExistingUser: wasAlreadyVerified, // Flag to determine next step
       },
       { status: 200 }
     );
