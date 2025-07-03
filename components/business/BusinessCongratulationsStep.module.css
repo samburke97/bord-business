@@ -1,0 +1,44 @@
+.pageContainer {
+  display: flex;
+  justify-content: center;
+  padding: 1.5rem;
+  width: 100%;
+  min-height: calc(100vh - 136px);
+}
+
+.container {
+  width: 100%;
+  max-width: 500px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.checkIcon {
+  margin: 2rem auto;
+  display: flex;
+  justify-content: center;
+}
+
+.checkSvg {
+  animation: checkAppear 0.6s ease-out;
+}
+
+@keyframes checkAppear {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.buttonContainer {
+  margin-top: 2rem;
+  width: 100%;
+  max-width: 300px;
+}

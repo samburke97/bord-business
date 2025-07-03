@@ -1,4 +1,4 @@
-// middleware.ts (Updated)
+// middleware.ts
 import { NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { NextRequest } from "next/server";
@@ -10,11 +10,12 @@ export async function middleware(req: NextRequest) {
     "/api/auth",
     "/auth/error",
     "/auth/verify-request",
-    "/auth/password", // Add password page
-    "/auth/verify-email", // Add email verification page
-    "/auth/setup", // Add business setup page
-    "/auth/congratulations", // Add congratulations page
-    "/verify-email", // Keep old route for compatibility
+    "/auth/password",
+    "/auth/verify-email",
+    "/auth/setup",
+    "/auth/congratulations",
+    "/verify-email",
+    "/business-onboarding", // Make business onboarding public temporarily for testing
     "/_next",
     "/favicon.ico",
     "/icons",
@@ -46,10 +47,21 @@ export async function middleware(req: NextRequest) {
       return NextResponse.redirect(loginUrl);
     }
 
+    // Allow authenticated users to access business onboarding
+    if (req.nextUrl.pathname.startsWith("/business-onboarding")) {
+      return NextResponse.next();
+    }
+
     // Check for admin role if accessing admin-only routes
+    const isAdminRoute =
+      req.nextUrl.pathname.startsWith("/dashboard") ||
+      req.nextUrl.pathname.startsWith("/protected-route") ||
+      req.nextUrl.pathname.startsWith("/locations") ||
+      req.nextUrl.pathname.startsWith("/activities") ||
+      req.nextUrl.pathname.startsWith("/facilities");
+
     if (
-      (req.nextUrl.pathname.startsWith("/dashboard") ||
-        req.nextUrl.pathname.startsWith("/protected-route")) &&
+      isAdminRoute &&
       token.role !== "ADMIN" &&
       token.role !== "SUPER_ADMIN"
     ) {

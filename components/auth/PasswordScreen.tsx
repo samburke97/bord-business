@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import ActionHeader from "../layouts/headers/ActionHeader";
 import TitleDescription from "@/components/ui/TitleDescription";
@@ -24,6 +24,7 @@ export default function PasswordScreen({
   onPasswordComplete,
 }: PasswordScreenProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -65,6 +66,10 @@ export default function PasswordScreen({
     setError(null);
 
     try {
+      // Check if this is a business setup continuation
+      const continueBusinessSetup =
+        searchParams.get("continue_business_setup") === "true";
+
       if (isNewUser) {
         // For new users, save the password and continue to setup
         const response = await fetch("/api/auth/set-password", {
@@ -99,8 +104,14 @@ export default function PasswordScreen({
         }
 
         if (result?.ok) {
-          // Successful sign in, redirect to dashboard
-          window.location.href = "/dashboard";
+          // Successful sign-in
+          if (continueBusinessSetup) {
+            // Route to business creation flow
+            router.push("/locations/create");
+          } else {
+            // Regular flow - redirect to dashboard
+            window.location.href = "/dashboard";
+          }
         }
       }
     } catch (error) {

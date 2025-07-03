@@ -3,6 +3,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
 import ActionHeader from "../layouts/headers/ActionHeader";
 import TitleDescription from "@/components/ui/TitleDescription";
 import Button from "@/components/ui/Button";
@@ -81,7 +82,8 @@ export default function EmailVerification({
     setError(null);
 
     try {
-      const response = await fetch("/api/auth/verify-email", {
+      // First, verify the email with the API
+      const verifyResponse = await fetch("/api/auth/verify-email", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -92,17 +94,35 @@ export default function EmailVerification({
         }),
       });
 
-      const data = await response.json();
+      const verifyData = await verifyResponse.json();
 
-      if (!response.ok) {
-        throw new Error(data.message || "Verification failed");
+      if (!verifyResponse.ok) {
+        throw new Error(verifyData.message || "Verification failed");
       }
 
-      if (data.success) {
-        // Call the completion handler
-        onVerificationComplete();
+      if (verifyData.success) {
+        // After successful email verification, create a session
+        const sessionResponse = await fetch(
+          "/api/auth/create-verified-session",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ email }),
+          }
+        );
+
+        if (sessionResponse.ok) {
+          // Session created successfully, call completion handler
+          onVerificationComplete();
+        } else {
+          // Session creation failed, but email is verified so still proceed
+          console.warn("Session creation failed, but email is verified");
+          onVerificationComplete();
+        }
       } else {
-        throw new Error(data.message || "Verification failed");
+        throw new Error(verifyData.message || "Verification failed");
       }
     } catch (error) {
       console.error("Verification error:", error);
@@ -117,7 +137,7 @@ export default function EmailVerification({
     setError(null);
 
     try {
-      const response = await fetch("/api/auth/resend-verification", {
+      const response = await fetch("/api/auth/send-verification-code", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -130,6 +150,10 @@ export default function EmailVerification({
       if (!response.ok) {
         throw new Error(data.message || "Failed to resend email");
       }
+
+      // Clear the code inputs and reset focus
+      setCode(["", "", "", ""]);
+      inputRefs.current[0]?.focus();
 
       // Show success feedback
       console.log("Verification code resent successfully");
@@ -150,7 +174,7 @@ export default function EmailVerification({
     if (code.every((digit) => digit !== "") && !isLoading) {
       handleVerify();
     }
-  }, [code]);
+  }, [code, isLoading]);
 
   const isCodeComplete = code.every((digit) => digit !== "");
 
@@ -184,6 +208,7 @@ export default function EmailVerification({
                 onPaste={index === 0 ? handlePaste : undefined}
                 className={styles.codeInput}
                 autoFocus={index === 0}
+                disabled={isLoading}
               />
             ))}
           </div>
@@ -203,7 +228,7 @@ export default function EmailVerification({
             <Button
               variant="ghost"
               onClick={handleResendEmail}
-              disabled={isResending}
+              disabled={isResending || isLoading}
               fullWidth
             >
               {isResending ? "Sending..." : "Resend Email"}

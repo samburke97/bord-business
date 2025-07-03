@@ -1,0 +1,32 @@
+.container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--con-lightest, #fff);
+}
+
+.header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+}
+
+.formContainer {
+  flex: 1;
+  margin-top: 100px; /* Account for fixed header */
+  padding-bottom: 2rem;
+}
+
+@media (max-width: 768px) {
+  .formContainer {
+    margin-top: 80px;
+  }
+
+  .pageContainer {
+    padding: 1rem;
+  }
+}

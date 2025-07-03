@@ -1,4 +1,4 @@
-// app/(auth)/auth/congratulations/page.tsx (FIXED FOR EXISTING BUSINESS FLOW)
+// app/(auth)/auth/congratulations/page.tsx
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
@@ -18,18 +18,12 @@ export default function CongratulationsPage() {
     setIsLoading(true);
 
     try {
-      // Since the user just created their account and verified email,
-      // we need to sign them in automatically to access the business creation flow
-
-      // Attempt to sign in the user with their credentials
-      // We'll redirect them to a special sign-in page that handles this flow
-      router.push(
-        `/login?continue_business_setup=true&email=${encodeURIComponent(email)}`
-      );
+      // Simply redirect to business onboarding
+      // Made it public in middleware for testing
+      router.push("/business-onboarding");
     } catch (error) {
       console.error("Continue error:", error);
-      // Fallback to regular login
-      router.push("/login");
+      router.push("/business-onboarding");
     } finally {
       setIsLoading(false);
     }

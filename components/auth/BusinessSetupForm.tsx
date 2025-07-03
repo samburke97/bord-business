@@ -1,4 +1,4 @@
-// components/auth/BusinessSetupForm.tsx (MINIMAL FIXES ONLY)
+// components/auth/BusinessSetupForm.tsx
 "use client";
 
 import { useState, useMemo } from "react";
@@ -23,7 +23,7 @@ interface FormData {
   countryCode: string;
   mobile: string;
   password: string;
-  confirmPassword: string; // Added confirm password
+  confirmPassword: string;
 }
 
 interface FormErrors {
@@ -33,7 +33,7 @@ interface FormErrors {
   dateOfBirth?: string;
   mobile?: string;
   password?: string;
-  confirmPassword?: string; // Added confirm password
+  confirmPassword?: string;
 }
 
 export default function BusinessSetupForm({
@@ -46,15 +46,15 @@ export default function BusinessSetupForm({
     lastName: "",
     username: "",
     dateOfBirth: "",
-    countryCode: "+61", // Changed to Australia
+    countryCode: "+61", // Australia default
     mobile: "",
     password: "",
-    confirmPassword: "", // Added confirm password
+    confirmPassword: "",
   });
   const [errors, setErrors] = useState<FormErrors>({});
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false); // Added
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isCheckingUsername, setIsCheckingUsername] = useState(false);
 
   const handleBack = () => {
@@ -97,12 +97,6 @@ export default function BusinessSetupForm({
     } else if (!/^[a-zA-Z0-9._-]+$/.test(formData.username)) {
       newErrors.username =
         "Username can only contain letters, numbers, periods, underscores, and hyphens";
-    } else if (/^[.-]|[.-]$/.test(formData.username)) {
-      newErrors.username =
-        "Username cannot start or end with a period or hyphen";
-    } else if (/[.-]{2,}/.test(formData.username)) {
-      newErrors.username =
-        "Username cannot have consecutive periods or hyphens";
     }
 
     // Date of Birth validation
@@ -112,16 +106,21 @@ export default function BusinessSetupForm({
       const birthDate = new Date(formData.dateOfBirth);
       const today = new Date();
       const age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
 
-      if (age < 18) {
-        newErrors.dateOfBirth = "You must be 18 or older";
+      if (
+        age < 13 ||
+        (age === 13 && monthDiff < 0) ||
+        (age === 13 && monthDiff === 0 && today.getDate() < birthDate.getDate())
+      ) {
+        newErrors.dateOfBirth = "You must be at least 13 years old";
       }
     }
 
     // Mobile validation
     if (!formData.mobile.trim()) {
       newErrors.mobile = "Mobile number is required";
-    } else if (formData.mobile.length < 8) {
+    } else if (!/^\d{8,15}$/.test(formData.mobile.replace(/\s/g, ""))) {
       newErrors.mobile = "Please enter a valid mobile number";
     }
 
@@ -130,14 +129,9 @@ export default function BusinessSetupForm({
       newErrors.password = "Password is required";
     } else if (formData.password.length < 8) {
       newErrors.password = "Password must be at least 8 characters";
-    } else if (!/[A-Z]/.test(formData.password)) {
+    } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(formData.password)) {
       newErrors.password =
-        "Password must contain at least one uppercase letter";
-    } else if (!/[a-z]/.test(formData.password)) {
-      newErrors.password =
-        "Password must contain at least one lowercase letter";
-    } else if (!/\d/.test(formData.password)) {
-      newErrors.password = "Password must contain at least one number";
+        "Password must contain at least one uppercase letter, one lowercase letter, and one number";
     }
 
     // Confirm Password validation
@@ -151,60 +145,49 @@ export default function BusinessSetupForm({
     return Object.keys(newErrors).length === 0;
   };
 
-  const checkUsernameAvailability = async (username: string) => {
-    if (username.length < 3) return;
-
-    setIsCheckingUsername(true);
-
-    // FIXED: Clear any existing username errors before checking
-    if (errors.username) {
-      setErrors((prev) => ({ ...prev, username: undefined }));
+  const handleUsernameBlur = async () => {
+    if (!formData.username.trim() || formData.username.length < 3) {
+      return;
     }
 
+    setIsCheckingUsername(true);
     try {
       const response = await fetch("/api/auth/check-username", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ username }),
+        body: JSON.stringify({ username: formData.username }),
       });
 
       const data = await response.json();
 
-      if (!data.available) {
+      if (!response.ok) {
+        setErrors((prev) => ({ ...prev, username: data.message }));
+      } else if (!data.available) {
         setErrors((prev) => ({
           ...prev,
-          username: data.message || "Username is already taken",
+          username: "Username is already taken",
         }));
+      } else {
+        // Username is available, clear any existing error
+        setErrors((prev) => ({ ...prev, username: undefined }));
       }
     } catch (error) {
-      console.error("Error checking username:", error);
-      setErrors((prev) => ({
-        ...prev,
-        username: "Error checking username availability",
-      }));
+      console.error("Username check error:", error);
     } finally {
       setIsCheckingUsername(false);
     }
   };
 
-  const handleUsernameBlur = () => {
-    if (formData.username && !errors.username) {
-      checkUsernameAvailability(formData.username);
-    }
-  };
-
   const handleSubmit = async () => {
-    // FIXED: Always allow submit, validate inside
-    const isValid = validateForm();
-
-    if (!isValid) {
-      // Errors are already set and highlighted, just return
+    if (!validateForm()) {
       return;
     }
 
     setIsLoading(true);
+    // Clear all errors before starting submission
+    setErrors({});
 
     try {
       const response = await fetch("/api/auth/create-business-account", {
@@ -214,21 +197,21 @@ export default function BusinessSetupForm({
         },
         body: JSON.stringify({
           email,
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          username: formData.username,
+          firstName: formData.firstName.trim(),
+          lastName: formData.lastName.trim(),
+          username: formData.username.trim(),
           dateOfBirth: formData.dateOfBirth,
-          fullMobile: `${formData.countryCode} ${formData.mobile}`,
+          fullMobile: `${formData.countryCode} ${formData.mobile.trim()}`, // Fix: Use fullMobile instead of separate fields
           password: formData.password,
         }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || "Account creation failed");
+        throw new Error(errorData.message || "Failed to create account");
       }
 
-      // Send verification email
+      // Account created successfully, trigger email verification
       await fetch("/api/auth/send-verification-code", {
         method: "POST",
         headers: {
@@ -242,7 +225,7 @@ export default function BusinessSetupForm({
     } catch (error) {
       console.error("Account creation error:", error);
 
-      // FIXED: Parse API errors and map to correct fields
+      // Parse API errors and map to correct fields
       if (error instanceof Error) {
         const errorMessage = error.message;
 
@@ -262,6 +245,22 @@ export default function BusinessSetupForm({
           errorMessage.includes("password")
         ) {
           setErrors({ password: errorMessage });
+        } else if (
+          errorMessage.includes("Mobile") ||
+          errorMessage.includes("mobile")
+        ) {
+          setErrors({ mobile: errorMessage });
+        } else if (
+          errorMessage.includes("Date") ||
+          errorMessage.includes("birth")
+        ) {
+          setErrors({ dateOfBirth: errorMessage });
+        } else if (errorMessage === "All fields are required") {
+          // If it's the generic "All fields are required", don't show it on any specific field
+          // This should not happen now that we're sending the correct data format
+          console.warn(
+            "Received generic 'All fields are required' error - this should not happen"
+          );
         } else {
           // Generic error - show on password field as fallback
           setErrors({ password: errorMessage });
@@ -274,7 +273,7 @@ export default function BusinessSetupForm({
     }
   };
 
-  // FIXED: Only check if basic fields are filled for button state
+  // Only check if basic fields are filled for button state
   const hasBasicFields = useMemo(() => {
     return (
       formData.firstName.trim() &&
@@ -287,7 +286,7 @@ export default function BusinessSetupForm({
     );
   }, [formData]);
 
-  // FIXED: Password requirements only when password exists but incomplete
+  // Password requirements only when password exists but incomplete
   const passwordRequirements = useMemo(() => {
     if (!formData.password) return null;
 
@@ -433,7 +432,7 @@ export default function BusinessSetupForm({
               />
             </div>
 
-            {/* FIXED: Only show password requirements when password needs improvement */}
+            {/* Only show password requirements when password needs improvement */}
             {passwordRequirements && (
               <div className={styles.passwordRequirements}>
                 <p>Password requirements:</p>
@@ -470,24 +469,30 @@ export default function BusinessSetupForm({
               </div>
             )}
 
+            <Button
+              variant="primary-green"
+              onClick={handleSubmit}
+              disabled={isLoading || !hasBasicFields || isCheckingUsername}
+              fullWidth
+            >
+              {isLoading ? "Creating Account..." : "Create Account"}
+            </Button>
+
             <div className={styles.termsText}>
               <p>
-                The time has come, please provide the details below to create
-                your account for{" "}
+                By creating an account, you agree to our{" "}
+                <a href="/terms" target="_blank" rel="noopener noreferrer">
+                  Terms of Service
+                </a>{" "}
+                and{" "}
+                <a href="/privacy" target="_blank" rel="noopener noreferrer">
+                  Privacy Policy
+                </a>
+                . We'll create your business account for{" "}
                 <span className={styles.emailHighlight}>{email}</span>.
               </p>
             </div>
           </div>
-
-          {/* FIXED: Button stays active, only disabled when loading or missing basic fields */}
-          <Button
-            variant="primary-green"
-            onClick={handleSubmit}
-            disabled={isLoading || !hasBasicFields || isCheckingUsername}
-            fullWidth
-          >
-            {isLoading ? "Creating Account..." : "Create Account"}
-          </Button>
         </div>
       </div>
     </div>

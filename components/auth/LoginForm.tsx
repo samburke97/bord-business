@@ -1,9 +1,9 @@
-// components/auth/LoginForm.tsx (FIXED WITH PROPER STYLING)
+// components/auth/LoginForm.tsx
 "use client";
 
 import { useState } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import ActionHeader from "../layouts/headers/ActionHeader";
 import TitleDescription from "@/components/ui/TitleDescription";
@@ -25,6 +25,7 @@ export default function LoginForm({
   callbackUrl,
 }: LoginFormProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
@@ -87,6 +88,10 @@ export default function LoginForm({
     setEmailError(null);
 
     try {
+      // Check if this is a business setup continuation
+      const continueBusinessSetup =
+        searchParams.get("continue_business_setup") === "true";
+
       // Check if user exists and route accordingly
       const response = await fetch("/api/auth/check-user-status", {
         method: "POST",
@@ -103,10 +108,18 @@ export default function LoginForm({
       const userData = await response.json();
 
       if (userData.exists && userData.isVerified) {
-        // EXISTING USER FLOW: Go to password login screen
-        router.push(
-          `/auth/password?email=${encodeURIComponent(email)}&type=login&name=${encodeURIComponent(userData.name || "")}`
-        );
+        // EXISTING USER FLOW
+        if (continueBusinessSetup) {
+          // For business setup continuation, go directly to password then business creation
+          router.push(
+            `/auth/password?email=${encodeURIComponent(email)}&type=login&name=${encodeURIComponent(userData.name || "")}&continue_business_setup=true`
+          );
+        } else {
+          // Regular login flow
+          router.push(
+            `/auth/password?email=${encodeURIComponent(email)}&type=login&name=${encodeURIComponent(userData.name || "")}`
+          );
+        }
       } else {
         // NEW USER FLOW: Go directly to business setup (with password included)
         router.push(`/auth/setup?email=${encodeURIComponent(email)}`);

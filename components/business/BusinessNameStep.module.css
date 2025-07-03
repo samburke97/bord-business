@@ -1,0 +1,36 @@
+.pageContainer {
+  display: flex;
+  justify-content: center;
+  padding: 1.5rem;
+  width: 100%;
+  min-height: calc(100vh - 136px);
+}
+
+.container {
+  width: 100%;
+  max-width: 896px;
+  text-align: center;
+}
+
+.formSection {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  margin-top: 2rem;
+}
+
+.inputGroup {
+  margin-bottom: 2rem;
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.label {
+  display: block;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--text-color);
+  margin-bottom: 0.5rem;
+  text-align: left;
+}
