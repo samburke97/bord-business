@@ -1,117 +1,102 @@
-// lib/auth.ts (Updated)
-import { AuthOptions } from "next-auth";
+import type { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import FacebookProvider from "next-auth/providers/facebook";
-import EmailProvider from "next-auth/providers/email";
+import CredentialsProvider from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import prisma from "@/lib/prisma";
-import { Resend } from "resend";
+import bcrypt from "bcryptjs";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
-export const authOptions: AuthOptions = {
+export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   providers: [
+    // Google OAuth Provider
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-      authorization: {
-        params: {
-          prompt: "consent",
-          access_type: "offline",
-          response_type: "code",
-        },
-      },
     }),
 
+    // Facebook OAuth Provider
     FacebookProvider({
       clientId: process.env.FACEBOOK_CLIENT_ID!,
       clientSecret: process.env.FACEBOOK_CLIENT_SECRET!,
     }),
 
-    EmailProvider({
-      server: "", // Not needed with custom send function
-      from: "noreply@bordsports.com",
-      async sendVerificationRequest({
-        identifier: email,
-        url,
-        provider: { from },
-      }) {
+    // Credentials Provider for Email/Password
+    CredentialsProvider({
+      id: "credentials",
+      name: "credentials",
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" },
+      },
+      async authorize(credentials) {
+        if (!credentials?.email || !credentials?.password) {
+          return null;
+        }
+
         try {
-          await resend.emails.send({
-            from: from,
-            to: email,
-            subject: "Sign in to Bord for Business",
-            html: `
-              <!DOCTYPE html>
-              <html>
-                <head>
-                  <meta charset="utf-8">
-                  <meta name="viewport" content="width=device-width, initial-scale=1">
-                  <title>Sign in to Bord for Business</title>
-                </head>
-                <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-                  <div style="text-align: center; margin-bottom: 40px;">
-                    <img src="https://bordsports.com/bord.svg" alt="Bord" style="height: 40px;">
-                  </div>
-                  
-                  <h1 style="color: #333; font-size: 24px; margin-bottom: 20px;">Sign in to Bord for Business</h1>
-                  
-                  <p style="margin-bottom: 30px; font-size: 16px;">
-                    Click the button below to sign in to your Bord business account. This link will expire in 24 hours.
-                  </p>
-                  
-                  <div style="text-align: center; margin: 40px 0;">
-                    <a href="${url}" style="background-color: #59d472; color: #000; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 500; display: inline-block; font-size: 16px;">
-                      Sign in to Bord Business
-                    </a>
-                  </div>
-                  
-                  <p style="color: #666; font-size: 14px; margin-top: 30px;">
-                    If you didn't request this email, you can safely ignore it.
-                  </p>
-                  
-                  <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-                  
-                  <p style="color: #666; font-size: 12px; text-align: center;">
-                    © ${new Date().getFullYear()} Bord Sports Ltd. All rights reserved.
-                  </p>
-                </body>
-              </html>
-            `,
+          // Find user with credentials
+          const user = await prisma.user.findUnique({
+            where: { email: credentials.email },
+            include: {
+              credentials: true,
+            },
           });
+
+          if (!user || !user.credentials) {
+            return null;
+          }
+
+          // Verify password
+          const isValidPassword = await bcrypt.compare(
+            credentials.password + user.credentials.passwordSalt,
+            user.credentials.passwordHash
+          );
+
+          if (!isValidPassword) {
+            return null;
+          }
+
+          // Check if account is active and verified
+          if (!user.isActive) {
+            return null;
+          }
+
+          // Return user object for NextAuth
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            image: user.image,
+            globalRole: user.globalRole,
+            isVerified: user.isVerified,
+          };
         } catch (error) {
-          console.error("Failed to send verification email:", error);
-          throw new Error("Failed to send verification email");
+          console.error("Auth error:", error);
+          return null;
         }
       },
     }),
   ],
 
   callbacks: {
-    async signIn({ user, account, profile }) {
-      // Handle OAuth sign-in attempts when email already exists
+    async signIn({ user, account, profile, email, credentials }) {
       if (account?.provider === "google" || account?.provider === "facebook") {
         try {
+          // Check if user already exists with this email
           const existingUser = await prisma.user.findUnique({
             where: { email: user.email! },
-            include: { accounts: true },
           });
 
-          if (existingUser) {
-            // Check if this OAuth provider is already linked to the account
-            const existingAccount = existingUser.accounts.find(
-              (acc) => acc.provider === account.provider
-            );
-
-            if (existingAccount) {
-              // Provider already linked, allow sign in
-              return true;
-            } else {
-              // Email exists but this provider isn't linked
-              // Redirect with a specific error
-              return `/auth/error?error=AccountExistsWithDifferentProvider&email=${encodeURIComponent(user.email!)}&provider=${account.provider}`;
-            }
+          if (
+            existingUser &&
+            existingUser.email !== user.email &&
+            account?.provider
+          ) {
+            // Account exists with different provider
+            return `/auth/error?error=AccountExistsWithDifferentProvider&email=${encodeURIComponent(
+              user.email!
+            )}&provider=${account.provider}`;
           }
 
           // New user, allow sign in
@@ -122,7 +107,7 @@ export const authOptions: AuthOptions = {
         }
       }
 
-      // For email provider, always allow (it handles its own verification)
+      // For credentials provider, always allow (it handles its own verification)
       return true;
     },
 

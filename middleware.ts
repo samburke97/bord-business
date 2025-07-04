@@ -14,6 +14,10 @@ export async function middleware(req: NextRequest) {
     "/auth/verify-email",
     "/auth/setup",
     "/auth/congratulations",
+    "/auth/forgot-password", // For forgot password form
+    "/forgot-password", // For forgot password sent page
+    "/auth/reset-password", // ADD THIS LINE - for reset password form
+    "/reset-password", // ADD THIS LINE - for reset password routes
     "/verify-email",
     "/business-onboarding", // Make business onboarding public temporarily for testing
     "/_next",

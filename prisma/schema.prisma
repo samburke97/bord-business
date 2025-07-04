@@ -212,6 +212,19 @@ model VerificationToken {
   @@map("verification_tokens")
 }
 
+model PasswordResetToken {
+  id         String   @id @default(cuid())
+  email      String
+  token      String   @unique
+  expires    DateTime
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([email])
+  @@index([token])
+  @@index([expires])
+  @@map("password_reset_tokens")
+}
+
 // ============================================================================
 // BUSINESS SYSTEM MODELS
 // ============================================================================

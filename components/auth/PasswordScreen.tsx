@@ -1,4 +1,4 @@
-// components/auth/PasswordScreen.tsx
+// components/auth/PasswordScreen.tsx - FIXED
 "use client";
 
 import { useState } from "react";
@@ -57,6 +57,26 @@ export default function PasswordScreen({
     return true;
   };
 
+  // Function to check if user needs business onboarding
+  const checkBusinessStatus = async () => {
+    try {
+      const response = await fetch("/api/user/business-status");
+      const data = await response.json();
+
+      if (data.needsSetup) {
+        // User needs to complete business onboarding
+        window.location.href = "/business-onboarding";
+      } else {
+        // User has completed onboarding, go to dashboard
+        window.location.href = "/dashboard";
+      }
+    } catch (error) {
+      console.error("Error checking business status:", error);
+      // Default to business onboarding if we can't determine status
+      window.location.href = "/business-onboarding";
+    }
+  };
+
   const handleSubmit = async () => {
     if (!validatePassword()) {
       return;
@@ -104,13 +124,13 @@ export default function PasswordScreen({
         }
 
         if (result?.ok) {
-          // Successful sign-in
+          // Successful sign-in - now check if they need business onboarding
           if (continueBusinessSetup) {
             // Route to business creation flow
             router.push("/locations/create");
           } else {
-            // Regular flow - redirect to dashboard
-            window.location.href = "/dashboard";
+            // Check business status and route accordingly
+            await checkBusinessStatus();
           }
         }
       }
@@ -123,8 +143,8 @@ export default function PasswordScreen({
   };
 
   const handleForgotPassword = () => {
-    // TODO: Implement forgot password flow
-    router.push(`/forgot-password?email=${encodeURIComponent(email)}`);
+    // FIXED: Navigate to the correct auth route
+    router.push(`/auth/forgot-password?email=${encodeURIComponent(email)}`);
   };
 
   const getTitle = () => {
@@ -197,67 +217,22 @@ export default function PasswordScreen({
                 }
                 fullWidth
               >
-                {isLoading
-                  ? "Loading..."
-                  : isNewUser
-                    ? "Set Password"
-                    : "Continue"}
+                {isLoading ? "Signing in..." : "Continue"}
               </Button>
 
               {!isNewUser && (
-                <Button
-                  variant="ghost"
-                  onClick={handleForgotPassword}
-                  fullWidth
-                >
-                  Forgot Password?
-                </Button>
+                <div className={styles.forgotPassword}>
+                  <button
+                    type="button"
+                    onClick={handleForgotPassword}
+                    className={styles.forgotPasswordLink}
+                  >
+                    Forgot Password?
+                  </button>
+                </div>
               )}
             </div>
-
-            {isNewUser && (
-              <div className={styles.passwordRequirements}>
-                <p className={styles.requirementsTitle}>
-                  Password requirements:
-                </p>
-                <ul className={styles.requirementsList}>
-                  <li
-                    className={
-                      password.length >= 8 ? styles.valid : styles.invalid
-                    }
-                  >
-                    At least 8 characters
-                  </li>
-                  <li
-                    className={
-                      /[A-Z]/.test(password) ? styles.valid : styles.invalid
-                    }
-                  >
-                    One uppercase letter
-                  </li>
-                  <li
-                    className={
-                      /[a-z]/.test(password) ? styles.valid : styles.invalid
-                    }
-                  >
-                    One lowercase letter
-                  </li>
-                  <li
-                    className={
-                      /\d/.test(password) ? styles.valid : styles.invalid
-                    }
-                  >
-                    One number
-                  </li>
-                </ul>
-              </div>
-            )}
           </div>
-        </div>
-
-        {/* Right side: Hero image */}
-        <div className={styles.imageContainer}>
-          <div className={styles.image} />
         </div>
       </div>
     </div>

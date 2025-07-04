@@ -1,3 +1,4 @@
+// components/locations/ConfirmAddressStep.tsx - FIXED
 "use client";
 
 import { useState, useEffect } from "react";
@@ -51,8 +52,8 @@ export default function ConfirmAddressStep({
     window.handleStepContinue = handleContinue;
 
     return () => {
-      // @ts-ignore
-      delete window.handleAddressContinue;
+      // @ts-ignore - FIX: Delete the correct property name
+      delete window.handleStepContinue;
     };
   }, [streetAddress, aptSuite, city, postcode, state]);
 

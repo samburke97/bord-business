@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import styles from "./ConfirmMapLocationStep.module.css";
 import TitleDescription from "../ui/TitleDescription";
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -8,7 +8,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 interface ConfirmMapLocationStepProps {
   formData: {
     name: string;
-    categoryId: string;
+    categoryId?: string;
     sports: any[];
     streetAddress?: string;
     aptSuite?: string;
@@ -31,6 +31,7 @@ export default function ConfirmMapLocationStep({
   mode = "create",
 }: ConfirmMapLocationStepProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<mapboxgl.Map | null>(null);
   const [marker, setMarker] = useState<mapboxgl.Marker | null>(null);
@@ -125,14 +126,29 @@ export default function ConfirmMapLocationStep({
 
   // Expose the continue handler for the header button
   useEffect(() => {
-    // @ts-ignore
-    window.handleMapContinue = handleCreate;
+    // Detect if we're in business onboarding vs location management
+    const isBusinessOnboarding = pathname?.includes("/business-onboarding");
+
+    if (isBusinessOnboarding) {
+      // For business onboarding, use the standard step handler
+      // @ts-ignore
+      window.handleStepContinue = handleCreate;
+    } else {
+      // For location management flows, use the specific map handler
+      // @ts-ignore
+      window.handleMapContinue = handleCreate;
+    }
 
     return () => {
-      // @ts-ignore
-      delete window.handleMapContinue;
+      if (isBusinessOnboarding) {
+        // @ts-ignore
+        delete window.handleStepContinue;
+      } else {
+        // @ts-ignore
+        delete window.handleMapContinue;
+      }
     };
-  }, [currentPosition, mode]); // Re-register when position changes or mode changes
+  }, [currentPosition, mode, pathname]); // Re-register when position, mode, or path changes
 
   return (
     <div className={styles.container}>

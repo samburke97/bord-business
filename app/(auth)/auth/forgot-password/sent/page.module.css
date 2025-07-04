@@ -1,0 +1,25 @@
+.checkIcon {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+
+.checkSvg {
+  width: 64px;
+  height: 64px;
+}
+
+.message {
+  margin: 16px 0;
+  padding: 12px;
+  background: #f0f9ff;
+  border: 1px solid #0ea5e9;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.message p {
+  margin: 0;
+  color: #0369a1;
+  font-size: 14px;
+}

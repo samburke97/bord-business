@@ -1,4 +1,4 @@
-// app/(auth)/business-onboarding/page.tsx - UPDATED
+// app/(auth)/business-onboarding/page.tsx - COMPLETE UPDATED VERSION
 "use client";
 
 import { useState, useRef } from "react";
@@ -85,8 +85,8 @@ export default function BusinessOnboardingPage() {
   };
 
   const handleClose = () => {
-    // Navigate to dashboard or skip business setup
-    router.push("/dashboard");
+    // Navigate to dashboard (will trigger main page.tsx routing logic)
+    window.location.href = "/dashboard";
   };
 
   const createBusiness = async (data: BusinessFormData) => {
@@ -144,6 +144,13 @@ export default function BusinessOnboardingPage() {
         window.handleStepContinue();
       }
     }
+  };
+
+  // Handle final redirect to dashboard after business creation
+  const handleFinalContinue = () => {
+    // Use window.location for full page navigation to dashboard
+    // This will trigger the main page.tsx routing logic
+    window.location.href = "/dashboard";
   };
 
   const renderStep = () => {
@@ -226,7 +233,7 @@ export default function BusinessOnboardingPage() {
           <div ref={stepRef}>
             <BusinessCongratulationsStep
               businessName={formData.businessName}
-              onContinue={() => router.push("/dashboard")} // Route to admin dashboard
+              onContinue={handleFinalContinue} // Routes to dashboard via main page.tsx
             />
           </div>
         );
