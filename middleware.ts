@@ -1,43 +1,45 @@
-// middleware.ts
+// middleware.ts - MINIMAL WORKING VERSION
 import { NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { NextRequest } from "next/server";
 
 export async function middleware(req: NextRequest) {
-  // Public routes that don't require authentication
-  const publicRoutes = [
+  const pathname = req.nextUrl.pathname;
+
+  // Apply basic security headers
+  const response = NextResponse.next();
+  response.headers.set("X-Content-Type-Options", "nosniff");
+  response.headers.set("X-Frame-Options", "DENY");
+  response.headers.set("X-XSS-Protection", "1; mode=block");
+
+  // ============================================================================
+  // ALWAYS ALLOW: Authentication and public routes
+  // ============================================================================
+
+  const alwaysAllowRoutes = [
     "/login",
-    "/api/auth",
-    "/auth/error",
-    "/auth/verify-request",
-    "/auth/password",
-    "/auth/verify-email",
-    "/auth/setup",
-    "/auth/congratulations",
-    "/auth/forgot-password", // For forgot password form
-    "/forgot-password", // For forgot password sent page
-    "/auth/reset-password", // ADD THIS LINE - for reset password form
-    "/reset-password", // ADD THIS LINE - for reset password routes
-    "/verify-email",
-    "/business-onboarding", // Make business onboarding public temporarily for testing
+    "/api/auth", // ALL NextAuth routes and custom auth routes
+    "/auth", // ALL auth pages
     "/_next",
     "/favicon.ico",
     "/icons",
     "/images",
+    "/public",
   ];
 
-  // Check if the current path is in the public routes
-  const isPublicRoute = publicRoutes.some(
-    (route) =>
-      req.nextUrl.pathname.startsWith(route) || req.nextUrl.pathname === route
+  // Check if route should always be allowed
+  const isAlwaysAllowed = alwaysAllowRoutes.some((route) =>
+    pathname.startsWith(route)
   );
 
-  // Skip middleware for public routes
-  if (isPublicRoute) {
-    return NextResponse.next();
+  if (isAlwaysAllowed) {
+    return response;
   }
 
-  // Simplified token extraction
+  // ============================================================================
+  // PROTECTED ROUTES: Require authentication
+  // ============================================================================
+
   try {
     const token = await getToken({
       req,
@@ -47,44 +49,57 @@ export async function middleware(req: NextRequest) {
     // If no token, redirect to login
     if (!token) {
       const loginUrl = new URL("/login", req.url);
-      loginUrl.searchParams.set("return_to", req.nextUrl.pathname);
+      loginUrl.searchParams.set("return_to", pathname);
       return NextResponse.redirect(loginUrl);
     }
 
-    // Allow authenticated users to access business onboarding
-    if (req.nextUrl.pathname.startsWith("/business-onboarding")) {
-      return NextResponse.next();
+    // Check if user account is active
+    if (token.isActive === false) {
+      const errorUrl = new URL("/auth/error", req.url);
+      errorUrl.searchParams.set("error", "AccountDisabled");
+      return NextResponse.redirect(errorUrl);
     }
 
-    // Check for admin role if accessing admin-only routes
-    const isAdminRoute =
-      req.nextUrl.pathname.startsWith("/dashboard") ||
-      req.nextUrl.pathname.startsWith("/protected-route") ||
-      req.nextUrl.pathname.startsWith("/locations") ||
-      req.nextUrl.pathname.startsWith("/activities") ||
-      req.nextUrl.pathname.startsWith("/facilities");
+    // Admin route protection
+    const adminRoutes = [
+      "/dashboard",
+      "/admin",
+      "/locations",
+      "/activities",
+      "/facilities",
+      "/bookings",
+      "/settings",
+    ];
 
-    if (
-      isAdminRoute &&
-      token.role !== "ADMIN" &&
-      token.role !== "SUPER_ADMIN"
-    ) {
-      // Redirect to login for unauthorized access
-      const loginUrl = new URL("/login", req.url);
-      loginUrl.searchParams.set("return_to", req.nextUrl.pathname);
-      return NextResponse.redirect(loginUrl);
+    const isAdminRoute = adminRoutes.some((route) =>
+      pathname.startsWith(route)
+    );
+
+    if (isAdminRoute) {
+      // Check for admin role
+      if (token.globalRole !== "ADMIN" && token.globalRole !== "SUPER_ADMIN") {
+        const errorUrl = new URL("/auth/error", req.url);
+        errorUrl.searchParams.set("error", "AccessDenied");
+        return NextResponse.redirect(errorUrl);
+      }
     }
 
-    return NextResponse.next();
+    return response;
   } catch (error) {
-    console.error("Middleware authentication error:", error);
-    // Handle errors gracefully - redirect to login
+    console.error("Middleware error:", error);
+
+    // On error, redirect to login
     const loginUrl = new URL("/login", req.url);
-    loginUrl.searchParams.set("error", "AuthError");
+    loginUrl.searchParams.set("error", "SessionError");
     return NextResponse.redirect(loginUrl);
   }
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|public/).*)"],
+  matcher: [
+    /*
+     * Match all request paths except static files
+     */
+    "/((?!_next/static|_next/image|favicon.ico|public/).*)",
+  ],
 };

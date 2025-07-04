@@ -1,0 +1,300 @@
+// middleware.ts - ENTERPRISE SECURITY VERSION (FIXED)
+import { NextResponse } from "next/server";
+import { getToken } from "next-auth/jwt";
+import { NextRequest } from "next/server";
+import {
+  authRateLimit,
+  passwordResetRateLimit,
+  verificationRateLimit,
+  validateCSRFToken,
+  SECURITY_HEADERS,
+} from "@/lib/security/utils/utils";
+
+export async function middleware(req: NextRequest) {
+  const pathname = req.nextUrl.pathname;
+
+  // Create response with security headers
+  const response = NextResponse.next();
+
+  // Apply security headers to ALL responses
+  Object.entries(SECURITY_HEADERS).forEach(([key, value]) => {
+    response.headers.set(key, value);
+  });
+
+  // ============================================================================
+  // RATE LIMITING (Applied BEFORE route checks for security)
+  // ============================================================================
+
+  // Authentication endpoints rate limiting
+  const authApiRoutes = [
+    "/api/auth/signin",
+    "/api/auth/callback",
+    "/api/auth/set-password",
+    "/api/auth/create-business-account",
+    "/api/auth/check-user-status", // ADD this to rate limiting
+  ];
+
+  const passwordResetApiRoutes = [
+    "/api/auth/forgot-password",
+    "/api/auth/reset-password",
+  ];
+
+  const verificationApiRoutes = [
+    "/api/auth/resend-verification",
+    "/api/auth/verify-email",
+  ];
+
+  // Apply rate limiting to authentication endpoints
+  if (authApiRoutes.some((route) => pathname.startsWith(route))) {
+    const { allowed, remaining, resetTime } = authRateLimit(req);
+
+    if (!allowed) {
+      const retryAfter = resetTime
+        ? Math.ceil((resetTime - Date.now()) / 1000)
+        : 900;
+      return new NextResponse(
+        JSON.stringify({
+          error: "Too many authentication attempts",
+          retryAfter,
+          message: "Please try again later",
+        }),
+        {
+          status: 429,
+          headers: {
+            "Content-Type": "application/json",
+            "Retry-After": retryAfter.toString(),
+            ...Object.fromEntries(Object.entries(SECURITY_HEADERS)),
+          },
+        }
+      );
+    }
+
+    response.headers.set("X-RateLimit-Remaining", remaining.toString());
+  }
+
+  // Apply rate limiting to password reset endpoints
+  if (passwordResetApiRoutes.some((route) => pathname.startsWith(route))) {
+    const { allowed, remaining, resetTime } = passwordResetRateLimit(req);
+
+    if (!allowed) {
+      const retryAfter = resetTime
+        ? Math.ceil((resetTime - Date.now()) / 1000)
+        : 3600;
+      return new NextResponse(
+        JSON.stringify({
+          error: "Too many password reset attempts",
+          retryAfter,
+          message: "Please try again later",
+        }),
+        {
+          status: 429,
+          headers: {
+            "Content-Type": "application/json",
+            "Retry-After": retryAfter.toString(),
+            ...Object.fromEntries(Object.entries(SECURITY_HEADERS)),
+          },
+        }
+      );
+    }
+
+    response.headers.set("X-RateLimit-Remaining", remaining.toString());
+  }
+
+  // Apply rate limiting to verification endpoints
+  if (verificationApiRoutes.some((route) => pathname.startsWith(route))) {
+    const { allowed, remaining } = verificationRateLimit(req);
+
+    if (!allowed) {
+      return new NextResponse(
+        JSON.stringify({
+          error: "Too many verification attempts",
+          message: "Please try again later",
+        }),
+        {
+          status: 429,
+          headers: {
+            "Content-Type": "application/json",
+            ...Object.fromEntries(Object.entries(SECURITY_HEADERS)),
+          },
+        }
+      );
+    }
+
+    response.headers.set("X-RateLimit-Remaining", remaining.toString());
+  }
+
+  // ============================================================================
+  // CSRF PROTECTION (CRITICAL SECURITY FEATURE)
+  // ============================================================================
+
+  if (
+    pathname.startsWith("/api/") &&
+    ["POST", "PUT", "DELETE", "PATCH"].includes(req.method)
+  ) {
+    // NextAuth routes handle their own CSRF protection
+    if (pathname.startsWith("/api/auth/")) {
+      // Allow NextAuth routes through without additional CSRF check
+      // NextAuth has built-in CSRF protection
+    } else {
+      // All other API routes MUST have CSRF protection
+      const csrfToken =
+        req.headers.get("x-csrf-token") || req.headers.get("csrf-token");
+      const sessionCsrfToken = req.cookies.get(
+        "__Host-next-auth.csrf-token"
+      )?.value;
+
+      if (!validateCSRFToken(csrfToken, sessionCsrfToken)) {
+        return new NextResponse(
+          JSON.stringify({ error: "CSRF token validation failed" }),
+          {
+            status: 403,
+            headers: {
+              "Content-Type": "application/json",
+              ...Object.fromEntries(Object.entries(SECURITY_HEADERS)),
+            },
+          }
+        );
+      }
+    }
+  }
+
+  // ============================================================================
+  // PUBLIC ROUTES (Allow without authentication)
+  // ============================================================================
+
+  const publicRoutes = [
+    "/login",
+    "/api/auth", // ALL /api/auth/* routes are public for authentication flow
+    "/auth/error",
+    "/auth/verify-request",
+    "/auth/verify-email",
+    "/auth/setup",
+    "/auth/congratulations",
+    "/auth/forgot-password",
+    "/auth/reset-password",
+    "/verify-email",
+    "/_next",
+    "/favicon.ico",
+    "/icons",
+    "/images",
+    "/api/health", // Health check endpoint
+  ];
+
+  // Check if the current path is in the public routes
+  const isPublicRoute = publicRoutes.some(
+    (route) => pathname.startsWith(route) || pathname === route
+  );
+
+  // Skip authentication for public routes
+  if (isPublicRoute) {
+    return response;
+  }
+
+  // ============================================================================
+  // AUTHENTICATION & AUTHORIZATION
+  // ============================================================================
+
+  try {
+    const token = await getToken({
+      req,
+      secret: process.env.NEXTAUTH_SECRET,
+    });
+
+    // If no token, redirect to login with return URL
+    if (!token) {
+      const loginUrl = new URL("/login", req.url);
+      loginUrl.searchParams.set("return_to", pathname);
+      return NextResponse.redirect(loginUrl);
+    }
+
+    // Check if user account is active
+    if (!token.isActive) {
+      const loginUrl = new URL("/auth/error", req.url);
+      loginUrl.searchParams.set("error", "AccountDisabled");
+      return NextResponse.redirect(loginUrl);
+    }
+
+    // Allow authenticated users to access business onboarding
+    if (pathname.startsWith("/business-onboarding")) {
+      return response;
+    }
+
+    // Admin route protection
+    const adminRoutes = [
+      "/dashboard",
+      "/admin",
+      "/protected-route",
+      "/locations",
+      "/activities",
+      "/facilities",
+      "/bookings",
+      "/settings",
+    ];
+
+    const isAdminRoute = adminRoutes.some((route) =>
+      pathname.startsWith(route)
+    );
+
+    if (isAdminRoute) {
+      // Check for admin role
+      if (token.globalRole !== "ADMIN" && token.globalRole !== "SUPER_ADMIN") {
+        const errorUrl = new URL("/auth/error", req.url);
+        errorUrl.searchParams.set("error", "AccessDenied");
+        errorUrl.searchParams.set("return_to", pathname);
+        return NextResponse.redirect(errorUrl);
+      }
+
+      // Check if user is verified for admin actions
+      if (!token.isVerified && pathname !== "/auth/verify-email") {
+        const verifyUrl = new URL("/auth/verify-email", req.url);
+        verifyUrl.searchParams.set("return_to", pathname);
+        return NextResponse.redirect(verifyUrl);
+      }
+    }
+
+    // Super admin only routes
+    const superAdminRoutes = [
+      "/admin/users",
+      "/admin/system",
+      "/admin/security",
+    ];
+
+    const isSuperAdminRoute = superAdminRoutes.some((route) =>
+      pathname.startsWith(route)
+    );
+
+    if (isSuperAdminRoute && token.globalRole !== "SUPER_ADMIN") {
+      const errorUrl = new URL("/auth/error", req.url);
+      errorUrl.searchParams.set("error", "InsufficientPermissions");
+      return NextResponse.redirect(errorUrl);
+    }
+
+    // Add user info to response headers for logging (security audit trail)
+    response.headers.set("X-User-ID", token.sub || "");
+    response.headers.set("X-User-Role", (token.globalRole as string) || "USER");
+
+    return response;
+  } catch (error) {
+    console.error("Middleware authentication error:", error);
+
+    // Handle JWT errors gracefully
+    const loginUrl = new URL("/login", req.url);
+    loginUrl.searchParams.set("error", "SessionError");
+    loginUrl.searchParams.set("return_to", pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+}
+
+export const config = {
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public (public files)
+     * - api/health (health check)
+     */
+    "/((?!_next/static|_next/image|favicon.ico|public/|api/health).*)",
+  ],
+};
