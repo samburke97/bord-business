@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import ActionHeader from "@/components/layouts/headers/ActionHeader";
 import TitleDescription from "@/components/ui/TitleDescription";
 import Button from "@/components/ui/Button";
-import styles from "./page.module.css";
+import styles from "../page.module.css";
 
 function PasswordUpdatedContent() {
   const router = useRouter();

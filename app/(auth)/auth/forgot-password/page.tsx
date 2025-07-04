@@ -59,7 +59,9 @@ function ForgotPasswordContent() {
       }
 
       // Navigate to success page
-      router.push(`/forgot-password/sent?email=${encodeURIComponent(email)}`);
+      router.push(
+        `/auth/forgot-password/sent?email=${encodeURIComponent(email)}`
+      );
     } catch (error) {
       console.error("Forgot password error:", error);
       setEmailError(
