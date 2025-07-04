@@ -1,4 +1,4 @@
-// app/api/auth/reset-password/route.ts - ENTERPRISE SECURITY VERSION
+// app/api/auth/reset-password/route.ts - FIXED VERSION
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import {
@@ -8,7 +8,7 @@ import {
   constantTimeDelay,
   hashToken,
   secureCompare,
-} from "@/lib/security/utils/utils";
+} from "@/lib/security/password"; // FIXED: Import from password.ts, not utils.ts
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
@@ -16,6 +16,8 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { token, email, newPassword } = body;
+
+    console.log("🔐 Reset Password: Request received for email:", email);
 
     // Input validation
     if (!token || !email || !newPassword) {
@@ -29,6 +31,10 @@ export async function POST(request: NextRequest) {
     // Validate password strength
     const validation = validateSecurePassword(newPassword);
     if (!validation.valid) {
+      console.log(
+        "❌ Reset Password: Password validation failed:",
+        validation.errors
+      );
       await constantTimeDelay();
       return NextResponse.json(
         {
@@ -39,11 +45,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    console.log("✅ Reset Password: Password validation passed");
+
     // ALWAYS hash the password first to prevent timing attacks
     const newPasswordHash = await hashPassword(newPassword);
 
     // Hash the provided token for secure comparison
-    const hashedToken = hashToken(token);
+    const hashedToken = hashToken(token); // FIXED: Now using sync version from password.ts
+
+    console.log("🔍 Reset Password: Looking up reset token...");
 
     try {
       // Use transaction for atomic operations
@@ -56,9 +66,11 @@ export async function POST(request: NextRequest) {
               gt: new Date(), // Only non-expired tokens
             },
           },
-          include: {
-            // We'll find the user separately for better security
-          },
+        });
+
+        console.log("🎫 Reset Password: Token lookup result:", {
+          tokenFound: !!resetToken,
+          isExpired: resetToken ? resetToken.expires < new Date() : null,
         });
 
         // Always consume consistent time even if token not found
@@ -70,8 +82,10 @@ export async function POST(request: NextRequest) {
         // Secure token comparison using timing-safe comparison
         if (!secureCompare(resetToken.token, hashedToken)) {
           await constantTimeDelay(150, 250);
-          throw new Error("Invalid or expired reset token");
+          throw new Error("Invalid reset token");
         }
+
+        console.log("✅ Reset Password: Token validated successfully");
 
         // Find the user with credentials
         const user = await tx.user.findUnique({
@@ -81,7 +95,7 @@ export async function POST(request: NextRequest) {
               include: {
                 passwordHistory: {
                   orderBy: { createdAt: "desc" },
-                  take: 10, // Check last 10 passwords
+                  take: 10, // Check last 10 passwords for history
                 },
               },
             },
@@ -93,32 +107,41 @@ export async function POST(request: NextRequest) {
           throw new Error("User not found");
         }
 
-        // Check if account is locked
-        const now = new Date();
-        if (
-          user.credentials.lockoutUntil &&
-          user.credentials.lockoutUntil > now
-        ) {
-          const unlockTime = Math.ceil(
-            (user.credentials.lockoutUntil.getTime() - now.getTime()) /
-              1000 /
-              60
-          );
-          throw new Error(
-            `Account is locked. Try again in ${unlockTime} minutes.`
-          );
-        }
+        console.log(
+          "👤 Reset Password: User found, checking password history..."
+        );
 
-        // Check password history to prevent reuse
-        for (const oldPassword of user.credentials.passwordHistory) {
-          if (await verifyPassword(newPassword, oldPassword.passwordHash)) {
-            throw new Error(
-              "Cannot reuse a recent password. Please choose a different password."
+        // Check password history (prevent reuse of recent passwords)
+        if (user.credentials.passwordHistory) {
+          for (const oldPassword of user.credentials.passwordHistory) {
+            const isReused = await verifyPassword(
+              newPassword,
+              oldPassword.passwordHash
             );
+            if (isReused) {
+              throw new Error(
+                "Cannot reuse a recent password. Please choose a different password."
+              );
+            }
           }
         }
 
-        // Store current password in history before updating
+        console.log("✅ Reset Password: Password history check passed");
+
+        // Check if new password is same as current
+        const isSameAsCurrent = await verifyPassword(
+          newPassword,
+          user.credentials.passwordHash
+        );
+        if (isSameAsCurrent) {
+          throw new Error(
+            "New password cannot be the same as your current password."
+          );
+        }
+
+        console.log("📝 Reset Password: Updating password...");
+
+        // Add current password to history before updating
         await tx.passwordHistory.create({
           data: {
             credentialsId: user.credentials.id,
@@ -126,58 +149,25 @@ export async function POST(request: NextRequest) {
           },
         });
 
-        // Update user credentials with new password
+        // Update the password
         await tx.userCredentials.update({
-          where: { userId: user.id },
+          where: { id: user.credentials.id },
           data: {
             passwordHash: newPasswordHash,
-            passwordChangedAt: now,
+            passwordChangedAt: new Date(),
+            mustChangePassword: false,
             failedAttempts: 0, // Reset failed attempts
             lockedAt: null,
             lockoutUntil: null,
-            mustChangePassword: false,
-            lastFailedAttempt: null,
-            updatedAt: now,
           },
         });
 
-        // Clean up old password history (keep only last 10)
-        const oldPasswords = await tx.passwordHistory.findMany({
-          where: { credentialsId: user.credentials.id },
-          orderBy: { createdAt: "desc" },
-          skip: 10, // Keep 10, delete the rest
-        });
+        console.log("🗑️ Reset Password: Cleaning up tokens...");
 
-        if (oldPasswords.length > 0) {
-          await tx.passwordHistory.deleteMany({
-            where: {
-              id: {
-                in: oldPasswords.map((p) => p.id),
-              },
-            },
-          });
-        }
-
-        // Mark the reset token as used and delete it
-        await tx.passwordResetToken.update({
-          where: { id: resetToken.id },
-          data: {
-            usedAt: now,
-          },
-        });
-
-        // Delete the used token
-        await tx.passwordResetToken.delete({
-          where: { id: resetToken.id },
-        });
-
-        // Clean up any other expired reset tokens for this email
+        // Delete all password reset tokens for this user
         await tx.passwordResetToken.deleteMany({
           where: {
             email: email.toLowerCase().trim(),
-            expires: {
-              lt: now,
-            },
           },
         });
 
@@ -186,7 +176,7 @@ export async function POST(request: NextRequest) {
           data: {
             credentialsId: user.credentials.id,
             eventType: "PASSWORD_RESET_COMPLETED",
-            description: "Password successfully reset via email link",
+            description: "Password successfully reset via email token",
             ipAddress:
               request.headers.get("x-forwarded-for") ||
               request.headers.get("x-real-ip") ||
@@ -195,10 +185,12 @@ export async function POST(request: NextRequest) {
           },
         });
 
+        console.log("✅ Reset Password: Password reset completed successfully");
+
         return { success: true, userId: user.id };
       });
 
-      // Ensure minimum response time for security
+      // Ensure minimum response time
       const elapsedTime = Date.now() - startTime;
       if (elapsedTime < 200) {
         await new Promise((resolve) => setTimeout(resolve, 200 - elapsedTime));
@@ -206,29 +198,28 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json(
         {
-          message: "Password updated successfully",
+          message: "Password reset successfully",
           success: true,
         },
         { status: 200 }
       );
     } catch (transactionError) {
-      // Log the actual error for debugging (don't expose to user)
-      console.error("Password reset transaction error:", transactionError);
+      console.error("❌ Reset Password: Transaction error:", transactionError);
 
-      // Always consume consistent time for errors
       await constantTimeDelay(150, 250);
 
-      // Generic error message to prevent information leakage
       return NextResponse.json(
         {
           message:
-            "Password reset failed. Please try again or request a new reset link.",
+            transactionError instanceof Error
+              ? transactionError.message
+              : "Invalid or expired reset token",
         },
         { status: 400 }
       );
     }
   } catch (error) {
-    console.error("Password reset error:", error);
+    console.error("❌ Reset Password: Unexpected error:", error);
 
     // Ensure minimum response time
     const elapsedTime = Date.now() - startTime;

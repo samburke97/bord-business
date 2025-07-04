@@ -1,4 +1,4 @@
-// components/auth/PasswordScreen.tsx - FIXED
+// components/auth/PasswordScreen.tsx - FIXED WITH SECURITY BEST PRACTICES
 "use client";
 
 import { useState } from "react";
@@ -42,8 +42,39 @@ export default function PasswordScreen({
     }
 
     if (isNewUser) {
-      if (password.length < 8) {
-        setError("Password must be at least 8 characters");
+      // Use the secure password validation for new users
+      if (password.length < 12) {
+        setError("Password must be at least 12 characters long");
+        return false;
+      }
+
+      if (!/[A-Z]/.test(password)) {
+        setError("Password must contain at least one uppercase letter");
+        return false;
+      }
+
+      if (!/[a-z]/.test(password)) {
+        setError("Password must contain at least one lowercase letter");
+        return false;
+      }
+
+      if (!/\d/.test(password)) {
+        setError("Password must contain at least one number");
+        return false;
+      }
+
+      if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+        setError("Password must contain at least one special character");
+        return false;
+      }
+
+      if (/(.)\1{2,}/.test(password)) {
+        setError("Password cannot contain three or more repeating characters");
+        return false;
+      }
+
+      if (/123|abc|qwerty|password|admin|login/i.test(password)) {
+        setError("Password cannot contain common patterns or words");
         return false;
       }
 
@@ -60,20 +91,40 @@ export default function PasswordScreen({
   // Function to check if user needs business onboarding
   const checkBusinessStatus = async () => {
     try {
-      const response = await fetch("/api/user/business-status");
+      console.log("🔍 Checking business status for user...");
+
+      const response = await fetch("/api/user/business-status", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include", // Important for session cookies
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
       const data = await response.json();
+      console.log("📊 Business status response:", data);
 
       if (data.needsSetup) {
-        // User needs to complete business onboarding
-        window.location.href = "/business-onboarding";
+        console.log("🏗️ User needs business setup, redirecting...");
+        router.push("/business-onboarding");
       } else {
-        // User has completed onboarding, go to dashboard
-        window.location.href = "/dashboard";
+        console.log("✅ User setup complete, redirecting to dashboard...");
+        router.push("/dashboard");
       }
     } catch (error) {
-      console.error("Error checking business status:", error);
-      // Default to business onboarding if we can't determine status
-      window.location.href = "/business-onboarding";
+      console.error("❌ Error checking business status:", error);
+      // Add user-friendly error handling
+      setError("Unable to verify account status. Please try again.");
+
+      // Fallback: try to redirect to dashboard anyway after a delay
+      setTimeout(() => {
+        console.log("🔄 Attempting fallback redirect to dashboard...");
+        router.push("/dashboard");
+      }, 2000);
     }
   };
 
@@ -91,12 +142,15 @@ export default function PasswordScreen({
         searchParams.get("continue_business_setup") === "true";
 
       if (isNewUser) {
+        console.log("👤 New user: Setting password...");
+
         // For new users, save the password and continue to setup
         const response = await fetch("/api/auth/set-password", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
+          credentials: "include",
           body: JSON.stringify({
             email,
             password,
@@ -109,8 +163,11 @@ export default function PasswordScreen({
           throw new Error(data.message || "Failed to set password");
         }
 
+        console.log("✅ Password set successfully");
         onPasswordComplete();
       } else {
+        console.log("🔐 Existing user: Signing in...");
+
         // For existing users, sign them in with password
         const result = await signIn("credentials", {
           email,
@@ -119,15 +176,18 @@ export default function PasswordScreen({
         });
 
         if (result?.error) {
+          console.error("❌ Sign-in error:", result.error);
           setError("Invalid password. Please try again.");
           return;
         }
 
         if (result?.ok) {
-          // Successful sign-in - now check if they need business onboarding
+          console.log("✅ Sign-in successful");
+
+          // Successful sign-in - now check routing
           if (continueBusinessSetup) {
-            // Route to business creation flow
-            router.push("/locations/create");
+            console.log("🏗️ Continuing business setup flow...");
+            router.push("/business-onboarding");
           } else {
             // Check business status and route accordingly
             await checkBusinessStatus();
@@ -135,7 +195,7 @@ export default function PasswordScreen({
         }
       }
     } catch (error) {
-      console.error("Password error:", error);
+      console.error("❌ Password error:", error);
       setError(error instanceof Error ? error.message : "Something went wrong");
     } finally {
       setIsLoading(false);
@@ -143,7 +203,7 @@ export default function PasswordScreen({
   };
 
   const handleForgotPassword = () => {
-    // FIXED: Navigate to the correct auth route
+    // Navigate to the correct auth route
     router.push(`/auth/forgot-password?email=${encodeURIComponent(email)}`);
   };
 
@@ -190,6 +250,7 @@ export default function PasswordScreen({
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className={styles.passwordToggle}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? "🙈" : "👁️"}
                 </button>
@@ -208,6 +269,53 @@ export default function PasswordScreen({
               />
             )}
 
+            {isNewUser && (
+              <div className={styles.passwordRequirements}>
+                <p className={styles.requirementsTitle}>
+                  Password must contain:
+                </p>
+                <ul className={styles.requirementsList}>
+                  <li
+                    className={
+                      password.length >= 12 ? styles.valid : styles.invalid
+                    }
+                  >
+                    At least 12 characters
+                  </li>
+                  <li
+                    className={
+                      /[A-Z]/.test(password) ? styles.valid : styles.invalid
+                    }
+                  >
+                    One uppercase letter
+                  </li>
+                  <li
+                    className={
+                      /[a-z]/.test(password) ? styles.valid : styles.invalid
+                    }
+                  >
+                    One lowercase letter
+                  </li>
+                  <li
+                    className={
+                      /\d/.test(password) ? styles.valid : styles.invalid
+                    }
+                  >
+                    One number
+                  </li>
+                  <li
+                    className={
+                      /[!@#$%^&*(),.?":{}|<>]/.test(password)
+                        ? styles.valid
+                        : styles.invalid
+                    }
+                  >
+                    One special character
+                  </li>
+                </ul>
+              </div>
+            )}
+
             <div className={styles.buttonContainer}>
               <Button
                 variant="primary-green"
@@ -217,7 +325,7 @@ export default function PasswordScreen({
                 }
                 fullWidth
               >
-                {isLoading ? "Signing in..." : "Continue"}
+                {isLoading ? "Processing..." : "Continue"}
               </Button>
 
               {!isNewUser && (

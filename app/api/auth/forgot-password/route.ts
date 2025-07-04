@@ -1,4 +1,4 @@
-// app/api/auth/forgot-password/route.ts - ENTERPRISE SECURITY VERSION
+// app/api/auth/forgot-password/route.ts - FIXED VERSION
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import prisma from "@/lib/prisma";
@@ -8,7 +8,7 @@ import {
   constantTimeDelay,
   sanitizeEmail,
   validateEmail,
-} from "@/lib/security/utils/utils";
+} from "@/lib/security/password";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -18,6 +18,8 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { email } = body;
+
+    console.log("🔐 Forgot Password: Request received for email:", email);
 
     // Input validation
     if (!email) {
@@ -45,6 +47,8 @@ export async function POST(request: NextRequest) {
       "unknown";
     const userAgent = request.headers.get("user-agent") || "unknown";
 
+    console.log("🔍 Forgot Password: Looking up user for:", sanitizedEmail);
+
     try {
       // Check if user exists (timing-safe approach)
       const user = await prisma.user.findUnique({
@@ -54,9 +58,18 @@ export async function POST(request: NextRequest) {
         },
       });
 
+      console.log("👤 Forgot Password: User lookup result:", {
+        userFound: !!user,
+        hasCredentials: !!user?.credentials,
+        isVerified: user?.isVerified,
+        isActive: user?.isActive,
+      });
+
       // ALWAYS return success to prevent email enumeration attacks
       // But only send email if user actually exists and has credentials
       if (user && user.credentials) {
+        console.log("✅ Forgot Password: User valid, processing reset...");
+
         await prisma.$transaction(async (tx) => {
           // Clean up any old password reset tokens for this user
           await tx.passwordResetToken.deleteMany({
@@ -80,6 +93,11 @@ export async function POST(request: NextRequest) {
 
           // Allow max 3 reset attempts per hour
           if (recentTokens.length >= 3) {
+            console.log(
+              "⚠️ Forgot Password: Rate limit exceeded for:",
+              sanitizedEmail
+            );
+
             // Log suspicious activity but still return success
             await tx.securityEvent.create({
               data: {
@@ -95,8 +113,12 @@ export async function POST(request: NextRequest) {
 
           // Generate secure reset token
           const resetToken = generateSecureToken(32);
-          const hashedToken = hashToken(resetToken);
+          const hashedToken = hashToken(resetToken); // FIXED: Now using sync version
           const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour expiry
+
+          console.log(
+            "🎫 Forgot Password: Generated token, storing in database..."
+          );
 
           // Store reset token in database
           await tx.passwordResetToken.create({
@@ -108,6 +130,10 @@ export async function POST(request: NextRequest) {
               userAgent: userAgent,
             },
           });
+
+          console.log(
+            "📝 Forgot Password: Token stored, logging security event..."
+          );
 
           // Log security event
           await tx.securityEvent.create({
@@ -123,10 +149,12 @@ export async function POST(request: NextRequest) {
           // Create reset URL
           const resetUrl = `${process.env.NEXTAUTH_URL}/auth/reset-password?token=${resetToken}&email=${encodeURIComponent(sanitizedEmail)}`;
 
+          console.log("📧 Forgot Password: Sending email via Resend...");
+
           // Send password reset email
           try {
-            await resend.emails.send({
-              from: process.env.FROM_EMAIL || "security@yourdomain.com",
+            const emailResult = await resend.emails.send({
+              from: process.env.FROM_EMAIL || "onboarding@resend.dev",
               to: sanitizedEmail,
               subject: "🔐 Reset Your Bord Business Password",
               html: `
@@ -147,7 +175,8 @@ export async function POST(request: NextRequest) {
                       <h2 style="color: #333; margin: 0 0 20px 0; font-size: 24px; text-align: center;">Password Reset Request</h2>
                       
                       <p style="margin-bottom: 30px; font-size: 16px; color: #666; text-align: center;">
-                        We received a request to reset your password for your Bord Business account. Click the button below to create a new password:
+                        We received a request to reset your password for your Bord Business account.
+                        Click the button below to create a new password:
                       </p>
                       
                       <div style="text-align: center; margin: 30px 0;">
@@ -178,7 +207,7 @@ export async function POST(request: NextRequest) {
                     
                     <div style="text-align: center; color: #999; font-size: 12px; border-top: 1px solid #eee; padding-top: 20px;">
                       <p>This email was sent by Bord Business Security System.</p>
-                      <p>For support, please contact: security@yourdomain.com</p>
+                      <p>For support, please contact: support@bord.co</p>
                       <p style="margin-top: 15px; font-size: 11px;">
                         Request ID: ${resetToken.substring(0, 8)} | Time: ${new Date().toISOString()}
                       </p>
@@ -201,16 +230,20 @@ If you didn't request this password reset, please ignore this email.
 
 For security, this request was made from IP: ${clientIP}
 
-Need help? Contact: security@yourdomain.com
+Need help? Contact: support@bord.co
 Request ID: ${resetToken.substring(0, 8)}
               `.trim(),
             });
 
             console.log(
-              `Security: Password reset email sent to ${sanitizedEmail}`
+              "✅ Forgot Password: Email sent successfully via Resend:",
+              emailResult
             );
           } catch (emailError) {
-            console.error("Failed to send reset email:", emailError);
+            console.error(
+              "❌ Forgot Password: Failed to send reset email:",
+              emailError
+            );
 
             // Log email failure but don't expose to user
             await tx.securityEvent.create({
@@ -225,18 +258,27 @@ Request ID: ${resetToken.substring(0, 8)}
                     emailError instanceof Error
                       ? emailError.message
                       : "Unknown error",
+                  resendApiKey: process.env.RESEND_API_KEY
+                    ? "Present"
+                    : "Missing",
+                  fromEmail: process.env.FROM_EMAIL || "onboarding@resend.dev",
                 },
               },
             });
+
+            // Don't throw error - we want to return success to prevent enumeration
+            console.log(
+              "⚠️ Forgot Password: Email failed but continuing for security"
+            );
           }
         });
       } else {
         // User doesn't exist but still consume time to prevent enumeration
         await constantTimeDelay(200, 400);
 
-        // Log potential reconnaissance attempt
-        console.warn(
-          `Security: Password reset attempted for non-existent email: ${sanitizedEmail} from ${clientIP}`
+        console.log(
+          "⚠️ Forgot Password: User not found or no credentials for:",
+          sanitizedEmail
         );
       }
 
@@ -245,6 +287,8 @@ Request ID: ${resetToken.substring(0, 8)}
       if (elapsedTime < 300) {
         await new Promise((resolve) => setTimeout(resolve, 300 - elapsedTime));
       }
+
+      console.log("✅ Forgot Password: Returning success response");
 
       // Always return success response to prevent email enumeration
       return NextResponse.json(
@@ -256,7 +300,7 @@ Request ID: ${resetToken.substring(0, 8)}
         { status: 200 }
       );
     } catch (dbError) {
-      console.error("Database error in forgot password:", dbError);
+      console.error("❌ Forgot Password: Database error:", dbError);
       await constantTimeDelay(200, 400);
 
       return NextResponse.json(
@@ -268,7 +312,7 @@ Request ID: ${resetToken.substring(0, 8)}
       );
     }
   } catch (error) {
-    console.error("Forgot password error:", error);
+    console.error("❌ Forgot Password: Unexpected error:", error);
 
     // Ensure minimum response time
     const elapsedTime = Date.now() - startTime;

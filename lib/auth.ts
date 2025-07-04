@@ -1,19 +1,17 @@
-// lib/auth.ts - ADD CREDENTIALS PROVIDER TO YOUR EXISTING SECURE CONFIG
+// lib/auth.ts - COOKIE CONFIGURATION FIX
 import { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
-import CredentialsProvider from "next-auth/providers/credentials"; // ADD THIS
+import CredentialsProvider from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
-import { randomBytes } from "crypto";
 import prisma from "@/lib/prisma";
 import {
   checkAccountLockout,
   recordFailedAttempt,
   resetFailedAttempts,
   generateSecureToken,
-  verifyPassword, // ADD THIS
+  verifyPassword,
 } from "@/lib/security/password";
 
-// KEEP YOUR EXISTING SECURE CONFIGURATION - JUST ADD CREDENTIALS PROVIDER
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
 
@@ -30,7 +28,7 @@ export const authOptions: NextAuthOptions = {
       },
     }),
 
-    // ADD THIS CREDENTIALS PROVIDER TO YOUR EXISTING CONFIG
+    // CREDENTIALS PROVIDER
     CredentialsProvider({
       id: "credentials",
       name: "credentials",
@@ -39,24 +37,45 @@ export const authOptions: NextAuthOptions = {
         password: { type: "password" },
       },
       async authorize(credentials) {
+        console.log(
+          "🔐 Credentials Provider: Starting authorization for",
+          credentials?.email
+        );
+
         if (!credentials?.email || !credentials?.password) {
+          console.log("❌ Credentials Provider: Missing email or password");
           return null;
         }
 
         try {
           // Find user with credentials
           const user = await prisma.user.findUnique({
-            where: { email: credentials.email },
-            include: { credentials: true },
+            where: { email: credentials.email.toLowerCase().trim() },
+            include: {
+              credentials: true,
+              ownedBusinesses: true,
+              businessMemberships: true,
+            },
+          });
+
+          console.log("👤 Credentials Provider: User lookup result:", {
+            found: !!user,
+            hasCredentials: !!user?.credentials,
+            isVerified: user?.isVerified,
+            isActive: user?.isActive,
           });
 
           if (!user || !user.credentials) {
+            console.log(
+              "❌ Credentials Provider: User not found or no credentials"
+            );
             return null;
           }
 
-          // Check account lockout FIRST (your security feature)
+          // Check account lockout FIRST
           const lockStatus = await checkAccountLockout(user.id);
           if (lockStatus.locked) {
+            console.log("❌ Credentials Provider: Account is locked");
             throw new Error("Account is locked");
           }
 
@@ -67,85 +86,98 @@ export const authOptions: NextAuthOptions = {
           );
 
           if (!isValidPassword) {
-            // Record failed attempt (your security feature)
+            console.log("❌ Credentials Provider: Invalid password");
             await recordFailedAttempt(user.id);
             return null;
           }
 
           // Check if account is active
           if (!user.isActive) {
+            console.log("❌ Credentials Provider: Account is inactive");
             return null;
           }
 
-          // Reset failed attempts on successful login (your security feature)
+          // Check if account is verified
+          if (!user.isVerified) {
+            console.log("❌ Credentials Provider: Account is not verified");
+            return null;
+          }
+
+          // Reset failed attempts on successful login
           await resetFailedAttempts(user.id);
 
-          // Return user for NextAuth session
+          console.log("✅ Credentials Provider: Authorization successful");
+
+          // Return user object that NextAuth expects
           return {
             id: user.id,
             email: user.email,
             name: user.name,
             image: user.image,
+            // Add custom fields that will be available in session
             globalRole: user.globalRole,
             isVerified: user.isVerified,
             isActive: user.isActive,
           };
         } catch (error) {
-          console.error("Auth error:", error);
+          console.error("❌ Credentials Provider: Authorization error:", error);
           return null;
         }
       },
     }),
   ],
 
-  // KEEP ALL YOUR EXISTING SECURE SESSION CONFIG
+  // SESSION CONFIGURATION
   session: {
-    strategy: "database",
-    maxAge: 24 * 60 * 60,
-    updateAge: 60 * 60,
+    strategy: "database", // Keep database strategy for security
+    maxAge: 24 * 60 * 60, // 24 hours
+    updateAge: 60 * 60, // 1 hour
     generateSessionToken: () => generateSecureToken(32),
   },
 
-  // KEEP ALL YOUR EXISTING SECURE COOKIES CONFIG
+  // FIXED COOKIE CONFIGURATION FOR DEVELOPMENT
   cookies: {
     sessionToken: {
-      name: `__Secure-next-auth.session-token`,
+      name: "next-auth.session-token", // SIMPLIFIED - no __Secure prefix in development
       options: {
         httpOnly: true,
-        sameSite: "strict",
+        sameSite: "lax", // More permissive for development
         path: "/",
-        secure: process.env.NODE_ENV === "production",
-        domain:
-          process.env.NODE_ENV === "production"
-            ? process.env.COOKIE_DOMAIN
-            : undefined,
+        secure: false, // Allow non-HTTPS in development
+        // Remove domain restriction for development
       },
     },
     callbackUrl: {
-      name: `__Secure-next-auth.callback-url`,
+      name: "next-auth.callback-url",
       options: {
         httpOnly: true,
-        sameSite: "strict",
+        sameSite: "lax",
         path: "/",
-        secure: process.env.NODE_ENV === "production",
+        secure: false,
       },
     },
     csrfToken: {
-      name: `__Host-next-auth.csrf-token`,
+      name: "next-auth.csrf-token",
       options: {
         httpOnly: true,
-        sameSite: "strict",
+        sameSite: "lax",
         path: "/",
-        secure: process.env.NODE_ENV === "production",
+        secure: false,
       },
     },
   },
 
-  // KEEP ALL YOUR EXISTING SECURITY CALLBACKS
+  // CALLBACKS
   callbacks: {
-    async signIn({ user, account, profile, email, credentials }) {
+    async signIn({ user, account, profile }) {
+      console.log("🔐 SignIn Callback:", {
+        provider: account?.provider,
+        email: user.email,
+        userId: user.id,
+      });
+
       try {
-        // For OAuth providers (Google) - KEEP YOUR EXISTING LOGIC
+        // For OAuth providers (Google)
         if (account?.provider === "google") {
           if (!user.email) {
             console.error("OAuth sign-in attempted without email");
@@ -182,49 +214,79 @@ export const authOptions: NextAuthOptions = {
           return true;
         }
 
-        // For credentials provider - ALLOW IT THROUGH
+        // For credentials provider - ALWAYS ALLOW
         if (account?.provider === "credentials") {
-          return true; // authorize() function already handled security
+          console.log("✅ SignIn Callback: Credentials provider - allowing");
+          return true;
         }
 
         return true;
       } catch (error) {
-        console.error("Error in signIn callback:", error);
+        console.error("❌ SignIn Callback Error:", error);
         return false;
       }
     },
 
-    // KEEP ALL YOUR EXISTING SESSION/JWT/REDIRECT CALLBACKS
-    async session({ session, token, user }) {
-      if (session.user && user) {
-        session.user.id = user.id;
-        session.user.globalRole = user.globalRole || "USER";
-        session.user.isVerified = user.isVerified || false;
-        session.user.isActive = user.isActive || false;
+    async session({ session, user, token }) {
+      console.log("📋 Session Callback:", {
+        hasSession: !!session,
+        hasUser: !!user,
+        hasToken: !!token,
+        userId: user?.id || token?.sub,
+      });
 
-        // Check if account is locked (your security feature)
-        if (user.credentials) {
-          const lockStatus = await checkAccountLockout(user.id);
-          if (lockStatus.locked) {
-            session.user.isActive = false;
+      if (session.user) {
+        if (user) {
+          // Database session strategy - user object is available
+          session.user.id = user.id;
+          session.user.globalRole = user.globalRole || "USER";
+          session.user.isVerified = user.isVerified || false;
+          session.user.isActive = user.isActive || false;
+
+          // Check if account is locked
+          if (user.credentials) {
+            const lockStatus = await checkAccountLockout(user.id);
+            if (lockStatus.locked) {
+              session.user.isActive = false;
+            }
           }
-        }
-
-        if (token.currentBusinessId) {
-          session.user.currentBusinessId = token.currentBusinessId as string;
+        } else if (token) {
+          // Fallback to token data if user not available
+          session.user.id = token.sub || "";
+          session.user.globalRole = (token.globalRole as string) || "USER";
+          session.user.isVerified = (token.isVerified as boolean) || false;
+          session.user.isActive = (token.isActive as boolean) || false;
         }
       }
+
+      console.log("✅ Session Callback: Final session user:", {
+        id: session.user?.id,
+        email: session.user?.email,
+        globalRole: session.user?.globalRole,
+        isVerified: session.user?.isVerified,
+        isActive: session.user?.isActive,
+      });
+
       return session;
     },
 
     async jwt({ token, user, account, trigger }) {
+      console.log("🎟️ JWT Callback:", {
+        trigger,
+        hasUser: !!user,
+        hasAccount: !!account,
+        tokenSub: token.sub,
+      });
+
       if (user) {
+        // Initial sign in
         token.globalRole = user.globalRole || "USER";
         token.isVerified = user.isVerified || false;
         token.isActive = user.isActive || false;
       }
 
       if (trigger === "update") {
+        // Token refresh
         if (token.sub) {
           const refreshedUser = await prisma.user.findUnique({
             where: { id: token.sub },
@@ -246,8 +308,9 @@ export const authOptions: NextAuthOptions = {
       return token;
     },
 
-    // FIX THE REDIRECT ISSUE HERE
     async redirect({ url, baseUrl }) {
+      console.log("🔄 Redirect Callback:", { url, baseUrl });
+
       try {
         // Handle relative URLs
         if (url.startsWith("/")) {
@@ -275,36 +338,20 @@ export const authOptions: NextAuthOptions = {
     },
   },
 
-  // KEEP ALL YOUR EXISTING PAGES CONFIG
+  // PAGES CONFIGURATION
   pages: {
     signIn: "/login",
     verifyRequest: "/auth/verify-request",
     error: "/auth/error",
   },
 
-  // KEEP ALL YOUR EXISTING SECURITY EVENTS
+  // EVENTS - Enhanced logging
   events: {
     async createUser({ user }) {
       console.log(`Security Event: New user created - ${user.email}`);
-
-      if (user.email) {
-        const credentials = await prisma.userCredentials.findUnique({
-          where: { email: user.email },
-        });
-
-        if (credentials) {
-          await prisma.securityEvent.create({
-            data: {
-              credentialsId: credentials.id,
-              eventType: "LOGIN_SUCCESS",
-              description: "Account created",
-            },
-          });
-        }
-      }
     },
 
-    async signIn({ user, account, profile, isNewUser }) {
+    async signIn({ user, account }) {
       console.log(
         `Security Event: Sign in - ${user.email} via ${account?.provider}`
       );
@@ -327,33 +374,17 @@ export const authOptions: NextAuthOptions = {
       }
     },
 
-    async signOut({ session, token }) {
+    async signOut({ session }) {
       console.log(
         `Security Event: Sign out - ${session?.user?.email || "Unknown"}`
       );
-
-      if (session?.user?.email) {
-        const credentials = await prisma.userCredentials.findUnique({
-          where: { email: session.user.email },
-        });
-
-        if (credentials) {
-          await prisma.securityEvent.create({
-            data: {
-              credentialsId: credentials.id,
-              eventType: "LOGIN_SUCCESS",
-              description: "User signed out",
-            },
-          });
-        }
-      }
     },
   },
 
-  // KEEP ALL YOUR EXISTING SECURITY CONFIG
+  // ENHANCED DEBUGGING
   secret: process.env.NEXTAUTH_SECRET,
-  debug: process.env.NODE_ENV === "development",
-  useSecureCookies: process.env.NODE_ENV === "production",
+  debug: true, // ENABLE FULL DEBUG MODE
+  useSecureCookies: false, // DISABLE FOR DEVELOPMENT
 
   logger: {
     error(code, metadata) {
@@ -363,9 +394,7 @@ export const authOptions: NextAuthOptions = {
       console.warn(`NextAuth Warning [${code}]`);
     },
     debug(code, metadata) {
-      if (process.env.NODE_ENV === "development") {
-        console.debug(`NextAuth Debug [${code}]:`, metadata);
-      }
+      console.debug(`NextAuth Debug [${code}]:`, metadata);
     },
   },
 };
