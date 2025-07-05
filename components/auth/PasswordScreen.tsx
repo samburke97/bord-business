@@ -1,4 +1,4 @@
-// components/auth/PasswordScreen.tsx - FIXED WITH SECURITY BEST PRACTICES
+// components/auth/PasswordScreen.tsx - FIXED LOGIN FLOW
 "use client";
 
 import { useState } from "react";
@@ -68,16 +68,6 @@ export default function PasswordScreen({
         return false;
       }
 
-      if (/(.)\1{2,}/.test(password)) {
-        setError("Password cannot contain three or more repeating characters");
-        return false;
-      }
-
-      if (/123|abc|qwerty|password|admin|login/i.test(password)) {
-        setError("Password cannot contain common patterns or words");
-        return false;
-      }
-
       if (password !== confirmPassword) {
         setError("Passwords do not match");
         return false;
@@ -86,46 +76,6 @@ export default function PasswordScreen({
 
     setError(null);
     return true;
-  };
-
-  // Function to check if user needs business onboarding
-  const checkBusinessStatus = async () => {
-    try {
-      console.log("🔍 Checking business status for user...");
-
-      const response = await fetch("/api/user/business-status", {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include", // Important for session cookies
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      console.log("📊 Business status response:", data);
-
-      if (data.needsSetup) {
-        console.log("🏗️ User needs business setup, redirecting...");
-        router.push("/business-onboarding");
-      } else {
-        console.log("✅ User setup complete, redirecting to dashboard...");
-        router.push("/dashboard");
-      }
-    } catch (error) {
-      console.error("❌ Error checking business status:", error);
-      // Add user-friendly error handling
-      setError("Unable to verify account status. Please try again.");
-
-      // Fallback: try to redirect to dashboard anyway after a delay
-      setTimeout(() => {
-        console.log("🔄 Attempting fallback redirect to dashboard...");
-        router.push("/dashboard");
-      }, 2000);
-    }
   };
 
   const handleSubmit = async () => {
@@ -168,11 +118,14 @@ export default function PasswordScreen({
       } else {
         console.log("🔐 Existing user: Signing in...");
 
-        // For existing users, sign them in with password
+        // CRITICAL FIX: Use callbackUrl to ensure proper redirect
         const result = await signIn("credentials", {
           email,
           password,
-          redirect: false,
+          redirect: false, // Important: don't let NextAuth handle redirect
+          callbackUrl: continueBusinessSetup
+            ? "/business-onboarding"
+            : "/dashboard",
         });
 
         if (result?.error) {
@@ -182,15 +135,16 @@ export default function PasswordScreen({
         }
 
         if (result?.ok) {
-          console.log("✅ Sign-in successful");
+          console.log("✅ Sign-in successful, redirecting...");
 
-          // Successful sign-in - now check routing
+          // CRITICAL FIX: Force redirect after successful login
+          // Don't rely on NextAuth's redirect handling
           if (continueBusinessSetup) {
-            console.log("🏗️ Continuing business setup flow...");
-            router.push("/business-onboarding");
+            console.log("🏗️ Redirecting to business onboarding...");
+            window.location.href = "/business-onboarding";
           } else {
-            // Check business status and route accordingly
-            await checkBusinessStatus();
+            console.log("🏠 Redirecting to dashboard...");
+            window.location.href = "/dashboard";
           }
         }
       }
@@ -211,136 +165,81 @@ export default function PasswordScreen({
     if (isNewUser) {
       return "Set Your Password";
     }
-    return userName ? `Welcome back ${userName}` : "Welcome back";
+    return userName ? `Welcome back, ${userName}!` : "Welcome back!";
   };
 
   const getDescription = () => {
     if (isNewUser) {
-      return `Please create a secure password for ${email}.`;
+      return "Create a secure password for your account.";
     }
-    return `Please enter your password to sign in to ${email}.`;
+    return "Enter your password to continue.";
   };
 
   return (
     <div className={styles.container}>
-      <ActionHeader
-        type="back"
-        secondaryAction={handleBack}
-        className={styles.headerOverlay}
-      />
+      <ActionHeader onBack={handleBack} />
 
       <div className={styles.content}>
-        <div className={styles.formContainer}>
-          <TitleDescription title={getTitle()} description={getDescription()} />
+        <TitleDescription title={getTitle()} description={getDescription()} />
 
-          <div className={styles.formFields}>
+        <div className={styles.form}>
+          <div className={styles.inputGroup}>
             <TextInput
-              id="password"
-              label="Password"
               type={showPassword ? "text" : "password"}
+              placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder={
-                isNewUser ? "Create a secure password" : "Enter your password"
-              }
-              error={error}
+              onEnter={handleSubmit}
+              autoComplete={isNewUser ? "new-password" : "current-password"}
               required
-              rightIcon={
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className={styles.passwordToggle}
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                >
-                  {showPassword ? "🙈" : "👁️"}
-                </button>
-              }
             />
+            <button
+              type="button"
+              className={styles.togglePassword}
+              onClick={() => setShowPassword(!showPassword)}
+            >
+              {showPassword ? "Hide" : "Show"}
+            </button>
+          </div>
 
-            {isNewUser && (
+          {isNewUser && (
+            <div className={styles.inputGroup}>
               <TextInput
-                id="confirmPassword"
-                label="Confirm Password"
-                type={showPassword ? "text" : "password"}
+                type="password"
+                placeholder="Confirm Password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Confirm your password"
+                onEnter={handleSubmit}
+                autoComplete="new-password"
                 required
               />
-            )}
-
-            {isNewUser && (
-              <div className={styles.passwordRequirements}>
-                <p className={styles.requirementsTitle}>
-                  Password must contain:
-                </p>
-                <ul className={styles.requirementsList}>
-                  <li
-                    className={
-                      password.length >= 12 ? styles.valid : styles.invalid
-                    }
-                  >
-                    At least 12 characters
-                  </li>
-                  <li
-                    className={
-                      /[A-Z]/.test(password) ? styles.valid : styles.invalid
-                    }
-                  >
-                    One uppercase letter
-                  </li>
-                  <li
-                    className={
-                      /[a-z]/.test(password) ? styles.valid : styles.invalid
-                    }
-                  >
-                    One lowercase letter
-                  </li>
-                  <li
-                    className={
-                      /\d/.test(password) ? styles.valid : styles.invalid
-                    }
-                  >
-                    One number
-                  </li>
-                  <li
-                    className={
-                      /[!@#$%^&*(),.?":{}|<>]/.test(password)
-                        ? styles.valid
-                        : styles.invalid
-                    }
-                  >
-                    One special character
-                  </li>
-                </ul>
-              </div>
-            )}
-
-            <div className={styles.buttonContainer}>
-              <Button
-                variant="primary-green"
-                onClick={handleSubmit}
-                disabled={
-                  isLoading || !password || (isNewUser && !confirmPassword)
-                }
-                fullWidth
-              >
-                {isLoading ? "Processing..." : "Continue"}
-              </Button>
-
-              {!isNewUser && (
-                <div className={styles.forgotPassword}>
-                  <button
-                    type="button"
-                    onClick={handleForgotPassword}
-                    className={styles.forgotPasswordLink}
-                  >
-                    Forgot Password?
-                  </button>
-                </div>
-              )}
             </div>
-          </div>
+          )}
+
+          {error && <div className={styles.error}>{error}</div>}
+
+          <Button
+            onClick={handleSubmit}
+            disabled={isLoading}
+            fullWidth
+            className={styles.submitButton}
+          >
+            {isLoading
+              ? "Processing..."
+              : isNewUser
+                ? "Set Password"
+                : "Sign In"}
+          </Button>
+
+          {!isNewUser && (
+            <button
+              type="button"
+              onClick={handleForgotPassword}
+              className={styles.forgotPasswordLink}
+            >
+              Forgot your password?
+            </button>
+          )}
         </div>
       </div>
     </div>

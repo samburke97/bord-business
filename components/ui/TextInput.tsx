@@ -1,4 +1,4 @@
-// TextInput.tsx
+// components/ui/TextInput.tsx - FIXED WITH onEnter SUPPORT
 "use client";
 
 import React, {
@@ -7,7 +7,7 @@ import React, {
   useState,
   forwardRef,
   InputHTMLAttributes,
-  Ref,
+  KeyboardEvent,
 } from "react";
 import styles from "./TextInput.module.css";
 
@@ -17,6 +17,7 @@ interface TextInputProps
   label?: string;
   value: string;
   onChange: (e: ChangeEvent<HTMLInputElement>) => void;
+  onEnter?: () => void; // ADD THIS PROP
   error?: string | null;
   showCharCount?: boolean;
   labelClassName?: string;
@@ -33,6 +34,7 @@ const TextInput = forwardRef<HTMLInputElement, TextInputProps>(
       label,
       value,
       onChange,
+      onEnter, // ADD THIS PROP
       placeholder = "",
       disabled = false,
       error = null,
@@ -83,7 +85,19 @@ const TextInput = forwardRef<HTMLInputElement, TextInputProps>(
       if (maxLength && e.target.value.length > maxLength) {
         return;
       }
-      onChange(e); // Use the passed onChange handler
+      onChange(e);
+    };
+
+    // ADD THIS HANDLER
+    const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === "Enter" && onEnter) {
+        e.preventDefault();
+        onEnter();
+      }
+      // Call original onKeyDown if it exists in ...rest
+      if (rest.onKeyDown) {
+        rest.onKeyDown(e);
+      }
     };
 
     return (
@@ -112,6 +126,7 @@ const TextInput = forwardRef<HTMLInputElement, TextInputProps>(
             onChange={handleChange}
             onFocus={handleFocus}
             onBlur={handleBlur}
+            onKeyDown={handleKeyDown} // ADD THIS LINE
             className={`${styles.input} ${inputClassName} ${
               type === "number" ? styles.noSpinner : ""
             }`}

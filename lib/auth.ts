@@ -1,4 +1,4 @@
-// lib/auth.ts - FINAL COMPLETE FIX FOR SESSION COOKIE ISSUE
+// lib/auth.ts - COMPLETE FIX FOR SESSION TOKEN ISSUE
 import { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
@@ -127,12 +127,11 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
 
-  // SESSION CONFIGURATION - FIXED FOR DATABASE STRATEGY
+  // SESSION CONFIGURATION - SWITCH TO JWT FOR CREDENTIALS SUPPORT
   session: {
-    strategy: "database", // Keep database strategy for security
+    strategy: "jwt", // CRITICAL: Must use JWT with credentials provider
     maxAge: 24 * 60 * 60, // 24 hours
     updateAge: 60 * 60, // 1 hour
-    generateSessionToken: () => generateSecureToken(32),
   },
 
   // CRITICAL FIX: Cookie configuration that actually works
@@ -229,37 +228,29 @@ export const authOptions: NextAuthOptions = {
       }
     },
 
-    async session({ session, user, token }) {
-      console.log("📋 Session Callback:", {
+    async session({ session, token }) {
+      console.log("📋 Session Callback: CALLED!", {
         hasSession: !!session,
-        hasUser: !!user,
         hasToken: !!token,
-        strategy: "database",
-        userId: user?.id || token?.sub,
+        strategy: "jwt",
+        tokenSub: token?.sub,
       });
 
-      if (session.user) {
-        if (user) {
-          // Database session strategy - user object is available from database
-          session.user.id = user.id;
-          session.user.globalRole = user.globalRole || "USER";
-          session.user.isVerified = user.isVerified || false;
-          session.user.isActive = user.isActive || false;
+      // Ensure session.user exists
+      if (!session.user) {
+        session.user = {};
+      }
 
-          // Check if account is locked (additional security check)
-          if (user.credentials) {
-            const lockStatus = await checkAccountLockout(user.id);
-            if (lockStatus.locked) {
-              session.user.isActive = false;
-            }
-          }
-        } else if (token) {
-          // Fallback to token data if user not available (should rarely happen with database strategy)
-          session.user.id = token.sub || "";
-          session.user.globalRole = (token.globalRole as string) || "USER";
-          session.user.isVerified = (token.isVerified as boolean) || false;
-          session.user.isActive = (token.isActive as boolean) || false;
-        }
+      if (token) {
+        // JWT strategy - user data comes from token
+        console.log("🔄 Session Callback: Using JWT token data");
+        session.user.id = token.sub || "";
+        session.user.name = token.name || "";
+        session.user.email = token.email || "";
+        session.user.image = token.picture || "";
+        session.user.globalRole = (token.globalRole as string) || "USER";
+        session.user.isVerified = (token.isVerified as boolean) || false;
+        session.user.isActive = (token.isActive as boolean) || false;
       }
 
       console.log("✅ Session Callback: Final session user:", {
@@ -279,41 +270,52 @@ export const authOptions: NextAuthOptions = {
         hasUser: !!user,
         hasAccount: !!account,
         tokenSub: token.sub,
-        strategy: "database", // This should rarely be called with database strategy
+        strategy: "jwt",
       });
 
-      // With database strategy, JWT callback is mainly for OAuth providers
+      // If user just signed in, populate token with user data
       if (user) {
-        // Initial sign in
+        console.log("🔄 JWT Callback: Populating token with user data");
+        token.sub = user.id;
+        token.name = user.name;
+        token.email = user.email;
+        token.picture = user.image;
         token.globalRole = user.globalRole || "USER";
         token.isVerified = user.isVerified || false;
         token.isActive = user.isActive || false;
       }
 
-      if (trigger === "update") {
-        // Token refresh
-        if (token.sub) {
-          const refreshedUser = await prisma.user.findUnique({
-            where: { id: token.sub },
-            select: {
-              globalRole: true,
-              isVerified: true,
-              isActive: true,
-            },
-          });
+      // Handle token refresh
+      if (trigger === "update" && token.sub) {
+        console.log("🔄 JWT Callback: Refreshing token data");
+        const refreshedUser = await prisma.user.findUnique({
+          where: { id: token.sub },
+          select: {
+            globalRole: true,
+            isVerified: true,
+            isActive: true,
+          },
+        });
 
-          if (refreshedUser) {
-            token.globalRole = refreshedUser.globalRole;
-            token.isVerified = refreshedUser.isVerified;
-            token.isActive = refreshedUser.isActive;
-          }
+        if (refreshedUser) {
+          token.globalRole = refreshedUser.globalRole;
+          token.isVerified = refreshedUser.isVerified;
+          token.isActive = refreshedUser.isActive;
         }
       }
+
+      console.log("✅ JWT Callback: Final token:", {
+        sub: token.sub,
+        email: token.email,
+        globalRole: token.globalRole,
+        isVerified: token.isVerified,
+        isActive: token.isActive,
+      });
 
       return token;
     },
 
-    // CRITICAL FIX: Redirect callback must handle base URL correctly
+    // CRITICAL FIX: Redirect callback that properly handles successful login
     async redirect({ url, baseUrl }) {
       console.log("🔄 Redirect Callback:", { url, baseUrl });
 
@@ -321,9 +323,31 @@ export const authOptions: NextAuthOptions = {
         // Always use the request's base URL for consistency
         const requestBaseUrl = baseUrl;
 
+        // CRITICAL FIX: After successful credentials login, redirect to dashboard
+        // Don't redirect back to password page or auth pages
+        if (url.includes("/auth/password") || url.includes("/auth/")) {
+          const dashboardUrl = `${requestBaseUrl}/dashboard`;
+          console.log(
+            "🏠 Redirect: Auth page detected, redirecting to dashboard:",
+            dashboardUrl
+          );
+          return dashboardUrl;
+        }
+
         // Handle relative URLs
         if (url.startsWith("/")) {
           const finalUrl = `${requestBaseUrl}${url}`;
+
+          // Don't redirect to auth pages
+          if (url.startsWith("/auth/")) {
+            const dashboardUrl = `${requestBaseUrl}/dashboard`;
+            console.log(
+              "🏠 Redirect: Auth relative URL, redirecting to dashboard:",
+              dashboardUrl
+            );
+            return dashboardUrl;
+          }
+
           console.log("🏠 Redirect: Relative URL:", finalUrl);
           return finalUrl;
         }
@@ -340,6 +364,16 @@ export const authOptions: NextAuthOptions = {
           const baseUrlObj = new URL(requestBaseUrl);
 
           if (redirectUrl.origin === baseUrlObj.origin) {
+            // Same origin - but don't redirect to auth pages
+            if (redirectUrl.pathname.startsWith("/auth/")) {
+              const dashboardUrl = `${requestBaseUrl}/dashboard`;
+              console.log(
+                "🏠 Redirect: Same origin auth page, redirecting to dashboard:",
+                dashboardUrl
+              );
+              return dashboardUrl;
+            }
+
             console.log("🏠 Redirect: Same origin URL:", url);
             return url;
           }

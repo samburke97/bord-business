@@ -1,16 +1,29 @@
+// types/next-auth.d.ts - CORRECTED TYPES
 import "next-auth";
 import { UserRole } from "@prisma/client";
 
 declare module "next-auth" {
   interface User {
     id: string;
-    role: UserRole;
+    name?: string | null;
+    email?: string | null;
+    image?: string | null;
+    // Custom fields from your database
+    globalRole?: UserRole;
+    isVerified?: boolean;
+    isActive?: boolean;
   }
 
   interface Session {
-    user: User & {
+    user: {
       id: string;
-      role: UserRole;
+      name?: string | null;
+      email?: string | null;
+      image?: string | null;
+      // Custom fields from your database
+      globalRole?: UserRole;
+      isVerified?: boolean;
+      isActive?: boolean;
     };
   }
 }
@@ -18,7 +31,13 @@ declare module "next-auth" {
 // The `JWT` interface can be used to have more detailed control over the token
 declare module "next-auth/jwt" {
   interface JWT {
-    id: string;
-    role: UserRole;
+    sub?: string;
+    name?: string | null;
+    email?: string | null;
+    picture?: string | null;
+    // Custom fields from your database
+    globalRole?: UserRole;
+    isVerified?: boolean;
+    isActive?: boolean;
   }
 }

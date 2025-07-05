@@ -1,4 +1,4 @@
-// app/api/auth/send-verification-code/route.ts
+// app/api/auth/send-verification-code/route.ts - UPDATED WITH VERIFIED DOMAIN
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import prisma from "@/lib/prisma";
@@ -92,8 +92,8 @@ export async function POST(request: NextRequest) {
 
     // Send verification email
     try {
-      await resend.emails.send({
-        from: "onboarding@resend.dev",
+      const emailResult = await resend.emails.send({
+        from: process.env.FROM_EMAIL || "noreply@bordsports.com", // UPDATED: Use verified domain
         to: email,
         subject: emailSubject,
         html: `
@@ -147,6 +147,14 @@ export async function POST(request: NextRequest) {
         `,
       });
 
+      console.log("✅ Verification email sent successfully:", emailResult);
+
+      // Check if email failed due to any issues
+      if (emailResult.error) {
+        console.error("❌ Email sending error:", emailResult.error);
+        throw new Error(emailResult.error.message || "Failed to send email");
+      }
+
       return NextResponse.json(
         {
           message: "Verification code sent successfully",
@@ -156,7 +164,7 @@ export async function POST(request: NextRequest) {
         { status: 200 }
       );
     } catch (emailError) {
-      console.error("Email sending error:", emailError);
+      console.error("❌ Email sending error:", emailError);
 
       // Clean up the token if email failed to send
       await prisma.verificationToken.deleteMany({
@@ -172,7 +180,7 @@ export async function POST(request: NextRequest) {
       );
     }
   } catch (error) {
-    console.error("Send verification code error:", error);
+    console.error("❌ Send verification code error:", error);
     return NextResponse.json(
       { message: "Internal server error" },
       { status: 500 }
