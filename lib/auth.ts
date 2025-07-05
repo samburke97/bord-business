@@ -1,4 +1,4 @@
-// lib/auth.ts - COOKIE CONFIGURATION FIX
+// lib/auth.ts - FINAL COMPLETE FIX FOR SESSION COOKIE ISSUE
 import { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
@@ -127,7 +127,7 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
 
-  // SESSION CONFIGURATION
+  // SESSION CONFIGURATION - FIXED FOR DATABASE STRATEGY
   session: {
     strategy: "database", // Keep database strategy for security
     maxAge: 24 * 60 * 60, // 24 hours
@@ -135,16 +135,16 @@ export const authOptions: NextAuthOptions = {
     generateSessionToken: () => generateSecureToken(32),
   },
 
-  // FIXED COOKIE CONFIGURATION FOR DEVELOPMENT
+  // CRITICAL FIX: Cookie configuration that actually works
   cookies: {
     sessionToken: {
-      name: "next-auth.session-token", // SIMPLIFIED - no __Secure prefix in development
+      name: "next-auth.session-token",
       options: {
         httpOnly: true,
-        sameSite: "lax", // More permissive for development
+        sameSite: "lax",
         path: "/",
-        secure: false, // Allow non-HTTPS in development
-        // Remove domain restriction for development
+        secure: false, // MUST be false for localhost development
+        domain: undefined, // CRITICAL: Don't set domain for localhost
       },
     },
     callbackUrl: {
@@ -154,6 +154,7 @@ export const authOptions: NextAuthOptions = {
         sameSite: "lax",
         path: "/",
         secure: false,
+        domain: undefined,
       },
     },
     csrfToken: {
@@ -163,11 +164,12 @@ export const authOptions: NextAuthOptions = {
         sameSite: "lax",
         path: "/",
         secure: false,
+        domain: undefined,
       },
     },
   },
 
-  // CALLBACKS
+  // CALLBACKS - FIXED FOR DATABASE SESSIONS
   callbacks: {
     async signIn({ user, account, profile }) {
       console.log("🔐 SignIn Callback:", {
@@ -177,6 +179,12 @@ export const authOptions: NextAuthOptions = {
       });
 
       try {
+        // For credentials provider - ALWAYS ALLOW (already validated in authorize)
+        if (account?.provider === "credentials") {
+          console.log("✅ SignIn Callback: Credentials provider - allowing");
+          return true;
+        }
+
         // For OAuth providers (Google)
         if (account?.provider === "google") {
           if (!user.email) {
@@ -214,12 +222,6 @@ export const authOptions: NextAuthOptions = {
           return true;
         }
 
-        // For credentials provider - ALWAYS ALLOW
-        if (account?.provider === "credentials") {
-          console.log("✅ SignIn Callback: Credentials provider - allowing");
-          return true;
-        }
-
         return true;
       } catch (error) {
         console.error("❌ SignIn Callback Error:", error);
@@ -232,18 +234,19 @@ export const authOptions: NextAuthOptions = {
         hasSession: !!session,
         hasUser: !!user,
         hasToken: !!token,
+        strategy: "database",
         userId: user?.id || token?.sub,
       });
 
       if (session.user) {
         if (user) {
-          // Database session strategy - user object is available
+          // Database session strategy - user object is available from database
           session.user.id = user.id;
           session.user.globalRole = user.globalRole || "USER";
           session.user.isVerified = user.isVerified || false;
           session.user.isActive = user.isActive || false;
 
-          // Check if account is locked
+          // Check if account is locked (additional security check)
           if (user.credentials) {
             const lockStatus = await checkAccountLockout(user.id);
             if (lockStatus.locked) {
@@ -251,7 +254,7 @@ export const authOptions: NextAuthOptions = {
             }
           }
         } else if (token) {
-          // Fallback to token data if user not available
+          // Fallback to token data if user not available (should rarely happen with database strategy)
           session.user.id = token.sub || "";
           session.user.globalRole = (token.globalRole as string) || "USER";
           session.user.isVerified = (token.isVerified as boolean) || false;
@@ -276,8 +279,10 @@ export const authOptions: NextAuthOptions = {
         hasUser: !!user,
         hasAccount: !!account,
         tokenSub: token.sub,
+        strategy: "database", // This should rarely be called with database strategy
       });
 
+      // With database strategy, JWT callback is mainly for OAuth providers
       if (user) {
         // Initial sign in
         token.globalRole = user.globalRole || "USER";
@@ -308,32 +313,58 @@ export const authOptions: NextAuthOptions = {
       return token;
     },
 
+    // CRITICAL FIX: Redirect callback must handle base URL correctly
     async redirect({ url, baseUrl }) {
       console.log("🔄 Redirect Callback:", { url, baseUrl });
 
       try {
+        // Always use the request's base URL for consistency
+        const requestBaseUrl = baseUrl;
+
         // Handle relative URLs
         if (url.startsWith("/")) {
-          return `${baseUrl}${url}`;
+          const finalUrl = `${requestBaseUrl}${url}`;
+          console.log("🏠 Redirect: Relative URL:", finalUrl);
+          return finalUrl;
         }
 
         // Handle custom error redirects
         if (url.includes("/auth/error")) {
+          console.log("🏠 Redirect: Error URL:", url);
           return url;
         }
 
-        // Handle same-origin URLs
-        const redirectUrl = new URL(url, baseUrl);
-        const baseUrlObj = new URL(baseUrl);
+        // Parse URLs to check if they're on the same origin
+        try {
+          const redirectUrl = new URL(url);
+          const baseUrlObj = new URL(requestBaseUrl);
 
-        if (redirectUrl.origin === baseUrlObj.origin) {
-          return url;
+          if (redirectUrl.origin === baseUrlObj.origin) {
+            console.log("🏠 Redirect: Same origin URL:", url);
+            return url;
+          }
+
+          // Different origin - redirect to dashboard
+          const dashboardUrl = `${requestBaseUrl}/dashboard`;
+          console.log(
+            "🏠 Redirect: Different origin, redirecting to dashboard:",
+            dashboardUrl
+          );
+          return dashboardUrl;
+        } catch {
+          // Invalid URL format - redirect to dashboard
+          const dashboardUrl = `${requestBaseUrl}/dashboard`;
+          console.log(
+            "🏠 Redirect: Invalid URL, redirecting to dashboard:",
+            dashboardUrl
+          );
+          return dashboardUrl;
         }
-
-        // DEFAULT: After successful login, redirect to dashboard
-        return `${baseUrl}/dashboard`;
-      } catch {
-        return `${baseUrl}/dashboard`;
+      } catch (error) {
+        console.error("❌ Redirect error:", error);
+        const fallbackUrl = `${baseUrl}/dashboard`;
+        console.log("🏠 Redirect: Fallback URL:", fallbackUrl);
+        return fallbackUrl;
       }
     },
   },
@@ -381,10 +412,13 @@ export const authOptions: NextAuthOptions = {
     },
   },
 
-  // ENHANCED DEBUGGING
+  // ENHANCED DEBUGGING - CRITICAL SETTINGS
   secret: process.env.NEXTAUTH_SECRET,
-  debug: true, // ENABLE FULL DEBUG MODE
-  useSecureCookies: false, // DISABLE FOR DEVELOPMENT
+  debug: process.env.NODE_ENV === "development", // Only enable debug in development
+  useSecureCookies: false, // CRITICAL: Must be false for localhost development
+
+  // CRITICAL: Ensure proper base URL handling
+  basePath: process.env.NEXTAUTH_BASEPATH || "/api/auth",
 
   logger: {
     error(code, metadata) {

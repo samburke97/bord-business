@@ -1,4 +1,3 @@
-// app/api/auth/reset-password/route.ts - FIXED VERSION
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import {
@@ -8,7 +7,7 @@ import {
   constantTimeDelay,
   hashToken,
   secureCompare,
-} from "@/lib/security/password"; // FIXED: Import from password.ts, not utils.ts
+} from "@/lib/security/password";
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
@@ -95,7 +94,7 @@ export async function POST(request: NextRequest) {
               include: {
                 passwordHistory: {
                   orderBy: { createdAt: "desc" },
-                  take: 10, // Check last 10 passwords for history
+                  take: 10,
                 },
               },
             },
@@ -156,7 +155,7 @@ export async function POST(request: NextRequest) {
             passwordHash: newPasswordHash,
             passwordChangedAt: new Date(),
             mustChangePassword: false,
-            failedAttempts: 0, // Reset failed attempts
+            failedAttempts: 0,
             lockedAt: null,
             lockoutUntil: null,
           },

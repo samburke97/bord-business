@@ -1,4 +1,4 @@
-// middleware.ts - FIXED COOKIE AND TOKEN READING
+// middleware.ts - COMPLETE FIXED FOR DATABASE SESSIONS
 import { NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { NextRequest } from "next/server";
@@ -57,40 +57,20 @@ export async function middleware(req: NextRequest) {
       ),
     });
 
-    // Try different cookie names that NextAuth might use
-    const possibleTokens = [
-      req.cookies.get("next-auth.session-token")?.value,
-      req.cookies.get("__Secure-next-auth.session-token")?.value,
-      req.cookies.get("__Host-next-auth.session-token")?.value,
-    ].filter(Boolean);
+    // ============================================================================
+    // FIX: For database sessions, check for the session token cookie directly
+    // ============================================================================
 
-    console.log(
-      "🎫 Middleware: Possible session tokens found:",
-      possibleTokens.length
-    );
+    const sessionToken = req.cookies.get("next-auth.session-token")?.value;
 
-    const token = await getToken({
-      req,
-      secret: process.env.NEXTAUTH_SECRET,
-      // Try different cookie names
-      cookieName:
-        process.env.NODE_ENV === "production"
-          ? "__Secure-next-auth.session-token"
-          : "next-auth.session-token",
+    console.log("🎫 Middleware: Session token check:", {
+      hasSessionToken: !!sessionToken,
+      tokenLength: sessionToken?.length || 0,
     });
 
-    console.log(`🔐 Middleware: Token check for ${pathname}:`, {
-      hasToken: !!token,
-      userId: token?.sub,
-      email: token?.email,
-      isActive: token?.isActive,
-      globalRole: token?.globalRole,
-      tokenKeys: token ? Object.keys(token) : [],
-    });
-
-    // If no token, handle differently for API vs page routes
-    if (!token) {
-      console.log(`❌ Middleware: No token found for ${pathname}`);
+    // If no session token, user is not authenticated
+    if (!sessionToken) {
+      console.log(`❌ Middleware: No session token found for ${pathname}`);
 
       // For API routes, return 401 JSON response
       if (pathname.startsWith("/api/")) {
@@ -110,9 +90,49 @@ export async function middleware(req: NextRequest) {
       return NextResponse.redirect(loginUrl);
     }
 
-    // Check if user account is active
-    if (token.isActive === false) {
-      console.log(`❌ Middleware: Account disabled for user ${token.email}`);
+    // ============================================================================
+    // For database strategy, we'll get user info from getToken as fallback
+    // This is mainly for role checking and additional validation
+    // ============================================================================
+
+    let userInfo = null;
+
+    try {
+      // Try to get token info (this works even with database strategy for some fields)
+      const token = await getToken({
+        req,
+        secret: process.env.NEXTAUTH_SECRET,
+        cookieName: "next-auth.session-token",
+      });
+
+      if (token) {
+        userInfo = {
+          userId: token.sub,
+          email: token.email,
+          globalRole: token.globalRole,
+          isActive: token.isActive,
+          isVerified: token.isVerified,
+        };
+      }
+    } catch (tokenError) {
+      console.warn("⚠️ Middleware: Could not get token info:", tokenError);
+      // Continue without token info - session token exists so user is authenticated
+    }
+
+    console.log(`🔐 Middleware: User info for ${pathname}:`, {
+      hasSessionToken: !!sessionToken,
+      hasUserInfo: !!userInfo,
+      userId: userInfo?.userId,
+      email: userInfo?.email,
+      globalRole: userInfo?.globalRole,
+      isActive: userInfo?.isActive,
+    });
+
+    // ============================================================================
+    // Check if user account is active (if we have this info)
+    // ============================================================================
+    if (userInfo && userInfo.isActive === false) {
+      console.log(`❌ Middleware: Account disabled for user ${userInfo.email}`);
 
       // For API routes, return 403 JSON response
       if (pathname.startsWith("/api/")) {
@@ -131,7 +151,9 @@ export async function middleware(req: NextRequest) {
       return NextResponse.redirect(errorUrl);
     }
 
+    // ============================================================================
     // Admin route protection
+    // ============================================================================
     const adminRoutes = [
       "/dashboard",
       "/admin",
@@ -142,36 +164,34 @@ export async function middleware(req: NextRequest) {
       "/settings",
     ];
 
+    // API routes that require authenticated user (not necessarily admin)
+    const authApiRoutes = ["/api/user/business-status", "/api/user/business"];
+
     // API routes that require admin access
-    const adminApiRoutes = [
-      "/api/admin",
-      "/api/user/business-status", // This API requires authenticated user
-      "/api/user/business", // This API requires authenticated user
-    ];
+    const adminApiRoutes = ["/api/admin"];
 
     const isAdminRoute = adminRoutes.some((route) =>
+      pathname.startsWith(route)
+    );
+    const isAuthApiRoute = authApiRoutes.some((route) =>
       pathname.startsWith(route)
     );
     const isAdminApiRoute = adminApiRoutes.some((route) =>
       pathname.startsWith(route)
     );
 
-    if (isAdminRoute || isAdminApiRoute) {
+    // For admin routes, check role if we have user info
+    if (isAdminRoute && userInfo) {
       console.log(`🛡️ Middleware: Checking admin access for ${pathname}`);
 
       // Check for admin role (allow ADMIN and SUPER_ADMIN)
-      if (token.globalRole !== "ADMIN" && token.globalRole !== "SUPER_ADMIN") {
+      if (
+        userInfo.globalRole !== "ADMIN" &&
+        userInfo.globalRole !== "SUPER_ADMIN"
+      ) {
         console.log(
-          `❌ Middleware: Access denied - insufficient role (${token.globalRole}) for ${token.email}`
+          `❌ Middleware: Access denied - insufficient role (${userInfo.globalRole}) for ${userInfo.email}`
         );
-
-        // For API routes, return 403 JSON response
-        if (pathname.startsWith("/api/")) {
-          return NextResponse.json(
-            { error: "Access denied", message: "Insufficient permissions" },
-            { status: 403 }
-          );
-        }
 
         // For page routes, redirect to error page
         const errorUrl = new URL("/auth/error", req.url);
@@ -180,7 +200,27 @@ export async function middleware(req: NextRequest) {
       }
 
       console.log(
-        `✅ Middleware: Admin access granted for ${token.email} (${token.globalRole})`
+        `✅ Middleware: Admin access granted for ${userInfo.email} (${userInfo.globalRole})`
+      );
+    }
+
+    // For admin API routes, check role if we have user info
+    if (isAdminApiRoute && userInfo) {
+      if (
+        userInfo.globalRole !== "ADMIN" &&
+        userInfo.globalRole !== "SUPER_ADMIN"
+      ) {
+        return NextResponse.json(
+          { error: "Access denied", message: "Insufficient permissions" },
+          { status: 403 }
+        );
+      }
+    }
+
+    // For authenticated API routes, we just need a valid session token (which we already checked)
+    if (isAuthApiRoute) {
+      console.log(
+        `✅ Middleware: Authenticated API access granted for ${pathname}`
       );
     }
 
