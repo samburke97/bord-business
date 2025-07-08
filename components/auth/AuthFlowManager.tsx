@@ -1,4 +1,4 @@
-// components/auth/AuthFlowManager.tsx - FIXED WITH SECURITY BEST PRACTICES
+// components/auth/AuthFlowManager.tsx - COMPLETE UPDATED WITH OAUTH SUPPORT
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -55,7 +55,7 @@ export default function AuthFlowManager({
 
       if (data.needsSetup) {
         console.log("🏗️ AuthFlow: User needs business setup");
-        setCurrentStep("setup");
+        router.push("/business-onboarding");
       } else {
         console.log(
           "✅ AuthFlow: User is fully set up, redirecting to dashboard"
@@ -64,17 +64,74 @@ export default function AuthFlowManager({
       }
     } catch (error) {
       console.error("❌ AuthFlow: Error checking business status:", error);
-      // Default to setup step if we can't determine status
-      console.log("🔄 AuthFlow: Defaulting to setup step due to error");
-      setCurrentStep("setup");
+      // Default to business onboarding if we can't determine status
+      console.log(
+        "🔄 AuthFlow: Defaulting to business onboarding due to error"
+      );
+      router.push("/business-onboarding");
     }
   }, [router]);
 
-  // Send initial verification code when component mounts
+  // Initialize flow - handles both OAuth and email users
   useEffect(() => {
     if (hasInitialized) return; // Prevent multiple calls
 
-    const sendInitialCode = async () => {
+    const initializeFlow = async () => {
+      console.log("🚀 AuthFlow: Initializing flow...", {
+        hasSession: !!session,
+        email,
+        sessionStatus: status,
+      });
+
+      // Wait for session to load
+      if (status === "loading") {
+        console.log("⏳ AuthFlow: Session still loading...");
+        return;
+      }
+
+      // Check if user is already authenticated (OAuth case)
+      if (session?.user) {
+        console.log(
+          "🔐 AuthFlow: Authenticated user detected, checking if OAuth..."
+        );
+
+        try {
+          const response = await fetch("/api/user/profile-status", {
+            method: "GET",
+            credentials: "include",
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            const isOAuthUser = !data.hasPassword;
+
+            console.log("👤 AuthFlow: User profile status:", {
+              isOAuthUser,
+              hasPassword: data.hasPassword,
+              hasCompleteProfile: data.isProfileComplete,
+            });
+
+            if (isOAuthUser) {
+              console.log(
+                "🎯 AuthFlow: OAuth user detected - going directly to setup step"
+              );
+              setCurrentStep("setup");
+              setUserInfo({
+                isNewUser: false, // OAuth users are technically "existing" after account creation
+                userName: session.user.name || undefined,
+              });
+              setHasInitialized(true);
+              setIsInitializing(false);
+              return;
+            }
+          }
+        } catch (error) {
+          console.error("❌ AuthFlow: Error checking OAuth status:", error);
+          // Continue with email flow if profile check fails
+        }
+      }
+
+      // Continue with normal email flow for non-OAuth users
       if (!email) {
         console.log("❌ AuthFlow: No email provided, redirecting to login");
         router.push("/login");
@@ -106,9 +163,8 @@ export default function AuthFlowManager({
           const data = await response.json();
           console.log("✅ AuthFlow: Verification code sent, user info:", data);
 
-          // FIXED: Removed the incorrect negation
           setUserInfo({
-            isNewUser: data.isNewUser || false, // Use the correct value from API
+            isNewUser: data.isNewUser || false,
             userName: data.userName,
           });
         }
@@ -123,13 +179,8 @@ export default function AuthFlowManager({
       }
     };
 
-    if (email) {
-      sendInitialCode();
-    } else {
-      setIsInitializing(false);
-      setHasInitialized(true);
-    }
-  }, [email, router, hasInitialized]);
+    initializeFlow();
+  }, [email, router, hasInitialized, session, status]);
 
   // Check session and route user appropriately
   useEffect(() => {
@@ -137,25 +188,22 @@ export default function AuthFlowManager({
 
     console.log("🔐 AuthFlow: Session status:", status, "Session:", !!session);
 
-    // If user is already authenticated and has completed setup
-    if (session?.user && session.user.isVerified) {
+    // If user is already authenticated and verified, check business status
+    if (session?.user && session.user.isVerified && currentStep !== "setup") {
       console.log("✅ AuthFlow: User is authenticated and verified");
       checkBusinessStatus();
       return;
     }
 
-    // If no email provided, redirect back to login
-    if (!email) {
-      console.log("❌ AuthFlow: No email provided, redirecting to login");
+    // If no email provided and no session, redirect back to login
+    if (!email && !session) {
+      console.log("❌ AuthFlow: No email or session, redirecting to login");
       router.push("/login");
       return;
     }
 
-    // Stay on verification step by default
-    if (currentStep === "verification") {
-      console.log("📧 AuthFlow: Staying on verification step");
-      return;
-    }
+    // Stay on current step by default
+    console.log(`📧 AuthFlow: Staying on ${currentStep} step`);
   }, [
     session,
     status,
@@ -226,9 +274,51 @@ export default function AuthFlowManager({
           alignItems: "center",
           justifyContent: "center",
           minHeight: "100vh",
+          backgroundColor: "#f9fafb",
         }}
       >
-        <div>Loading...</div>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "16px",
+          }}
+        >
+          <div
+            style={{
+              width: "40px",
+              height: "40px",
+              border: "4px solid #e5e7eb",
+              borderTop: "4px solid #10b981",
+              borderRadius: "50%",
+              animation: "spin 1s linear infinite",
+            }}
+          ></div>
+          <div style={{ textAlign: "center" }}>
+            <h2
+              style={{
+                fontSize: "18px",
+                fontWeight: "600",
+                color: "#1f2937",
+                margin: "0 0 8px 0",
+              }}
+            >
+              Setting up your account...
+            </h2>
+            <p
+              style={{
+                color: "#6b7280",
+                margin: 0,
+                fontSize: "14px",
+              }}
+            >
+              {status === "loading"
+                ? "Authenticating..."
+                : "Analyzing your profile..."}
+            </p>
+          </div>
+        </div>
       </div>
     );
   }
@@ -256,7 +346,7 @@ export default function AuthFlowManager({
     case "setup":
       return (
         <BusinessSetupForm
-          email={email}
+          email={email || session?.user?.email || ""}
           onSetupComplete={handleSetupComplete}
         />
       );
@@ -271,6 +361,17 @@ export default function AuthFlowManager({
 
     default:
       console.error("❌ AuthFlow: Unknown step:", currentStep);
-      return null;
+      return (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            minHeight: "100vh",
+          }}
+        >
+          <div>Error: Unknown authentication step</div>
+        </div>
+      );
   }
 }

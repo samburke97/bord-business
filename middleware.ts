@@ -1,4 +1,4 @@
-// middleware.ts - SIMPLIFIED FOR OAUTH AND EMAIL CREDS
+// middleware.ts - FIXED - REMOVE BUSINESS-ONBOARDING FROM PUBLIC ROUTES
 import { NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { NextRequest } from "next/server";
@@ -25,7 +25,7 @@ export async function middleware(req: NextRequest) {
     "/api/auth", // ALL NextAuth routes and custom auth routes
     "/auth", // ALL auth pages
     "/verify-email", // Email verification page
-    "/business-onboarding", // Allow business onboarding
+    // REMOVED: "/business-onboarding", - This should be protected!
     "/_next",
     "/favicon.ico",
     "/icons",
