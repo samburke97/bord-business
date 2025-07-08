@@ -13,7 +13,8 @@ function AuthErrorContent() {
   const searchParams = useSearchParams();
   const error = searchParams.get("error");
   const email = searchParams.get("email");
-  const provider = searchParams.get("provider");
+  const available = searchParams.get("available");
+  const attempted = searchParams.get("attempted");
 
   const handleBack = () => {
     window.history.back();
@@ -21,6 +22,51 @@ function AuthErrorContent() {
 
   const getErrorContent = () => {
     switch (error) {
+      case "AccountExistsWithDifferentMethod":
+        const availableMethods = available?.split(",") || [];
+        const methodNames = {
+          email: "Email & Password",
+          google: "Google",
+          facebook: "Facebook",
+        };
+
+        return {
+          title: "Account Already Exists",
+          description: `An account with ${email} already exists. Please sign in using one of your existing methods.`,
+          icon: "👤",
+          content: (
+            <div className={styles.existingMethods}>
+              <p className={styles.subtitle}>Your existing sign-in methods:</p>
+              <ul className={styles.methodsList}>
+                {availableMethods.map((method) => (
+                  <li key={method} className={styles.methodItem}>
+                    <span className={styles.methodIcon}>
+                      {method === "email" && "📧"}
+                      {method === "google" && "🔍"}
+                      {method === "facebook" && "📘"}
+                    </span>
+                    {methodNames[method as keyof typeof methodNames] || method}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ),
+          actions: (
+            <div className={styles.actions}>
+              <Button
+                variant="primary-green"
+                onClick={() => (window.location.href = "/login")}
+                fullWidth
+              >
+                Go to Sign In
+              </Button>
+              <Button variant="secondary" onClick={handleBack} fullWidth>
+                Try Different Email
+              </Button>
+            </div>
+          ),
+        };
+
       case "AccountExistsWithDifferentProvider":
         return {
           title: "Account Already Exists",
@@ -73,7 +119,7 @@ function AuthErrorContent() {
                 onClick={() => (window.location.href = "/login")}
                 fullWidth
               >
-                Try Again
+                Back to Sign In
               </Button>
             </div>
           ),
@@ -81,7 +127,7 @@ function AuthErrorContent() {
     }
   };
 
-  const errorContent = getErrorContent();
+  const { title, description, icon, content, actions } = getErrorContent();
 
   return (
     <div className={styles.container}>
@@ -92,40 +138,18 @@ function AuthErrorContent() {
       />
 
       <div className={styles.content}>
-        <div className={styles.errorContainer}>
-          <div className={styles.iconContainer}>
-            <span className={styles.icon}>{errorContent.icon}</span>
-          </div>
+        <div className={styles.formContainer}>
+          <div className={styles.icon}>{icon}</div>
 
           <TitleDescription
-            title={errorContent.title}
-            description={errorContent.description}
+            title={title}
+            description={description}
+            className={styles.centerText}
           />
 
-          {email && (
-            <div className={styles.emailInfo}>
-              <p className={styles.emailText}>
-                Email: <span className={styles.emailHighlight}>{email}</span>
-              </p>
-              {provider && (
-                <p className={styles.providerText}>
-                  Attempted with:{" "}
-                  {provider.charAt(0).toUpperCase() + provider.slice(1)}
-                </p>
-              )}
-            </div>
-          )}
+          {content && <div className={styles.extraContent}>{content}</div>}
 
-          {errorContent.actions}
-
-          <div className={styles.helpText}>
-            <p>
-              Need help?{" "}
-              <Link href="/support" className={styles.helpLink}>
-                Contact Support
-              </Link>
-            </p>
-          </div>
+          {actions}
         </div>
       </div>
     </div>
@@ -134,7 +158,7 @@ function AuthErrorContent() {
 
 export default function AuthErrorPage() {
   return (
-    <Suspense fallback={<div className={styles.loading}>Loading...</div>}>
+    <Suspense fallback={<div>Loading...</div>}>
       <AuthErrorContent />
     </Suspense>
   );

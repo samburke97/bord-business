@@ -1,4 +1,3 @@
-// components/business/BusinessCategoryStep.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -52,6 +51,7 @@ export default function BusinessCategoryStep({
   const [filteredSports, setFilteredSports] = useState<Sport[]>([]);
   const [sportsSearchQuery, setSportsSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [categoryError, setCategoryError] = useState(false);
 
   // Load available sports
   useEffect(() => {
@@ -66,7 +66,6 @@ export default function BusinessCategoryStep({
         }
       } catch (error) {
         console.error("Error loading sports:", error);
-        // Set some default sports if API fails
         const defaultSports = [
           { id: "1", name: "Football", status: "active" },
           { id: "2", name: "Basketball", status: "active" },
@@ -84,7 +83,6 @@ export default function BusinessCategoryStep({
     loadSports();
   }, []);
 
-  // Filter sports based on search query
   useEffect(() => {
     if (sportsSearchQuery) {
       const filtered = availableSports.filter((sport) =>
@@ -98,6 +96,7 @@ export default function BusinessCategoryStep({
 
   const handleCategoryChange = (value: string) => {
     setBusinessCategory(value);
+    setCategoryError(false);
     const category = BUSINESS_CATEGORIES.find((cat) => cat.value === value);
     setCategoryName(category?.label || "");
   };
@@ -117,17 +116,21 @@ export default function BusinessCategoryStep({
   };
 
   const handleContinue = () => {
+    if (!businessCategory) {
+      setCategoryError(true);
+      return;
+    }
+
+    setCategoryError(false);
     onContinue({
       businessCategory,
       associatedSports: selectedSports,
     });
   };
 
-  // Expose the continue handler for the header button
   useEffect(() => {
     // @ts-ignore
     window.handleStepContinue = handleContinue;
-
     return () => {
       // @ts-ignore
       delete window.handleStepContinue;
@@ -149,12 +152,18 @@ export default function BusinessCategoryStep({
             </label>
             <SearchDropDown
               label=""
-              value={categoryName}
+              value={businessCategory}
               onChange={handleCategoryChange}
               placeholder="Select category"
               options={BUSINESS_CATEGORIES}
               required
+              className={categoryError ? styles.errorInput : ""}
             />
+            {categoryError && (
+              <div className={styles.errorMessage}>
+                Please select a business category.
+              </div>
+            )}
           </div>
 
           <div className={styles.sportsSection}>

@@ -1,6 +1,7 @@
-// lib/auth.ts - COMPLETE FIX FOR SESSION TOKEN ISSUE
+// lib/auth.ts - FIXED OAUTH FLOW TO BUSINESS SETUP
 import { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
+import FacebookProvider from "next-auth/providers/facebook";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import prisma from "@/lib/prisma";
@@ -28,7 +29,16 @@ export const authOptions: NextAuthOptions = {
       },
     }),
 
-    // CREDENTIALS PROVIDER
+    FacebookProvider({
+      clientId: process.env.FACEBOOK_CLIENT_ID!,
+      clientSecret: process.env.FACEBOOK_CLIENT_SECRET!,
+      authorization: {
+        params: {
+          scope: "email",
+        },
+      },
+    }),
+
     CredentialsProvider({
       id: "credentials",
       name: "credentials",
@@ -48,7 +58,6 @@ export const authOptions: NextAuthOptions = {
         }
 
         try {
-          // Find user with credentials
           const user = await prisma.user.findUnique({
             where: { email: credentials.email.toLowerCase().trim() },
             include: {
@@ -72,14 +81,12 @@ export const authOptions: NextAuthOptions = {
             return null;
           }
 
-          // Check account lockout FIRST
           const lockStatus = await checkAccountLockout(user.id);
           if (lockStatus.locked) {
             console.log("❌ Credentials Provider: Account is locked");
             throw new Error("Account is locked");
           }
 
-          // Verify password using your secure Argon2 verification
           const isValidPassword = await verifyPassword(
             credentials.password,
             user.credentials.passwordHash
@@ -91,30 +98,25 @@ export const authOptions: NextAuthOptions = {
             return null;
           }
 
-          // Check if account is active
           if (!user.isActive) {
             console.log("❌ Credentials Provider: Account is inactive");
             return null;
           }
 
-          // Check if account is verified
           if (!user.isVerified) {
             console.log("❌ Credentials Provider: Account is not verified");
             return null;
           }
 
-          // Reset failed attempts on successful login
           await resetFailedAttempts(user.id);
 
           console.log("✅ Credentials Provider: Authorization successful");
 
-          // Return user object that NextAuth expects
           return {
             id: user.id,
             email: user.email,
             name: user.name,
             image: user.image,
-            // Add custom fields that will be available in session
             globalRole: user.globalRole,
             isVerified: user.isVerified,
             isActive: user.isActive,
@@ -127,14 +129,12 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
 
-  // SESSION CONFIGURATION - SWITCH TO JWT FOR CREDENTIALS SUPPORT
   session: {
-    strategy: "jwt", // CRITICAL: Must use JWT with credentials provider
-    maxAge: 24 * 60 * 60, // 24 hours
-    updateAge: 60 * 60, // 1 hour
+    strategy: "jwt",
+    maxAge: 24 * 60 * 60,
+    updateAge: 60 * 60,
   },
 
-  // CRITICAL FIX: Cookie configuration that actually works
   cookies: {
     sessionToken: {
       name: "next-auth.session-token",
@@ -142,8 +142,8 @@ export const authOptions: NextAuthOptions = {
         httpOnly: true,
         sameSite: "lax",
         path: "/",
-        secure: false, // MUST be false for localhost development
-        domain: undefined, // CRITICAL: Don't set domain for localhost
+        secure: false,
+        domain: undefined,
       },
     },
     callbackUrl: {
@@ -168,7 +168,6 @@ export const authOptions: NextAuthOptions = {
     },
   },
 
-  // CALLBACKS - FIXED FOR DATABASE SESSIONS
   callbacks: {
     async signIn({ user, account, profile }) {
       console.log("🔐 SignIn Callback:", {
@@ -178,46 +177,56 @@ export const authOptions: NextAuthOptions = {
       });
 
       try {
-        // For credentials provider - ALWAYS ALLOW (already validated in authorize)
         if (account?.provider === "credentials") {
-          console.log("✅ SignIn Callback: Credentials provider - allowing");
           return true;
         }
 
-        // For OAuth providers (Google)
-        if (account?.provider === "google") {
+        if (
+          account?.provider === "google" ||
+          account?.provider === "facebook"
+        ) {
           if (!user.email) {
-            console.error("OAuth sign-in attempted without email");
+            console.error("❌ OAuth sign-in attempted without email");
             return false;
           }
 
           const existingUser = await prisma.user.findUnique({
             where: { email: user.email },
-            include: { accounts: true, credentials: true },
+            include: {
+              accounts: true,
+              credentials: true,
+            },
           });
 
-          if (existingUser && existingUser.accounts.length > 0) {
-            const hasGoogleAccount = existingUser.accounts.some(
-              (acc) => acc.provider === "google"
+          if (existingUser) {
+            const hasThisProvider = existingUser.accounts.some(
+              (acc) => acc.provider === account.provider
             );
 
-            if (!hasGoogleAccount) {
-              return `/auth/error?error=AccountExistsWithDifferentProvider&email=${encodeURIComponent(user.email)}&provider=google`;
+            if (hasThisProvider) {
+              console.log("✅ User signing in with existing OAuth provider");
+              return true;
             }
+
+            console.log("⚠️ User exists with different sign-in method");
+
+            const hasCredentials = !!existingUser.credentials;
+            const hasGoogle = existingUser.accounts.some(
+              (acc) => acc.provider === "google"
+            );
+            const hasFacebook = existingUser.accounts.some(
+              (acc) => acc.provider === "facebook"
+            );
+
+            let availableMethods = [];
+            if (hasCredentials) availableMethods.push("email");
+            if (hasGoogle) availableMethods.push("google");
+            if (hasFacebook) availableMethods.push("facebook");
+
+            return `/auth/error?error=AccountExistsWithDifferentMethod&email=${encodeURIComponent(user.email)}&available=${availableMethods.join(",")}&attempted=${account.provider}`;
           }
 
-          if (existingUser?.credentials?.id) {
-            await prisma.securityEvent.create({
-              data: {
-                credentialsId: existingUser.credentials.id,
-                eventType: "LOGIN_SUCCESS",
-                description: `OAuth login via ${account.provider}`,
-                ipAddress: null,
-                userAgent: null,
-              },
-            });
-          }
-
+          console.log("✅ New OAuth user - allowing account creation");
           return true;
         }
 
@@ -229,21 +238,17 @@ export const authOptions: NextAuthOptions = {
     },
 
     async session({ session, token }) {
-      console.log("📋 Session Callback: CALLED!", {
+      console.log("📋 Session Callback:", {
         hasSession: !!session,
         hasToken: !!token,
-        strategy: "jwt",
         tokenSub: token?.sub,
       });
 
-      // Ensure session.user exists
       if (!session.user) {
         session.user = {};
       }
 
       if (token) {
-        // JWT strategy - user data comes from token
-        console.log("🔄 Session Callback: Using JWT token data");
         session.user.id = token.sub || "";
         session.user.name = token.name || "";
         session.user.email = token.email || "";
@@ -253,14 +258,6 @@ export const authOptions: NextAuthOptions = {
         session.user.isActive = (token.isActive as boolean) || false;
       }
 
-      console.log("✅ Session Callback: Final session user:", {
-        id: session.user?.id,
-        email: session.user?.email,
-        globalRole: session.user?.globalRole,
-        isVerified: session.user?.isVerified,
-        isActive: session.user?.isActive,
-      });
-
       return session;
     },
 
@@ -269,148 +266,83 @@ export const authOptions: NextAuthOptions = {
         trigger,
         hasUser: !!user,
         hasAccount: !!account,
-        tokenSub: token.sub,
-        strategy: "jwt",
+        provider: account?.provider,
+        tokenSub: token?.sub,
       });
 
-      // If user just signed in, populate token with user data
-      if (user) {
-        console.log("🔄 JWT Callback: Populating token with user data");
+      if (account && user) {
+        console.log("🆕 JWT Callback: Initial sign in");
         token.sub = user.id;
         token.name = user.name;
         token.email = user.email;
         token.picture = user.image;
-        token.globalRole = user.globalRole || "USER";
-        token.isVerified = user.isVerified || false;
-        token.isActive = user.isActive || false;
+        token.globalRole = user.globalRole;
+        token.isVerified = user.isVerified;
+        token.isActive = user.isActive;
       }
 
-      // Handle token refresh
-      if (trigger === "update" && token.sub) {
-        console.log("🔄 JWT Callback: Refreshing token data");
-        const refreshedUser = await prisma.user.findUnique({
-          where: { id: token.sub },
-          select: {
-            globalRole: true,
-            isVerified: true,
-            isActive: true,
-          },
-        });
+      if (trigger === "update" || (!user && token.sub)) {
+        console.log("🔄 JWT Callback: Refreshing user data");
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { id: token.sub as string },
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              image: true,
+              globalRole: true,
+              isVerified: true,
+              isActive: true,
+            },
+          });
 
-        if (refreshedUser) {
-          token.globalRole = refreshedUser.globalRole;
-          token.isVerified = refreshedUser.isVerified;
-          token.isActive = refreshedUser.isActive;
+          if (dbUser) {
+            token.name = dbUser.name;
+            token.email = dbUser.email;
+            token.picture = dbUser.image;
+            token.globalRole = dbUser.globalRole;
+            token.isVerified = dbUser.isVerified;
+            token.isActive = dbUser.isActive;
+          }
+        } catch (error) {
+          console.error("❌ JWT Callback: Error refreshing user data:", error);
         }
       }
-
-      console.log("✅ JWT Callback: Final token:", {
-        sub: token.sub,
-        email: token.email,
-        globalRole: token.globalRole,
-        isVerified: token.isVerified,
-        isActive: token.isActive,
-      });
 
       return token;
     },
 
-    // CRITICAL FIX: Redirect callback that properly handles successful login
     async redirect({ url, baseUrl }) {
       console.log("🔄 Redirect Callback:", { url, baseUrl });
 
-      try {
-        // Always use the request's base URL for consistency
-        const requestBaseUrl = baseUrl;
-
-        // CRITICAL FIX: After successful credentials login, redirect to dashboard
-        // Don't redirect back to password page or auth pages
-        if (url.includes("/auth/password") || url.includes("/auth/")) {
-          const dashboardUrl = `${requestBaseUrl}/dashboard`;
-          console.log(
-            "🏠 Redirect: Auth page detected, redirecting to dashboard:",
-            dashboardUrl
-          );
-          return dashboardUrl;
-        }
-
-        // Handle relative URLs
-        if (url.startsWith("/")) {
-          const finalUrl = `${requestBaseUrl}${url}`;
-
-          // Don't redirect to auth pages
-          if (url.startsWith("/auth/")) {
-            const dashboardUrl = `${requestBaseUrl}/dashboard`;
-            console.log(
-              "🏠 Redirect: Auth relative URL, redirecting to dashboard:",
-              dashboardUrl
-            );
-            return dashboardUrl;
-          }
-
-          console.log("🏠 Redirect: Relative URL:", finalUrl);
-          return finalUrl;
-        }
-
-        // Handle custom error redirects
-        if (url.includes("/auth/error")) {
-          console.log("🏠 Redirect: Error URL:", url);
-          return url;
-        }
-
-        // Parse URLs to check if they're on the same origin
-        try {
-          const redirectUrl = new URL(url);
-          const baseUrlObj = new URL(requestBaseUrl);
-
-          if (redirectUrl.origin === baseUrlObj.origin) {
-            // Same origin - but don't redirect to auth pages
-            if (redirectUrl.pathname.startsWith("/auth/")) {
-              const dashboardUrl = `${requestBaseUrl}/dashboard`;
-              console.log(
-                "🏠 Redirect: Same origin auth page, redirecting to dashboard:",
-                dashboardUrl
-              );
-              return dashboardUrl;
-            }
-
-            console.log("🏠 Redirect: Same origin URL:", url);
-            return url;
-          }
-
-          // Different origin - redirect to dashboard
-          const dashboardUrl = `${requestBaseUrl}/dashboard`;
-          console.log(
-            "🏠 Redirect: Different origin, redirecting to dashboard:",
-            dashboardUrl
-          );
-          return dashboardUrl;
-        } catch {
-          // Invalid URL format - redirect to dashboard
-          const dashboardUrl = `${requestBaseUrl}/dashboard`;
-          console.log(
-            "🏠 Redirect: Invalid URL, redirecting to dashboard:",
-            dashboardUrl
-          );
-          return dashboardUrl;
-        }
-      } catch (error) {
-        console.error("❌ Redirect error:", error);
-        const fallbackUrl = `${baseUrl}/dashboard`;
-        console.log("🏠 Redirect: Fallback URL:", fallbackUrl);
-        return fallbackUrl;
+      if (url.startsWith("/")) {
+        const fullUrl = `${baseUrl}${url}`;
+        console.log("🏠 Redirect: Relative URL:", fullUrl);
+        return fullUrl;
       }
+
+      if (url.startsWith(baseUrl)) {
+        console.log("🏠 Redirect: Same origin URL:", url);
+        return url;
+      }
+
+      // CRITICAL: OAuth users go to business setup, NOT dashboard
+      const businessSetupUrl = `${baseUrl}/auth/setup`;
+      console.log(
+        "🏗️ Redirect: OAuth user to business setup:",
+        businessSetupUrl
+      );
+      return businessSetupUrl;
     },
   },
 
-  // PAGES CONFIGURATION
   pages: {
     signIn: "/login",
-    verifyRequest: "/auth/verify-request",
     error: "/auth/error",
+    verifyRequest: "/auth/verify-request",
   },
 
-  // EVENTS - Enhanced logging
   events: {
     async createUser({ user }) {
       console.log(`Security Event: New user created - ${user.email}`);
@@ -446,12 +378,9 @@ export const authOptions: NextAuthOptions = {
     },
   },
 
-  // ENHANCED DEBUGGING - CRITICAL SETTINGS
   secret: process.env.NEXTAUTH_SECRET,
-  debug: process.env.NODE_ENV === "development", // Only enable debug in development
-  useSecureCookies: false, // CRITICAL: Must be false for localhost development
-
-  // CRITICAL: Ensure proper base URL handling
+  debug: process.env.NODE_ENV === "development",
+  useSecureCookies: false,
   basePath: process.env.NEXTAUTH_BASEPATH || "/api/auth",
 
   logger: {

@@ -255,7 +255,7 @@ export async function POST(request: NextRequest) {
 
       // Send verification email using Resend directly
       const emailResult = await resend.emails.send({
-        from: process.env.FROM_EMAIL || "noreply@bordsports.com", // Use your verified domain
+        from: process.env.FROM_EMAIL || "onboarding@bordsports.com",
         to: sanitizedEmail,
         subject: "Welcome to Bord Business - Verify Your Email",
         html: `

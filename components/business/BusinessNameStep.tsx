@@ -49,7 +49,7 @@ export default function BusinessNameStep({
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setBusinessName(e.target.value);
-    setError(null); // Clear error when user starts typing
+    setError(null);
   };
 
   return (

@@ -1,3 +1,4 @@
+// components/layouts/headers/LocationDetailsHeader.tsx - FIXED CLOSE BUTTON LOGIC
 "use client";
 
 import Button from "@/components/ui/Button";
@@ -46,7 +47,8 @@ const LocationDetailsHeader: React.FC<LocationDetailsHeaderProps> = ({
 
         <div className={styles.navigationRow}>
           <div className={styles.leftButtonContainer}>
-            {isFirstStep ? (
+            {/* FIXED: Only show close button if it's first step AND onClose is provided */}
+            {isFirstStep && onClose ? (
               <IconButton
                 icon={
                   <img
@@ -60,7 +62,7 @@ const LocationDetailsHeader: React.FC<LocationDetailsHeaderProps> = ({
                 aria-label="Close"
                 variant="ghost"
               />
-            ) : (
+            ) : !isFirstStep ? (
               <IconButton
                 icon={
                   <img
@@ -74,7 +76,7 @@ const LocationDetailsHeader: React.FC<LocationDetailsHeaderProps> = ({
                 aria-label="Go back"
                 variant="ghost"
               />
-            )}
+            ) : null}
           </div>
 
           <div className={styles.continueButtonContainer}>

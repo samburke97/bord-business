@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
     // Send verification email using Resend
     try {
       await resend.emails.send({
-        from: "onboarding@resend.dev",
+        from: "onboarding@bordsports.com",
         to: email,
         subject: "Your Verification Code - Bord Business",
         html: `

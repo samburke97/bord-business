@@ -133,3 +133,56 @@
     font-size: 2rem;
   }
 }
+
+.existingMethods {
+  margin: 20px 0;
+  padding: 20px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+}
+
+.subtitle {
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 12px;
+}
+
+.methodsList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.methodItem {
+  display: flex;
+  align-items: center;
+  padding: 8px 0;
+  color: #666;
+  font-size: 14px;
+}
+
+.methodIcon {
+  margin-right: 8px;
+  font-size: 16px;
+}
+
+.centerText {
+  text-align: center;
+}
+
+.extraContent {
+  margin: 20px 0;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.icon {
+  font-size: 48px;
+  text-align: center;
+  margin-bottom: 20px;
+}

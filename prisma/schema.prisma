@@ -15,16 +15,16 @@ datasource db {
 // ============================================================================
 
 enum UserRole {
-  USER           // Regular user
-  ADMIN          // Platform admin
-  SUPER_ADMIN    // Super admin
+  USER // Regular user
+  ADMIN // Platform admin
+  SUPER_ADMIN // Super admin
 }
 
 enum BusinessRole {
-  OWNER          // Business owner (can do everything)
-  MANAGER        // Can manage most aspects
-  STAFF          // Can manage bookings and basic operations
-  VIEWER         // Read-only access
+  OWNER // Business owner (can do everything)
+  MANAGER // Can manage most aspects
+  STAFF // Can manage bookings and basic operations
+  VIEWER // Read-only access
 }
 
 enum BusinessType {
@@ -75,17 +75,17 @@ enum SecurityEventType {
 // ============================================================================
 
 model Account {
-  id                String  @id @default(cuid())
+  id                String   @id @default(cuid())
   userId            String
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?  @db.Text
+  access_token      String?  @db.Text
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String?  @db.Text
   session_state     String?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
@@ -104,12 +104,12 @@ model Session {
   expires      DateTime
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-  
+
   // ENHANCED: Security tracking fields
-  ipAddress    String?  @map("ip_address")
-  userAgent    String?  @map("user_agent")
-  
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ipAddress String? @map("ip_address")
+  userAgent String? @map("user_agent")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([expires])
@@ -121,41 +121,41 @@ model Session {
 // ============================================================================
 
 model UserCredentials {
-  id                String    @id @default(cuid())
-  userId            String    @unique @map("user_id")
-  email             String    @unique
-  
+  id     String @id @default(cuid())
+  userId String @unique @map("user_id")
+  email  String @unique
+
   // Password fields (Argon2 - no salt needed)
-  passwordHash      String    @map("password_hash")
-  
+  passwordHash String @map("password_hash")
+
   // Enhanced Security fields
-  passwordChangedAt DateTime? @map("password_changed_at")
-  passwordExpiresAt DateTime? @map("password_expires_at")
-  mustChangePassword Boolean  @default(false) @map("must_change_password")
-  
+  passwordChangedAt  DateTime? @map("password_changed_at")
+  passwordExpiresAt  DateTime? @map("password_expires_at")
+  mustChangePassword Boolean   @default(false) @map("must_change_password")
+
   // Account lockout system
   failedAttempts    Int       @default(0) @map("failed_attempts")
   lockedAt          DateTime? @map("locked_at")
   lockoutUntil      DateTime? @map("lockout_until")
   lastFailedAttempt DateTime? @map("last_failed_attempt")
-  
+
   // Audit fields
-  createdAt         DateTime  @default(now()) @map("created_at")
-  updatedAt         DateTime  @updatedAt @map("updated_at")
-  lastLoginAt       DateTime? @map("last_login_at")
-  lastLoginIp       String?   @map("last_login_ip")
-  lastLoginUserAgent String?  @map("last_login_user_agent")
-  
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+  lastLoginAt        DateTime? @map("last_login_at")
+  lastLoginIp        String?   @map("last_login_ip")
+  lastLoginUserAgent String?   @map("last_login_user_agent")
+
   // Multi-factor authentication
-  mfaEnabled        Boolean   @default(false) @map("mfa_enabled")
-  mfaSecret         String?   @map("mfa_secret")
-  mfaBackupCodes    String[]  @map("mfa_backup_codes")
-  
+  mfaEnabled     Boolean  @default(false) @map("mfa_enabled")
+  mfaSecret      String?  @map("mfa_secret")
+  mfaBackupCodes String[] @map("mfa_backup_codes")
+
   // Relationships
-  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  passwordHistory   PasswordHistory[]
-  securityEvents    SecurityEvent[]
-  
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  passwordHistory PasswordHistory[]
+  securityEvents  SecurityEvent[]
+
   // Enhanced indexes for security and performance
   @@index([email])
   @@index([userId])
@@ -167,14 +167,14 @@ model UserCredentials {
 
 // NEW: Password history for preventing reuse (enterprise compliance)
 model PasswordHistory {
-  id                String          @id @default(cuid())
-  credentialsId     String          @map("credentials_id")
-  passwordHash      String          @map("password_hash")
-  createdAt         DateTime        @default(now()) @map("created_at")
-  
+  id            String   @id @default(cuid())
+  credentialsId String   @map("credentials_id")
+  passwordHash  String   @map("password_hash")
+  createdAt     DateTime @default(now()) @map("created_at")
+
   // Relationships
-  credentials       UserCredentials @relation(fields: [credentialsId], references: [id], onDelete: Cascade)
-  
+  credentials UserCredentials @relation(fields: [credentialsId], references: [id], onDelete: Cascade)
+
   @@index([credentialsId])
   @@index([createdAt])
   @@map("password_history")
@@ -182,18 +182,18 @@ model PasswordHistory {
 
 // NEW: Security event logging for compliance and monitoring
 model SecurityEvent {
-  id              String              @id @default(cuid())
-  credentialsId   String              @map("credentials_id")
-  eventType       SecurityEventType   @map("event_type")
-  description     String?
-  ipAddress       String?             @map("ip_address")
-  userAgent       String?             @map("user_agent")
-  metadata        Json?               // Additional event data
-  createdAt       DateTime            @default(now()) @map("created_at")
-  
+  id            String            @id @default(cuid())
+  credentialsId String            @map("credentials_id")
+  eventType     SecurityEventType @map("event_type")
+  description   String?
+  ipAddress     String?           @map("ip_address")
+  userAgent     String?           @map("user_agent")
+  metadata      Json? // Additional event data
+  createdAt     DateTime          @default(now()) @map("created_at")
+
   // Relationships
-  credentials     UserCredentials     @relation(fields: [credentialsId], references: [id], onDelete: Cascade)
-  
+  credentials UserCredentials @relation(fields: [credentialsId], references: [id], onDelete: Cascade)
+
   @@index([credentialsId])
   @@index([eventType])
   @@index([createdAt])
@@ -211,38 +211,38 @@ model User {
   emailVerified DateTime?
   image         String?
   phone         String?
-  
+
   // Global role (for platform-wide permissions)
-  globalRole    UserRole  @default(USER) @map("global_role")
-  
+  globalRole UserRole @default(USER) @map("global_role")
+
   // Profile information
-  bio           String?
-  location      String?
-  dateOfBirth   DateTime? @map("date_of_birth")
-  
+  bio         String?
+  location    String?
+  dateOfBirth DateTime? @map("date_of_birth")
+
   // Account status
-  isActive      Boolean   @default(true) @map("is_active")
-  isVerified    Boolean   @default(false) @map("is_verified")
+  isActive           Boolean @default(true) @map("is_active")
+  isVerified         Boolean @default(false) @map("is_verified")
   hasCompletedSignup Boolean @default(false) @map("has_completed_signup")
-  
+
   // Timestamps
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
-  lastLoginAt   DateTime? @map("last_login_at")
-  
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  lastLoginAt DateTime? @map("last_login_at")
+
   // Authentication relationships
-  accounts      Account[]
-  sessions      Session[]
-  credentials   UserCredentials?
-  
+  accounts    Account[]
+  sessions    Session[]
+  credentials UserCredentials?
+
   // Business relationships
-  ownedBusinesses    Business[]     @relation("BusinessOwner")
+  ownedBusinesses     Business[]     @relation("BusinessOwner")
   businessMemberships UserBusiness[]
-  
+
   // Activity relationships  
-  bookings          Booking[]
-  reviews           Review[]
-  favorites         UserFavorite[]
+  bookings  Booking[]
+  reviews   Review[]
+  favorites UserFavorite[]
 
   @@index([email])
   @@index([username])
@@ -264,16 +264,16 @@ model VerificationToken {
 
 // ENHANCED: Password reset tokens with security tracking
 model PasswordResetToken {
-  id         String   @id @default(cuid())
-  email      String
-  token      String   @unique
-  expires    DateTime
-  createdAt  DateTime @default(now()) @map("created_at")
-  
+  id        String   @id @default(cuid())
+  email     String
+  token     String   @unique
+  expires   DateTime
+  createdAt DateTime @default(now()) @map("created_at")
+
   // ENHANCED: Security tracking
-  usedAt     DateTime? @map("used_at")
-  ipAddress  String?   @map("ip_address")
-  userAgent  String?   @map("user_agent")
+  usedAt    DateTime? @map("used_at")
+  ipAddress String?   @map("ip_address")
+  userAgent String?   @map("user_agent")
 
   @@index([email])
   @@index([token])
@@ -287,46 +287,46 @@ model PasswordResetToken {
 // ============================================================================
 
 model Business {
-  id          String       @id @default(uuid())
+  id          String  @id @default(uuid())
   name        String
-  slug        String       @unique
+  slug        String  @unique
   description String?
-  
+
   // Contact information
-  email       String?
-  phone       String?
-  website     String?
-  
+  email   String?
+  phone   String?
+  website String?
+
   // Address information
-  address     String?
-  city        String?
-  state       String?
-  country     String?
-  postalCode  String?     @map("postal_code")
-  latitude    Decimal?
-  longitude   Decimal?
-  
+  address    String?
+  city       String?
+  state      String?
+  country    String?
+  postalCode String?  @map("postal_code")
+  latitude   Decimal?
+  longitude  Decimal?
+
   // Business details
-  logo        String?
-  coverImage  String?     @map("cover_image")
+  logo         String?
+  coverImage   String?      @map("cover_image")
   businessType BusinessType @default(SPORTS_CENTER) @map("business_type")
-  
+
   // Settings
-  isActive    Boolean     @default(true) @map("is_active")
-  isVerified  Boolean     @default(false) @map("is_verified")
-  isPremium   Boolean     @default(false) @map("is_premium")
-  
+  isActive   Boolean @default(true) @map("is_active")
+  isVerified Boolean @default(false) @map("is_verified")
+  isPremium  Boolean @default(false) @map("is_premium")
+
   // Timestamps
-  createdAt   DateTime    @default(now()) @map("created_at")
-  updatedAt   DateTime    @updatedAt @map("updated_at")
-  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
   // Relationships
-  ownerId     String      @map("owner_id")
-  owner       User        @relation("BusinessOwner", fields: [ownerId], references: [id])
-  
-  members     UserBusiness[]
-  centers     Center[]
-  
+  ownerId String          @map("owner_id")
+  owner   User            @relation("BusinessOwner", fields: [ownerId], references: [id])
+  sports  BusinessSport[]
+  members UserBusiness[]
+  centers Center[]
+
   @@index([ownerId])
   @@index([slug])
   @@index([isActive])
@@ -335,32 +335,47 @@ model Business {
 }
 
 model UserBusiness {
-  id          String       @id @default(uuid())
-  userId      String       @map("user_id")
-  businessId  String       @map("business_id")
-  role        BusinessRole @default(STAFF)
-  
+  id         String       @id @default(uuid())
+  userId     String       @map("user_id")
+  businessId String       @map("business_id")
+  role       BusinessRole @default(STAFF)
+
   // Permissions
   permissions Json?
-  
+
   // Status
-  isActive    Boolean      @default(true) @map("is_active")
-  invitedAt   DateTime?    @map("invited_at")
-  joinedAt    DateTime?    @map("joined_at")
-  
+  isActive  Boolean   @default(true) @map("is_active")
+  invitedAt DateTime? @map("invited_at")
+  joinedAt  DateTime? @map("joined_at")
+
   // Timestamps
-  createdAt   DateTime     @default(now()) @map("created_at")
-  updatedAt   DateTime     @updatedAt @map("updated_at")
-  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
   // Relationships
-  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  business    Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
   @@unique([userId, businessId])
   @@index([userId])
   @@index([businessId])
   @@index([role])
   @@map("user_businesses")
+}
+
+model BusinessSport {
+  businessId String   @map("business_id")
+  sportId    String   @map("sport_id")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  sport    Sport    @relation(fields: [sportId], references: [id], onDelete: Cascade)
+
+  @@id([businessId, sportId])
+  @@index([businessId])
+  @@index([sportId])
+  @@map("business_sports")
 }
 
 // ============================================================================
@@ -376,18 +391,18 @@ model Tag {
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
   isDeleted  Boolean   @default(false)
-  deletedAt  DateTime? 
+  deletedAt  DateTime?
 
   // Relationships
   centers               CenterTag[]
   centerAsFacility      CenterFacility[]
   centerAsEstablishment Center[]         @relation("establishment")
   groups                GroupTag[]
-  images                TagImage[]       
+  images                TagImage[]
   sports                SportTag[]
-  
+
   // Activity relationships
-  activitiesAsType      Activity[]       @relation("activity_type")
+  activitiesAsType Activity[] @relation("activity_type")
 
   @@index([name])
   @@map("tags")
@@ -415,8 +430,8 @@ model Center {
   deletedAt       DateTime?
 
   // Business relationship
-  businessId      String?   @map("business_id")
-  business        Business? @relation(fields: [businessId], references: [id])
+  businessId String?   @map("business_id")
+  business   Business? @relation(fields: [businessId], references: [id])
 
   // Existing relationships
   tags         CenterTag[]
@@ -427,11 +442,11 @@ model Center {
   openingHours OpeningHours[]
   sportCenters SportCenter[]
   activities   CenterActivity[]
-  
+
   // New relationships
-  bookings     Booking[]
-  reviews      Review[]
-  favorites    UserFavorite[]
+  bookings  Booking[]
+  reviews   Review[]
+  favorites UserFavorite[]
 
   @@index([name])
   @@index([establishmentId])
@@ -444,16 +459,16 @@ model Center {
 model OpeningHours {
   id        String   @id @default(uuid())
   centerId  String   @map("center_id")
-  dayOfWeek Int      // 0 = Monday, 1 = Tuesday, etc.
+  dayOfWeek Int // 0 = Monday, 1 = Tuesday, etc.
   isOpen    Boolean  @default(true)
-  openTime  String   // Time format "HH:MM" 
-  closeTime String   // Time format "HH:MM"
+  openTime  String // Time format "HH:MM" 
+  closeTime String // Time format "HH:MM"
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   // Relationships
   center Center @relation(fields: [centerId], references: [id], onDelete: Cascade)
-  
+
   @@index([centerId, dayOfWeek])
   @@map("center_opening_hours")
 }
@@ -462,7 +477,7 @@ model CenterImage {
   id         String    @id @default(uuid())
   centerId   String    @map("center_id")
   imageUrl   String    @map("image_url")
-  order      Int       @default(0) @map("display_order") 
+  order      Int       @default(0) @map("display_order")
   lastSeeded DateTime? @map("last_seeded")
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
@@ -597,7 +612,7 @@ model Sport {
   name        String
   imageUrl    String?
   tagCount    Int       @default(0) @map("tag_count")
-  centerCount Int       @default(0) @map("center_count") 
+  centerCount Int       @default(0) @map("center_count")
   lastEdited  DateTime  @default(now()) @map("last_edited")
   lastSeeded  DateTime? @map("last_seeded")
   createdAt   DateTime  @default(now())
@@ -605,9 +620,11 @@ model Sport {
   isDeleted   Boolean   @default(false)
   deletedAt   DateTime?
 
+  businesses BusinessSport[] // ← This is the missing relation
+
   // Relationships
-  tags        SportTag[]
-  centers     SportCenter[]
+  tags    SportTag[]
+  centers SportCenter[]
 
   @@index([name])
   @@map("sports")
@@ -649,23 +666,23 @@ model SportCenter {
 
 // Activity models
 model Activity {
-  id           String    @id @default(uuid())
-  title        String    @db.VarChar(20)  // Max 20 characters
-  description  String?   @db.VarChar(500) // Max 500 characters
-  imageUrl     String?
-  buttonTitle  String?   @db.VarChar(30)  // Max 30 characters
-  buttonLink   String?
-  lastEdited   DateTime  @default(now()) @map("last_edited")
-  lastSeeded   DateTime? @map("last_seeded")
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  isDeleted    Boolean   @default(false)
-  deletedAt    DateTime?
-  
+  id          String    @id @default(uuid())
+  title       String    @db.VarChar(20) // Max 20 characters
+  description String?   @db.VarChar(500) // Max 500 characters
+  imageUrl    String?
+  buttonTitle String?   @db.VarChar(30) // Max 30 characters
+  buttonLink  String?
+  lastEdited  DateTime  @default(now()) @map("last_edited")
+  lastSeeded  DateTime? @map("last_seeded")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  isDeleted   Boolean   @default(false)
+  deletedAt   DateTime?
+
   // Relationships
-  activityType   Tag?       @relation("activity_type", fields: [activityTypeId], references: [id])
-  activityTypeId String?    @map("activity_type_id")
-  centers        CenterActivity[]
+  activityType    Tag?              @relation("activity_type", fields: [activityTypeId], references: [id])
+  activityTypeId  String?           @map("activity_type_id")
+  centers         CenterActivity[]
   pricingVariants ActivityPricing[]
 
   @@index([title])
@@ -687,24 +704,24 @@ model CenterActivity {
   activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
 
   @@id([centerId, activityId])
-  @@index([centerId, displayOrder]) 
+  @@index([centerId, displayOrder])
   @@index([activityId])
   @@map("center_activities")
 }
 
 // Pricing variants for Activities
 model ActivityPricing {
-  id           String   @id @default(uuid())
-  activityId   String   @map("activity_id")
-  price        Decimal  @db.Decimal(10, 2)
-  
+  id         String  @id @default(uuid())
+  activityId String  @map("activity_id")
+  price      Decimal @db.Decimal(10, 2)
+
   // String fields replacing relationships
-  playerType   String   @map("player_type") 
-  duration     String?  @map("duration")    
-  priceType    String   @map("price_type")  
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  
+  playerType String   @map("player_type")
+  duration   String?  @map("duration")
+  priceType  String   @map("price_type")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
   // Relationship to parent activity
   activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
 
@@ -715,32 +732,32 @@ model ActivityPricing {
 }
 
 model Booking {
-  id          String        @id @default(uuid())
-  userId      String        @map("user_id")
-  centerId    String        @map("center_id")
-  
+  id       String @id @default(uuid())
+  userId   String @map("user_id")
+  centerId String @map("center_id")
+
   // Booking details
-  activityId  String?       @map("activity_id")
-  date        DateTime
-  startTime   DateTime      @map("start_time")
-  endTime     DateTime      @map("end_time")
-  participants Int          @default(1)
-  
+  activityId   String?  @map("activity_id")
+  date         DateTime
+  startTime    DateTime @map("start_time")
+  endTime      DateTime @map("end_time")
+  participants Int      @default(1)
+
   // Pricing
-  totalAmount Decimal       @db.Decimal(10, 2) @map("total_amount")
-  currency    String        @default("USD")
-  
+  totalAmount Decimal @map("total_amount") @db.Decimal(10, 2)
+  currency    String  @default("USD")
+
   // Status
-  status      BookingStatus @default(PENDING)
-  
+  status BookingStatus @default(PENDING)
+
   // Timestamps
-  createdAt   DateTime      @default(now()) @map("created_at")
-  updatedAt   DateTime      @updatedAt @map("updated_at")
-  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
   // Relationships
-  user        User          @relation(fields: [userId], references: [id])
-  center      Center        @relation(fields: [centerId], references: [id])
-  
+  user   User   @relation(fields: [userId], references: [id])
+  center Center @relation(fields: [centerId], references: [id])
+
   @@index([userId])
   @@index([centerId])
   @@index([date])
@@ -749,25 +766,25 @@ model Booking {
 }
 
 model Review {
-  id        String   @id @default(uuid())
-  userId    String   @map("user_id")
-  centerId  String   @map("center_id")
-  
+  id       String @id @default(uuid())
+  userId   String @map("user_id")
+  centerId String @map("center_id")
+
   // Review content
-  rating    Int      // 1-5 stars
-  title     String?
-  content   String?
-  
+  rating  Int // 1-5 stars
+  title   String?
+  content String?
+
   // Status
-  isVisible Boolean  @default(true) @map("is_visible")
-  
+  isVisible Boolean @default(true) @map("is_visible")
+
   // Timestamps
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
-  
+
   // Relationships
-  user      User     @relation(fields: [userId], references: [id])
-  center    Center   @relation(fields: [centerId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+  center Center @relation(fields: [centerId], references: [id])
 
   @@unique([userId, centerId]) // One review per user per center
   @@index([centerId])
@@ -780,10 +797,10 @@ model UserFavorite {
   userId    String   @map("user_id")
   centerId  String   @map("center_id")
   createdAt DateTime @default(now()) @map("created_at")
-  
+
   // Relationships
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  center    Center   @relation(fields: [centerId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  center Center @relation(fields: [centerId], references: [id], onDelete: Cascade)
 
   @@unique([userId, centerId])
   @@index([userId])

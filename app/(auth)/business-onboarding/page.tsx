@@ -1,8 +1,9 @@
-// app/(auth)/business-onboarding/page.tsx - COMPLETE UPDATED VERSION
+// app/(auth)/business-onboarding/page.tsx - MINIMAL CHANGES TO ORIGINAL
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import LocationDetailsHeader from "@/components/layouts/headers/LocationDetailsHeader";
 import BusinessNameStep from "@/components/business/BusinessNameStep";
 import BusinessCategoryStep from "@/components/business/BusinessCategoryStep";
@@ -46,8 +47,10 @@ const STEPS = [
 
 export default function BusinessOnboardingPage() {
   const router = useRouter();
+  const { data: session, status } = useSession();
   const [currentStep, setCurrentStep] = useState(0);
   const [isCreating, setIsCreating] = useState(false);
+  const [isCheckingStatus, setIsCheckingStatus] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState<BusinessFormData>({
@@ -65,6 +68,90 @@ export default function BusinessOnboardingPage() {
   });
 
   const stepRef = useRef<HTMLDivElement>(null);
+
+  // ADD BUSINESS STATUS CHECK ON LOAD
+  useEffect(() => {
+    const checkBusinessStatus = async () => {
+      if (status === "loading") return;
+
+      if (!session) {
+        router.push("/login");
+        return;
+      }
+
+      try {
+        console.log("🔍 Business Onboarding: Checking if user needs setup...");
+
+        const response = await fetch("/api/user/business-status", {
+          method: "GET",
+          credentials: "include",
+        });
+
+        if (!response.ok) {
+          console.error(
+            "Business status check failed, continuing with onboarding"
+          );
+          setIsCheckingStatus(false);
+          return;
+        }
+
+        const data = await response.json();
+        console.log("📊 Business Onboarding: Status check result:", data);
+
+        // If user doesn't need setup, redirect to dashboard
+        if (!data.needsSetup) {
+          console.log(
+            "✅ Business Onboarding: User already has business setup - redirecting to dashboard"
+          );
+          router.push("/dashboard");
+          return;
+        }
+
+        console.log(
+          "🏗️ Business Onboarding: User needs setup - showing onboarding flow"
+        );
+        setIsCheckingStatus(false);
+      } catch (error) {
+        console.error("❌ Business Onboarding: Error checking status:", error);
+        // On error, show the onboarding flow (safer fallback)
+        setIsCheckingStatus(false);
+      }
+    };
+
+    checkBusinessStatus();
+  }, [session, status, router]);
+
+  // Show loading while checking status
+  if (status === "loading" || isCheckingStatus) {
+    return (
+      <div className={styles.container}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            minHeight: "100vh",
+            gap: "16px",
+          }}
+        >
+          <div
+            style={{
+              width: "40px",
+              height: "40px",
+              border: "4px solid #e5e7eb",
+              borderTop: "4px solid #10b981",
+              borderRadius: "50%",
+              animation: "spin 1s linear infinite",
+            }}
+          ></div>
+          <p style={{ color: "#6b7280", margin: 0 }}>
+            Checking your account setup...
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const handleContinue = async (data: Partial<BusinessFormData>) => {
     const updatedFormData = { ...formData, ...data };
@@ -94,6 +181,29 @@ export default function BusinessOnboardingPage() {
       setIsCreating(true);
       setError(null);
 
+      console.log("🏢 Business Onboarding: Creating business with data:", data);
+
+      // Validate required fields before sending
+      if (
+        !data.businessName ||
+        !data.businessCategory ||
+        !data.streetAddress ||
+        !data.city ||
+        !data.state ||
+        !data.postcode
+      ) {
+        console.error("❌ Business Onboarding: Missing required fields:", {
+          businessName: !!data.businessName,
+          businessCategory: !!data.businessCategory,
+          streetAddress: !!data.streetAddress,
+          city: !!data.city,
+          state: !!data.state,
+          postcode: !!data.postcode,
+        });
+        setError("Please complete all required fields");
+        return;
+      }
+
       // Call the USER business creation API (not admin API)
       const response = await fetch("/api/user/business", {
         method: "POST",
@@ -108,7 +218,7 @@ export default function BusinessOnboardingPage() {
           aptSuite: data.aptSuite,
           city: data.city,
           state: data.state,
-          postalCode: data.postcode,
+          postalCode: data.postcode, // FIXED: API expects postalCode, form has postcode
           latitude: data.latitude,
           longitude: data.longitude,
           sports: data.associatedSports,
@@ -121,10 +231,12 @@ export default function BusinessOnboardingPage() {
         throw new Error(responseData.error || "Failed to create business");
       }
 
+      console.log("✅ Business Onboarding: Business created successfully!");
+
       // Show congratulations step
       setCurrentStep(STEPS.length);
     } catch (error) {
-      console.error("Error creating business:", error);
+      console.error("❌ Business Onboarding: Error creating business:", error);
       setError(
         error instanceof Error ? error.message : "Failed to create business"
       );
@@ -251,7 +363,7 @@ export default function BusinessOnboardingPage() {
           onBack={handleBack}
           onContinue={handleHeaderContinue}
           className={styles.header}
-          onClose={handleClose}
+          onClose={undefined} // Remove close button for business onboarding
           mode="create"
           disableContinue={isCreating} // Disable while creating
         />

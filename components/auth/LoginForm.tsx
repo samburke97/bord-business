@@ -88,16 +88,12 @@ export default function LoginForm({
     setEmailError(null);
 
     try {
-      // Check if this is a business setup continuation
       const continueBusinessSetup =
         searchParams.get("continue_business_setup") === "true";
 
-      // Check if user exists and route accordingly
       const response = await fetch("/api/auth/check-user-status", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
 
@@ -107,21 +103,35 @@ export default function LoginForm({
 
       const userData = await response.json();
 
-      if (userData.exists && userData.isVerified) {
-        // EXISTING USER FLOW
-        if (continueBusinessSetup) {
-          // For business setup continuation, go directly to password then business creation
+      if (userData.exists) {
+        const methods = userData.methods || [];
+
+        // If user exists but DOES NOT have email credentials and has other methods, redirect to error page
+        if (!methods.includes("email") && methods.length > 0) {
           router.push(
-            `/auth/password?email=${encodeURIComponent(email)}&type=login&name=${encodeURIComponent(userData.name || "")}&continue_business_setup=true`
+            `/auth/error?error=AccountExistsWithDifferentMethod&email=${encodeURIComponent(
+              email
+            )}&available=${methods.join(",")}&attempted=email`
+          );
+          return;
+        }
+
+        // User has email credentials - continue normal flow
+        if (continueBusinessSetup) {
+          router.push(
+            `/auth/password?email=${encodeURIComponent(email)}&type=login&name=${encodeURIComponent(
+              userData.name || ""
+            )}&continue_business_setup=true`
           );
         } else {
-          // Regular login flow
           router.push(
-            `/auth/password?email=${encodeURIComponent(email)}&type=login&name=${encodeURIComponent(userData.name || "")}`
+            `/auth/password?email=${encodeURIComponent(email)}&type=login&name=${encodeURIComponent(
+              userData.name || ""
+            )}`
           );
         }
       } else {
-        // NEW USER FLOW: Go directly to business setup (with password included)
+        // New user - go to setup
         router.push(`/auth/setup?email=${encodeURIComponent(email)}`);
       }
     } catch (error) {

@@ -15,11 +15,8 @@ function PasswordContent() {
 
   const handlePasswordComplete = () => {
     if (isNewUser) {
-      // New users go to email verification after setting password
       window.location.href = `/verify-email?email=${encodeURIComponent(email)}`;
     } else {
-      // Existing users are handled in PasswordScreen component
-      // This shouldn't be called for existing users since they sign in directly
     }
   };
 

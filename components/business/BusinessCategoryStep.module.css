@@ -56,3 +56,14 @@
   padding: 2rem;
   color: var(--text-light);
 }
+
+.errorInput {
+  border: 1px solid var(--red-wine);
+  border-radius: 4px;
+}
+
+.errorMessage {
+  color: var(--red-wine);
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}

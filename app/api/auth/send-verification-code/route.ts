@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
     // Send verification email
     try {
       const emailResult = await resend.emails.send({
-        from: process.env.FROM_EMAIL || "noreply@bordsports.com", // UPDATED: Use verified domain
+        from: process.env.FROM_EMAIL || "noreply@bordsports.com",
         to: email,
         subject: emailSubject,
         html: `

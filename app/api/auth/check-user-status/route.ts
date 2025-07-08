@@ -1,4 +1,3 @@
-// app/api/auth/check-user-status/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
@@ -13,16 +12,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if user exists
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Check if user exists with related accounts and credentials
     const user = await prisma.user.findUnique({
-      where: { email },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        isVerified: true,
-        isActive: true,
-        createdAt: true,
+      where: { email: normalizedEmail },
+      include: {
+        accounts: true,
+        credentials: true,
       },
     });
 
@@ -40,6 +37,9 @@ export async function POST(request: NextRequest) {
       isVerified: user.isVerified,
       isActive: user.isActive,
       needsVerification: !user.isVerified,
+      // Include provider info to help frontend decide routing/error
+      providers: user.accounts.map((acc) => acc.provider),
+      hasCredentials: !!user.credentials,
     });
   } catch (error) {
     console.error("User status check error:", error);

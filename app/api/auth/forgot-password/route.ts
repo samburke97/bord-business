@@ -154,7 +154,7 @@ export async function POST(request: NextRequest) {
           // Send password reset email
           try {
             const emailResult = await resend.emails.send({
-              from: process.env.FROM_EMAIL || "onboarding@resend.dev",
+              from: process.env.FROM_EMAIL || "noreply@resend.dev",
               to: sanitizedEmail,
               subject: "🔐 Reset Your Bord Business Password",
               html: `
