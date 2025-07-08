@@ -131,8 +131,8 @@ export const authOptions: NextAuthOptions = {
 
   session: {
     strategy: "jwt",
-    maxAge: 24 * 60 * 60,
-    updateAge: 60 * 60,
+    maxAge: 24 * 60 * 60, // 24 hours
+    updateAge: 60 * 60, // 1 hour
   },
 
   cookies: {
@@ -313,8 +313,8 @@ export const authOptions: NextAuthOptions = {
       return token;
     },
 
-    async redirect({ url, baseUrl }) {
-      console.log("🔄 Redirect Callback:", { url, baseUrl });
+    async redirect({ url, baseUrl, token }) {
+      console.log("🔄 Redirect Callback:", { url, baseUrl, token });
 
       if (url.startsWith("/")) {
         const fullUrl = `${baseUrl}${url}`;
@@ -327,13 +327,94 @@ export const authOptions: NextAuthOptions = {
         return url;
       }
 
-      // CRITICAL: OAuth users go to business setup, NOT dashboard
-      const businessSetupUrl = `${baseUrl}/auth/setup`;
-      console.log(
-        "🏗️ Redirect: OAuth user to business setup:",
-        businessSetupUrl
-      );
-      return businessSetupUrl;
+      // FIXED: Check if OAuth user needs profile completion
+      if (token?.sub) {
+        try {
+          console.log("🔍 Redirect: Checking OAuth user profile status...");
+
+          const user = await prisma.user.findUnique({
+            where: { id: token.sub as string },
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              username: true,
+              phone: true,
+              dateOfBirth: true,
+              ownedBusinesses: {
+                where: { isActive: true },
+                select: { id: true },
+              },
+              businessMemberships: {
+                where: { isActive: true },
+                select: { id: true },
+              },
+            },
+          });
+
+          if (!user) {
+            console.log("❌ Redirect: User not found, sending to setup");
+            return `${baseUrl}/auth/setup`;
+          }
+
+          // CRITICAL FIX: Check if profile is complete - ALL fields must be present
+          const hasCompleteProfile = !!(
+            user.firstName &&
+            user.lastName &&
+            user.username && // ← CRITICAL: OAuth users never have this initially
+            user.phone && // ← CRITICAL: OAuth users never have this initially
+            user.dateOfBirth // ← CRITICAL: OAuth users never have this initially
+          );
+
+          // Check if user has business setup
+          const hasBusiness =
+            user.ownedBusinesses.length > 0 ||
+            user.businessMemberships.length > 0;
+
+          console.log("📊 Redirect: OAuth user analysis:", {
+            userId: user.id,
+            hasFirstName: !!user.firstName,
+            hasLastName: !!user.lastName,
+            hasUsername: !!user.username, // ← This will be false for new OAuth users
+            hasPhone: !!user.phone, // ← This will be false for new OAuth users
+            hasDateOfBirth: !!user.dateOfBirth, // ← This will be false for new OAuth users
+            hasCompleteProfile, // ← This will be false for new OAuth users
+            hasBusiness,
+            redirect: !hasCompleteProfile
+              ? "/auth/setup"
+              : !hasBusiness
+                ? "/business-onboarding"
+                : "/dashboard",
+          });
+
+          // NEW OAUTH USERS: Missing username, phone, dateOfBirth → go to setup
+          if (!hasCompleteProfile) {
+            console.log(
+              "🏗️ Redirect: OAuth user needs profile setup (missing username/phone/DOB)"
+            );
+            return `${baseUrl}/auth/setup`;
+          }
+
+          // RETURNING OAUTH USERS: Complete profile but no business → business onboarding
+          if (!hasBusiness) {
+            console.log("🏢 Redirect: OAuth user needs business onboarding");
+            return `${baseUrl}/business-onboarding`;
+          }
+
+          // FULLY SETUP OAUTH USERS: Complete profile + business → dashboard
+          console.log(
+            "✅ Redirect: OAuth user fully setup, going to dashboard"
+          );
+          return `${baseUrl}/dashboard`;
+        } catch (error) {
+          console.error("❌ Redirect: Error checking user status:", error);
+          // Fallback to setup on error
+          return `${baseUrl}/auth/setup`;
+        }
+      }
+
+      console.log("🏠 Redirect: Default fallback to dashboard");
+      return `${baseUrl}/dashboard`;
     },
   },
 
