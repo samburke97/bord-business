@@ -1,4 +1,4 @@
-// lib/auth.ts - COMPLETE FIXED VERSION
+// lib/auth.ts - FIXED redirect to prevent dashboard flashing
 import { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import FacebookProvider from "next-auth/providers/facebook";
@@ -27,8 +27,6 @@ export const authOptions: NextAuthOptions = {
           response_type: "code",
         },
       },
-      // FORCE all OAuth users to go through setup
-      callbackUrl: `${process.env.NEXTAUTH_URL}/auth/setup`,
     }),
 
     FacebookProvider({
@@ -39,8 +37,6 @@ export const authOptions: NextAuthOptions = {
           scope: "email",
         },
       },
-      // FORCE all OAuth users to go through setup
-      callbackUrl: `${process.env.NEXTAUTH_URL}/auth/setup`,
     }),
 
     CredentialsProvider({
@@ -242,12 +238,6 @@ export const authOptions: NextAuthOptions = {
     },
 
     async session({ session, token }) {
-      console.log("📋 Session Callback:", {
-        hasSession: !!session,
-        hasToken: !!token,
-        tokenSub: token?.sub,
-      });
-
       if (!session.user) {
         session.user = {};
       }
@@ -266,14 +256,6 @@ export const authOptions: NextAuthOptions = {
     },
 
     async jwt({ token, user, account, trigger }) {
-      console.log("🎟️ JWT Callback:", {
-        trigger,
-        hasUser: !!user,
-        hasAccount: !!account,
-        provider: account?.provider,
-        tokenSub: token?.sub,
-      });
-
       if (account && user) {
         console.log("🆕 JWT Callback: Initial sign in");
         token.sub = user.id;
@@ -285,8 +267,14 @@ export const authOptions: NextAuthOptions = {
         token.isActive = user.isActive;
       }
 
-      if (trigger === "update" || (!user && token.sub)) {
-        console.log("🔄 JWT Callback: Refreshing user data");
+      // Only refresh user data periodically, not on every request
+      if (
+        trigger === "update" ||
+        (!user &&
+          token.sub &&
+          (!token.lastRefresh ||
+            Date.now() - (token.lastRefresh as number) > 5 * 60 * 1000))
+      ) {
         try {
           const dbUser = await prisma.user.findUnique({
             where: { id: token.sub as string },
@@ -308,6 +296,7 @@ export const authOptions: NextAuthOptions = {
             token.globalRole = dbUser.globalRole;
             token.isVerified = dbUser.isVerified;
             token.isActive = dbUser.isActive;
+            token.lastRefresh = Date.now();
           }
         } catch (error) {
           console.error("❌ JWT Callback: Error refreshing user data:", error);
@@ -318,29 +307,36 @@ export const authOptions: NextAuthOptions = {
     },
 
     async redirect({ url, baseUrl, token }) {
-      console.log("🔄 Redirect Callback:", { url, baseUrl, token });
+      // CRITICAL FIX: Never redirect to dashboard until user is fully set up
+      // Always send OAuth users to /auth/setup which will handle the routing logic
 
       if (url.startsWith("/")) {
         const fullUrl = `${baseUrl}${url}`;
-        console.log("🏠 Redirect: Relative URL:", fullUrl);
+
+        // If someone tries to go to dashboard, send them to setup instead
+        if (url === "/dashboard") {
+          console.log(
+            "🔄 Redirect: Dashboard requested, sending to setup for verification"
+          );
+          return `${baseUrl}/auth/setup`;
+        }
+
         return fullUrl;
       }
 
       if (url.startsWith(baseUrl)) {
-        console.log("🏠 Redirect: Same origin URL:", url);
+        // If it's a dashboard URL, redirect to setup
+        if (url.includes("/dashboard")) {
+          console.log("🔄 Redirect: Dashboard URL detected, sending to setup");
+          return `${baseUrl}/auth/setup`;
+        }
+
         return url;
       }
 
-      // SIMPLIFIED: ALL OAuth users go to setup form - let BusinessSetupForm handle the logic
-      if (token?.sub) {
-        console.log(
-          "🔄 Redirect: OAuth user detected, sending to business setup form"
-        );
-        return `${baseUrl}/auth/setup`;
-      }
-
-      console.log("🏠 Redirect: Default fallback to dashboard");
-      return `${baseUrl}/dashboard`;
+      // ALL users (OAuth and credentials) go to setup first
+      console.log("🔄 Redirect: Sending user to setup for proper flow");
+      return `${baseUrl}/auth/setup`;
     },
   },
 
@@ -398,7 +394,15 @@ export const authOptions: NextAuthOptions = {
       console.warn(`NextAuth Warning [${code}]`);
     },
     debug(code, metadata) {
-      console.debug(`NextAuth Debug [${code}]:`, metadata);
+      // Only log important debug messages to reduce noise
+      const importantDebugCodes = [
+        "CREATE_STATE",
+        "GET_AUTHORIZATION_URL",
+        "OAUTH_CALLBACK_RESPONSE",
+      ];
+      if (importantDebugCodes.includes(code)) {
+        console.debug(`NextAuth Debug [${code}]:`, metadata);
+      }
     },
   },
 };

@@ -1,4 +1,3 @@
-// app/page.tsx - SIMPLIFIED TO PREVENT RACING REDIRECTS
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
@@ -14,8 +13,10 @@ export default async function Home() {
     return;
   }
 
+  // CRITICAL FIX: Never redirect to dashboard from here
+  // Always send authenticated users to /auth/setup which will handle the proper routing
   console.log(
-    "🏠 Home page: User authenticated, redirecting to auth/setup to check profile"
+    "🏠 Home page: Authenticated user, sending to setup for verification"
   );
   redirect("/auth/setup");
 }

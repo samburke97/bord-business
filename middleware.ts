@@ -1,13 +1,10 @@
-// middleware.ts - FIXED - REMOVE BUSINESS-ONBOARDING FROM PUBLIC ROUTES
+// middleware.ts - FIXED - Reduced logging and better route protection
 import { NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { NextRequest } from "next/server";
 
 export async function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
-  const startTime = Date.now();
-
-  console.log(`🔒 Middleware: Processing ${req.method} ${pathname}`);
 
   // Apply basic security headers
   const response = NextResponse.next();
@@ -17,29 +14,33 @@ export async function middleware(req: NextRequest) {
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
 
   // ============================================================================
-  // ALWAYS ALLOW: Authentication and public routes
+  // ALWAYS ALLOW: Authentication and public routes (NO LOGGING)
   // ============================================================================
 
   const alwaysAllowRoutes = [
     "/login",
-    "/api/auth", // ALL NextAuth routes and custom auth routes
-    "/auth", // ALL auth pages
-    "/verify-email", // Email verification page
-    // REMOVED: "/business-onboarding", - This should be protected!
+    "/api/auth", // ALL NextAuth routes
+    "/auth", // ALL auth pages including /auth/setup
+    "/verify-email",
     "/_next",
     "/favicon.ico",
     "/icons",
     "/images",
     "/public",
+    ".svg", // Allow SVG files
+    ".png", // Allow PNG files
+    ".jpg", // Allow JPG files
+    ".jpeg", // Allow JPEG files
+    ".ico", // Allow ICO files
   ];
 
   // Check if route should always be allowed
-  const isAlwaysAllowed = alwaysAllowRoutes.some((route) =>
-    pathname.startsWith(route)
+  const isAlwaysAllowed = alwaysAllowRoutes.some(
+    (route) => pathname.startsWith(route) || pathname.endsWith(route)
   );
 
   if (isAlwaysAllowed) {
-    console.log(`✅ Middleware: Allowing public route ${pathname}`);
+    // NO LOGGING for public routes - reduces noise
     return response;
   }
 
@@ -53,20 +54,20 @@ export async function middleware(req: NextRequest) {
       secret: process.env.NEXTAUTH_SECRET,
     });
 
-    console.log("🔐 Middleware: Token check result:", {
-      hasToken: !!token,
-      userId: token?.sub,
-      userEmail: token?.email,
-      userRole: token?.globalRole,
-      isAuthenticated: !!token,
-    });
+    // Only log for important routes, not API status checks
+    const shouldLog = !pathname.includes("/api/user/profile-status");
+
+    if (shouldLog) {
+      console.log(`🔒 Middleware: Processing ${req.method} ${pathname}`);
+    }
 
     if (!token) {
-      console.log(`❌ Middleware: No valid token found for ${pathname}`);
+      if (shouldLog) {
+        console.log(`❌ Middleware: No valid token found for ${pathname}`);
+      }
 
       // For API routes, return 401 JSON response
       if (pathname.startsWith("/api/")) {
-        console.log(`🔒 Middleware: Returning 401 for API route ${pathname}`);
         return NextResponse.json(
           { error: "Unauthorized", message: "Authentication required" },
           { status: 401 }
@@ -74,9 +75,6 @@ export async function middleware(req: NextRequest) {
       }
 
       // For page routes, redirect to login
-      console.log(
-        `🔒 Middleware: Redirecting to login for page route ${pathname}`
-      );
       const loginUrl = new URL("/login", req.url);
       loginUrl.searchParams.set("return_to", pathname);
       return NextResponse.redirect(loginUrl);
@@ -90,8 +88,6 @@ export async function middleware(req: NextRequest) {
       isActive: token.isActive,
       isVerified: token.isVerified,
     };
-
-    console.log(`🔐 Middleware: User info for ${pathname}:`, userInfo);
 
     // Check if user account is active
     if (userInfo.isActive === false) {
@@ -115,13 +111,10 @@ export async function middleware(req: NextRequest) {
     }
 
     // ============================================================================
-    // Route protection - SIMPLIFIED
+    // Admin route protection
     // ============================================================================
 
-    // API routes that require admin access
     const adminApiRoutes = ["/api/admin"];
-
-    // Routes that require admin access only
     const adminOnlyRoutes = ["/admin", "/system-settings", "/user-management"];
 
     const isAdminApiRoute = adminApiRoutes.some((route) =>
@@ -146,28 +139,15 @@ export async function middleware(req: NextRequest) {
 
     // For admin-only routes, check role
     if (isAdminOnlyRoute && userInfo) {
-      console.log(`🛡️ Middleware: Checking admin access for ${pathname}`);
-
       if (
         userInfo.globalRole !== "ADMIN" &&
         userInfo.globalRole !== "SUPER_ADMIN"
       ) {
-        console.log(
-          `❌ Middleware: Access denied - admin required for ${pathname} (user has ${userInfo.globalRole})`
-        );
-
         const errorUrl = new URL("/auth/error", req.url);
         errorUrl.searchParams.set("error", "AccessDenied");
         return NextResponse.redirect(errorUrl);
       }
-
-      console.log(
-        `✅ Middleware: Admin access granted for ${userInfo.email} (${userInfo.globalRole})`
-      );
     }
-
-    const processingTime = Date.now() - startTime;
-    console.log(`✅ Middleware: Request processed in ${processingTime}ms`);
 
     return response;
   } catch (error) {
@@ -192,7 +172,11 @@ export async function middleware(req: NextRequest) {
 export const config = {
   matcher: [
     /*
-     * Match all request paths except static files
+     * Match all request paths except for:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public folder
      */
     "/((?!_next/static|_next/image|favicon.ico|public/).*)",
   ],

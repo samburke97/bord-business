@@ -1,9 +1,8 @@
-// app/(auth)/auth/congratulations/page.tsx
+// app/(auth)/auth/congratulations/page.tsx - FIXED - Route to business onboarding
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { signIn } from "next-auth/react";
 import Congratulations from "@/components/auth/Congratulations";
 
 export default function CongratulationsPage() {
@@ -18,11 +17,12 @@ export default function CongratulationsPage() {
     setIsLoading(true);
 
     try {
-      // Simply redirect to business onboarding
-      // Made it public in middleware for testing
+      // CRITICAL FIX: This should go to business onboarding, not dashboard
+      console.log("🏗️ Congratulations: Redirecting to business onboarding");
       router.push("/business-onboarding");
     } catch (error) {
-      console.error("Continue error:", error);
+      console.error("❌ Congratulations: Continue error:", error);
+      // Fallback to business onboarding
       router.push("/business-onboarding");
     } finally {
       setIsLoading(false);
@@ -31,6 +31,7 @@ export default function CongratulationsPage() {
 
   const handleRemindLater = () => {
     // Route back to bord-player app like in login form
+    console.log("⏰ Congratulations: Remind later selected");
     window.location.href = "https://bord-player.vercel.app/";
   };
 
@@ -44,7 +45,22 @@ export default function CongratulationsPage() {
           minHeight: "100vh",
         }}
       >
-        Preparing business setup...
+        <div style={{ textAlign: "center" }}>
+          <div
+            style={{
+              width: "40px",
+              height: "40px",
+              border: "4px solid #e5e7eb",
+              borderTop: "4px solid #10b981",
+              borderRadius: "50%",
+              animation: "spin 1s linear infinite",
+              margin: "0 auto 16px",
+            }}
+          />
+          <p style={{ color: "#6b7280", margin: 0 }}>
+            Preparing business setup...
+          </p>
+        </div>
       </div>
     );
   }

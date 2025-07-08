@@ -1,4 +1,4 @@
-// components/ui/TextInput.tsx - FIXED WITH onEnter SUPPORT
+// components/ui/TextInput.tsx - MINIMAL FIX - Only fix the loading prop issue
 "use client";
 
 import React, {
@@ -17,7 +17,7 @@ interface TextInputProps
   label?: string;
   value: string;
   onChange: (e: ChangeEvent<HTMLInputElement>) => void;
-  onEnter?: () => void; // ADD THIS PROP
+  onEnter?: () => void;
   error?: string | null;
   showCharCount?: boolean;
   labelClassName?: string;
@@ -25,6 +25,7 @@ interface TextInputProps
   leftIcon?: ReactNode;
   rightIcon?: ReactNode;
   prefix?: string;
+  loading?: boolean; // CUSTOM PROP - NOT PASSED TO DOM
 }
 
 const TextInput = forwardRef<HTMLInputElement, TextInputProps>(
@@ -34,7 +35,7 @@ const TextInput = forwardRef<HTMLInputElement, TextInputProps>(
       label,
       value,
       onChange,
-      onEnter, // ADD THIS PROP
+      onEnter,
       placeholder = "",
       disabled = false,
       error = null,
@@ -52,7 +53,8 @@ const TextInput = forwardRef<HTMLInputElement, TextInputProps>(
       prefix,
       step,
       min,
-      ...rest
+      loading = false, // CUSTOM PROP - EXTRACT IT
+      ...rest // REST PROPS FOR INPUT ELEMENT
     },
     ref
   ) => {
@@ -67,7 +69,6 @@ const TextInput = forwardRef<HTMLInputElement, TextInputProps>(
 
     const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
       setIsInputFocused(true);
-      // Call original onFocus if it exists in ...rest
       if (rest.onFocus) {
         rest.onFocus(e);
       }
@@ -75,7 +76,6 @@ const TextInput = forwardRef<HTMLInputElement, TextInputProps>(
 
     const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
       setIsInputFocused(false);
-      // Call original onBlur if it exists in ...rest
       if (rest.onBlur) {
         rest.onBlur(e);
       }
@@ -88,13 +88,11 @@ const TextInput = forwardRef<HTMLInputElement, TextInputProps>(
       onChange(e);
     };
 
-    // ADD THIS HANDLER
     const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
       if (e.key === "Enter" && onEnter) {
         e.preventDefault();
         onEnter();
       }
-      // Call original onKeyDown if it exists in ...rest
       if (rest.onKeyDown) {
         rest.onKeyDown(e);
       }
@@ -126,12 +124,12 @@ const TextInput = forwardRef<HTMLInputElement, TextInputProps>(
             onChange={handleChange}
             onFocus={handleFocus}
             onBlur={handleBlur}
-            onKeyDown={handleKeyDown} // ADD THIS LINE
+            onKeyDown={handleKeyDown}
             className={`${styles.input} ${inputClassName} ${
               type === "number" ? styles.noSpinner : ""
             }`}
             placeholder={placeholder}
-            disabled={disabled}
+            disabled={disabled || loading} // USE LOADING HERE BUT DON'T PASS TO DOM
             maxLength={maxLength}
             autoFocus={autoFocus}
             required={required}
@@ -140,9 +138,17 @@ const TextInput = forwardRef<HTMLInputElement, TextInputProps>(
             ref={ref}
             aria-invalid={!!error}
             aria-describedby={error ? `${id}-error` : undefined}
+            // NOTE: loading prop is NOT passed to the DOM element
           />
 
           {rightIcon && <div className={styles.rightIcon}>{rightIcon}</div>}
+
+          {/* SHOW LOADING INDICATOR IF LOADING */}
+          {loading && (
+            <div className={styles.loadingIndicator}>
+              <div className={styles.spinner} />
+            </div>
+          )}
 
           {showCharCount && maxLength && (
             <div className={styles.charCount}>
@@ -161,7 +167,6 @@ const TextInput = forwardRef<HTMLInputElement, TextInputProps>(
   }
 );
 
-// Add display name for better debugging in React DevTools
 TextInput.displayName = "TextInput";
 
 export default TextInput;
