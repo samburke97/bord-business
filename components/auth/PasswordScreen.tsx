@@ -146,14 +146,13 @@ export default function PasswordScreen({
         if (result?.ok) {
           console.log("✅ Sign-in successful, redirecting...");
 
-          // CRITICAL FIX: Force redirect after successful login
-          // Don't rely on NextAuth's redirect handling
+          // CRITICAL FIX: Use home page routing instead of direct redirects
           if (continueBusinessSetup) {
-            console.log("🏗️ Redirecting to business onboarding...");
-            window.location.href = "/business-onboarding";
+            console.log("🏗️ Redirecting to home page (business setup flow)...");
+            window.location.href = "/"; // Let home page determine the right place
           } else {
-            console.log("🏠 Redirecting to dashboard...");
-            window.location.href = "/dashboard";
+            console.log("🏠 Redirecting to home page...");
+            window.location.href = "/"; // Let home page determine the right place
           }
         }
       }

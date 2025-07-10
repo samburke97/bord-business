@@ -57,7 +57,7 @@ export default function LoginForm({ title, description }: LoginFormProps) {
       }
 
       await signIn("google", {
-        callbackUrl: "/auth/setup", // Original - routes to setup
+        callbackUrl: "/", // FIXED: Use home page routing instead of /auth/setup
       });
     } catch (error) {
       console.error("Google sign in error:", error);
@@ -79,7 +79,7 @@ export default function LoginForm({ title, description }: LoginFormProps) {
       }
 
       await signIn("facebook", {
-        callbackUrl: "/auth/setup", // Original - routes to setup
+        callbackUrl: "/", // FIXED: Use home page routing instead of /auth/setup
       });
     } catch (error) {
       console.error("Facebook sign in error:", error);
@@ -88,7 +88,6 @@ export default function LoginForm({ title, description }: LoginFormProps) {
       setIsLoading(false);
     }
   };
-
   const validateEmail = (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email.trim());

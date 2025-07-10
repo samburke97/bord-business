@@ -77,14 +77,13 @@ export default function DashboardPage() {
           },
         });
 
-        // CRITICAL: If profile is incomplete, block dashboard access
         if (!profileData.isProfileComplete) {
-          console.log(
-            "🚫 Dashboard: Profile incomplete - redirecting to setup"
-          );
-          router.replace("/auth/setup");
+          console.log("🚫 Dashboard: Profile incomplete - redirecting to home");
+          router.replace("/"); // Use home page routing instead of direct setup
           return;
         }
+
+        // CRITICAL: If business setup is needed, block dashboard access
 
         // STEP 2: Verify business setup is complete
         setVerificationMessage("Checking your business setup...");
@@ -115,6 +114,14 @@ export default function DashboardPage() {
             "🚫 Dashboard: Business setup needed - redirecting to onboarding"
           );
           router.replace("/business-onboarding");
+          return;
+        }
+
+        if (businessData.needsSetup) {
+          console.log(
+            "🚫 Dashboard: Business setup needed - redirecting to home"
+          );
+          router.replace("/"); // Use home page routing instead of direct onboarding
           return;
         }
 

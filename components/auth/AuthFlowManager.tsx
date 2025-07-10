@@ -32,7 +32,6 @@ export default function AuthFlowManager({
     userName?: string;
   }>({ isNewUser: true });
 
-  // Initialize flow based on user type
   useEffect(() => {
     const initializeFlow = async () => {
       console.log("🚀 AuthFlow: Starting initialization...", {
@@ -47,10 +46,35 @@ export default function AuthFlowManager({
 
       // OAUTH USER: Has session but needs profile setup
       if (session?.user) {
-        console.log("🔐 AuthFlow: OAuth user detected - going to setup step");
+        console.log("🔐 AuthFlow: OAuth user detected");
+
+        // CRITICAL FIX: Check if OAuth user has already completed setup
+        try {
+          const response = await fetch("/api/user/profile-status", {
+            credentials: "include",
+          });
+
+          if (response.ok) {
+            const profileData = await response.json();
+
+            // If profile is already complete, redirect to home page
+            if (profileData.isProfileComplete) {
+              console.log(
+                "✅ AuthFlow: OAuth user profile already complete - redirecting to home"
+              );
+              router.push("/");
+              return;
+            }
+          }
+        } catch (error) {
+          console.error("❌ AuthFlow: Error checking profile status:", error);
+        }
+
+        // If profile is not complete, show setup
+        console.log("📝 AuthFlow: OAuth user needs profile setup");
         setCurrentStep("setup");
         setUserInfo({
-          isNewUser: false, // OAuth users are existing after account creation
+          isNewUser: false,
           userName: session.user.name || undefined,
         });
         setIsInitializing(false);
@@ -62,12 +86,9 @@ export default function AuthFlowManager({
         console.log(
           "📧 AuthFlow: Email signup flow - going directly to setup form"
         );
-
-        // For email users, we go directly to the business setup form
-        // The verification happens AFTER they fill out the form
         setCurrentStep("setup");
         setUserInfo({
-          isNewUser: true, // Email users coming here are new users
+          isNewUser: true,
           userName: undefined,
         });
         setIsInitializing(false);

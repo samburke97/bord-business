@@ -236,23 +236,33 @@ export const authOptions: NextAuthOptions = {
       return token;
     },
 
+    // lib/auth.ts - CRITICAL FIX for redirect callback
+    // REPLACE your existing redirect callback with this:
+
     async redirect({ url, baseUrl }) {
       console.log("🔄 Redirect callback:", { url, baseUrl });
 
+      // Allow relative URLs (starting with /)
       if (url.startsWith("/")) {
         const fullUrl = `${baseUrl}${url}`;
         console.log("✅ Redirect: Using relative URL:", fullUrl);
         return fullUrl;
       }
 
+      // Allow full URLs that start with baseUrl
       if (url.startsWith(baseUrl)) {
         console.log("✅ Redirect: Using full URL:", url);
         return url;
       }
 
-      const setupUrl = `${baseUrl}/auth/setup`;
-      console.log("✅ Redirect: Fallback to setup:", setupUrl);
-      return setupUrl;
+      // CRITICAL FIX: Instead of fallback to /auth/setup, use home page
+      // The home page has proper routing logic to determine where users should go
+      const homeUrl = `${baseUrl}/`;
+      console.log(
+        "✅ Redirect: Fallback to home page (was going to setup):",
+        homeUrl
+      );
+      return homeUrl;
     },
   },
 

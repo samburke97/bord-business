@@ -140,7 +140,7 @@ export default function BusinessSetupForm({
 
   const handleBack = () => {
     if (isOAuthUser) {
-      router.push("/login");
+      router.push("/");
     } else {
       router.back();
     }
