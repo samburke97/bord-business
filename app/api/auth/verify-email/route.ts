@@ -1,4 +1,4 @@
-// app/api/auth/verify-email/route.ts
+// app/api/auth/verify-email/route.ts - FIXED VERSION
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import crypto from "crypto";
@@ -55,14 +55,15 @@ export async function POST(request: NextRequest) {
     // Check if this is an existing verified user (sign-in) vs new user (setup)
     const wasAlreadyVerified = user.isVerified;
 
-    // Update user verification status and clean up token
+    // CRITICAL FIX: Update user verification status AND mark signup as complete
     await prisma.$transaction([
-      // Mark user as verified (in case they weren't before)
+      // Mark user as verified AND completed signup
       prisma.user.update({
         where: { email },
         data: {
           isVerified: true,
           emailVerified: new Date(),
+          hasCompletedSignup: true, // FIXED: This was missing!
           updatedAt: new Date(),
         },
       }),
@@ -86,11 +87,18 @@ export async function POST(request: NextRequest) {
       }),
     ]);
 
+    console.log("✅ Email verified successfully:", {
+      email,
+      wasAlreadyVerified,
+      hasCompletedSignup: true,
+    });
+
     return NextResponse.json(
       {
         message: "Email verified successfully",
         success: true,
-        isExistingUser: wasAlreadyVerified, // Flag to determine next step
+        isExistingUser: wasAlreadyVerified,
+        hasCompletedSignup: true,
       },
       { status: 200 }
     );

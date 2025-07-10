@@ -1,4 +1,4 @@
-// lib/auth.ts - FIXED VERSION - Let redirect callback handle routing
+// lib/auth.ts - SYNTAX FIXED VERSION
 import { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import FacebookProvider from "next-auth/providers/facebook";
@@ -73,12 +73,15 @@ export const authOptions: NextAuthOptions = {
           }
 
           if (!user?.credentials) {
-            await recordFailedAttempt(credentials.email);
+            if (user) {
+              console.log("❌ User found but no credentials record");
+            }
             return null;
           }
 
-          const isLocked = await checkAccountLockout(credentials.email);
-          if (isLocked) {
+          const lockoutCheck = await checkAccountLockout(user.id);
+          if (lockoutCheck.locked) {
+            console.log("🔒 Account is locked until:", lockoutCheck.unlockTime);
             return null;
           }
 
@@ -88,11 +91,11 @@ export const authOptions: NextAuthOptions = {
           );
 
           if (!isValidPassword) {
-            await recordFailedAttempt(credentials.email);
+            await recordFailedAttempt(user.id);
             return null;
           }
 
-          await resetFailedAttempts(credentials.email);
+          await resetFailedAttempts(user.id);
 
           return {
             id: user.id,
@@ -104,7 +107,7 @@ export const authOptions: NextAuthOptions = {
             isActive: user.isActive,
           };
         } catch (error) {
-          console.error("❌ Credentials Provider Error");
+          console.error("❌ Credentials Provider Error:", error);
           return null;
         }
       },
@@ -161,12 +164,10 @@ export const authOptions: NextAuthOptions = {
             );
 
             if (hasThisProvider) {
-              // FIXED: Just return true, let redirect callback handle routing
               console.log("✅ SignIn: Existing OAuth user with this provider");
               return true;
             }
 
-            // Check for account exists with different method
             const hasCredentials = !!existingUser.credentials;
             const hasGoogle = existingUser.accounts.some(
               (acc) => acc.provider === "google"
@@ -180,18 +181,16 @@ export const authOptions: NextAuthOptions = {
             if (hasGoogle) availableMethods.push("google");
             if (hasFacebook) availableMethods.push("facebook");
 
-            // Still return error URL for conflicting accounts
             return `/auth/error?error=AccountExistsWithDifferentMethod&email=${encodeURIComponent(user.email)}&available=${availableMethods.join(",")}&attempted=${account.provider}`;
           }
 
-          // FIXED: New OAuth users - just return true, let redirect handle routing
           console.log("✅ SignIn: New OAuth user");
           return true;
         }
 
         return true;
       } catch (error) {
-        console.error("❌ SignIn Callback Error");
+        console.error("❌ SignIn Callback Error:", error);
         return false;
       }
     },
@@ -237,24 +236,20 @@ export const authOptions: NextAuthOptions = {
       return token;
     },
 
-    // FIXED: Redirect callback handles all the routing logic
     async redirect({ url, baseUrl }) {
       console.log("🔄 Redirect callback:", { url, baseUrl });
 
-      // If it's a relative URL, make it absolute
       if (url.startsWith("/")) {
         const fullUrl = `${baseUrl}${url}`;
         console.log("✅ Redirect: Using relative URL:", fullUrl);
         return fullUrl;
       }
 
-      // If it's a full URL and points to our domain, allow it
       if (url.startsWith(baseUrl)) {
         console.log("✅ Redirect: Using full URL:", url);
         return url;
       }
 
-      // FIXED: Default fallback - route OAuth users to setup
       const setupUrl = `${baseUrl}/auth/setup`;
       console.log("✅ Redirect: Fallback to setup:", setupUrl);
       return setupUrl;
@@ -273,9 +268,6 @@ export const authOptions: NextAuthOptions = {
     },
   },
 
-  // PRIORITY 1: Security configurations
   secret: process.env.NEXTAUTH_SECRET,
-
-  // Disable debug mode in production
   debug: process.env.NODE_ENV === "development",
 };
