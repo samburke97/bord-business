@@ -17,6 +17,7 @@ interface ActionHeaderProps {
   type?: "standard" | "back";
   deleteAction?: () => Promise<void> | void;
   backIcon?: ReactNode;
+  constrained?: boolean; // New prop to control max-width behavior
 }
 
 const ActionHeader: React.FC<ActionHeaderProps> = ({
@@ -31,6 +32,7 @@ const ActionHeader: React.FC<ActionHeaderProps> = ({
   type = "standard",
   deleteAction,
   backIcon,
+  constrained = true, // Default to true for backward compatibility
 }) => {
   const actionProcessingLabel = processingLabel || `${primaryLabel}ing...`;
 
@@ -57,7 +59,9 @@ const ActionHeader: React.FC<ActionHeaderProps> = ({
   if (type === "back" && secondaryAction) {
     return (
       <header className={`${styles.header} ${className}`}>
-        <div className={styles.headerContent}>
+        <div
+          className={`${styles.headerContent} ${!constrained ? styles.headerContentUnconstrained : ""}`}
+        >
           <IconButton
             icon={backIcon || <BackIconSvg />}
             variant="ghost"
@@ -72,7 +76,9 @@ const ActionHeader: React.FC<ActionHeaderProps> = ({
 
   return (
     <header className={`${styles.header} ${className}`}>
-      <div className={styles.headerContent}>
+      <div
+        className={`${styles.headerContent} ${!constrained ? styles.headerContentUnconstrained : ""}`}
+      >
         {variant === "edit" ? (
           <>
             <IconButton

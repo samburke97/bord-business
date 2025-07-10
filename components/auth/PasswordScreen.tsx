@@ -1,9 +1,10 @@
-// components/auth/PasswordScreen.tsx - FIXED LOGIN FLOW
+// components/auth/PasswordScreen.tsx
 "use client";
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
+import Image from "next/image";
 import ActionHeader from "../layouts/headers/ActionHeader";
 import TitleDescription from "@/components/ui/TitleDescription";
 import TextInput from "@/components/ui/TextInput";
@@ -29,53 +30,61 @@ export default function PasswordScreen({
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [confirmPasswordError, setConfirmPasswordError] = useState<
+    string | null
+  >(null);
 
   const handleBack = () => {
     router.back();
   };
 
   const validatePassword = () => {
-    if (!password) {
-      setError("Password is required");
-      return false;
-    }
+    let isValid = true;
 
-    if (isNewUser) {
+    if (!password) {
+      setPasswordError("Password is required");
+      isValid = false;
+    } else if (isNewUser) {
       // Use the secure password validation for new users
       if (password.length < 12) {
-        setError("Password must be at least 12 characters long");
-        return false;
+        setPasswordError("Password must be at least 12 characters long");
+        isValid = false;
+      } else if (!/[A-Z]/.test(password)) {
+        setPasswordError("Password must contain at least one uppercase letter");
+        isValid = false;
+      } else if (!/[a-z]/.test(password)) {
+        setPasswordError("Password must contain at least one lowercase letter");
+        isValid = false;
+      } else if (!/\d/.test(password)) {
+        setPasswordError("Password must contain at least one number");
+        isValid = false;
+      } else if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+        setPasswordError(
+          "Password must contain at least one special character"
+        );
+        isValid = false;
+      } else {
+        setPasswordError(null);
       }
+    } else {
+      setPasswordError(null);
+    }
 
-      if (!/[A-Z]/.test(password)) {
-        setError("Password must contain at least one uppercase letter");
-        return false;
-      }
-
-      if (!/[a-z]/.test(password)) {
-        setError("Password must contain at least one lowercase letter");
-        return false;
-      }
-
-      if (!/\d/.test(password)) {
-        setError("Password must contain at least one number");
-        return false;
-      }
-
-      if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-        setError("Password must contain at least one special character");
-        return false;
-      }
-
-      if (password !== confirmPassword) {
-        setError("Passwords do not match");
-        return false;
+    // Validate confirm password for new users
+    if (isNewUser) {
+      if (!confirmPassword) {
+        setConfirmPasswordError("Please confirm your password");
+        isValid = false;
+      } else if (password !== confirmPassword) {
+        setConfirmPasswordError("Passwords do not match");
+        isValid = false;
+      } else {
+        setConfirmPasswordError(null);
       }
     }
 
-    setError(null);
-    return true;
+    return isValid;
   };
 
   const handleSubmit = async () => {
@@ -84,7 +93,6 @@ export default function PasswordScreen({
     }
 
     setIsLoading(true);
-    setError(null);
 
     try {
       // Check if this is a business setup continuation
@@ -110,7 +118,8 @@ export default function PasswordScreen({
         const data = await response.json();
 
         if (!response.ok) {
-          throw new Error(data.message || "Failed to set password");
+          setPasswordError(data.message || "Failed to set password");
+          return;
         }
 
         console.log("✅ Password set successfully");
@@ -130,7 +139,7 @@ export default function PasswordScreen({
 
         if (result?.error) {
           console.error("❌ Sign-in error:", result.error);
-          setError("Invalid password. Please try again.");
+          setPasswordError("Invalid password. Please try again.");
           return;
         }
 
@@ -150,14 +159,15 @@ export default function PasswordScreen({
       }
     } catch (error) {
       console.error("❌ Password error:", error);
-      setError(error instanceof Error ? error.message : "Something went wrong");
+      setPasswordError(
+        error instanceof Error ? error.message : "Something went wrong"
+      );
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleForgotPassword = () => {
-    // Navigate to the correct auth route
     router.push(`/auth/forgot-password?email=${encodeURIComponent(email)}`);
   };
 
@@ -165,81 +175,145 @@ export default function PasswordScreen({
     if (isNewUser) {
       return "Set Your Password";
     }
-    return userName ? `Welcome back, ${userName}!` : "Welcome back!";
+    return userName ? `How have you been?` : "Welcome back!";
   };
 
   const getDescription = () => {
     if (isNewUser) {
       return "Create a secure password for your account.";
     }
-    return "Enter your password to continue.";
+    return `Please enter your password to sign in to ${email}.`;
   };
+
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
+
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPassword(e.target.value);
+    // Clear error when user starts typing
+    if (passwordError) {
+      setPasswordError(null);
+    }
+  };
+
+  const handleConfirmPasswordChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    setConfirmPassword(e.target.value);
+    // Clear error when user starts typing
+    if (confirmPasswordError) {
+      setConfirmPasswordError(null);
+    }
+  };
+
+  const passwordIcon = showPassword ? (
+    <Image
+      src="/icons/utility-outline/shown.svg"
+      alt="Hide password"
+      width={20}
+      height={20}
+    />
+  ) : (
+    <Image
+      src="/icons/utility-outline/hidden.svg"
+      alt="Show password"
+      width={20}
+      height={20}
+    />
+  );
 
   return (
     <div className={styles.container}>
-      <ActionHeader onBack={handleBack} />
-
       <div className={styles.content}>
-        <TitleDescription title={getTitle()} description={getDescription()} />
+        <div className={styles.leftSection}>
+          <ActionHeader
+            type="back"
+            secondaryAction={handleBack}
+            constrained={false}
+          />
 
-        <div className={styles.form}>
-          <div className={styles.inputGroup}>
-            <TextInput
-              type={showPassword ? "text" : "password"}
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onEnter={handleSubmit}
-              autoComplete={isNewUser ? "new-password" : "current-password"}
-              required
-            />
-            <button
-              type="button"
-              className={styles.togglePassword}
-              onClick={() => setShowPassword(!showPassword)}
-            >
-              {showPassword ? "Hide" : "Show"}
-            </button>
-          </div>
-
-          {isNewUser && (
-            <div className={styles.inputGroup}>
-              <TextInput
-                type="password"
-                placeholder="Confirm Password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                onEnter={handleSubmit}
-                autoComplete="new-password"
-                required
+          <div className={styles.formContainer}>
+            <div className={styles.formWrapper}>
+              <TitleDescription
+                title={getTitle()}
+                description={getDescription()}
               />
+
+              <div className={styles.passwordForm}>
+                <TextInput
+                  id="password"
+                  label="Password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={handlePasswordChange}
+                  placeholder="Enter your password"
+                  error={passwordError}
+                  autoComplete={isNewUser ? "new-password" : "current-password"}
+                  rightIcon={
+                    <button
+                      type="button"
+                      className={styles.passwordToggle}
+                      onClick={togglePasswordVisibility}
+                    >
+                      {passwordIcon}
+                    </button>
+                  }
+                  required
+                />
+
+                {isNewUser && (
+                  <TextInput
+                    id="confirmPassword"
+                    label="Confirm Password"
+                    type={showPassword ? "text" : "password"}
+                    value={confirmPassword}
+                    onChange={handleConfirmPasswordChange}
+                    placeholder="Confirm your password"
+                    error={confirmPasswordError}
+                    autoComplete="new-password"
+                    required
+                  />
+                )}
+              </div>
+
+              <Button
+                variant="primary-green"
+                onClick={handleSubmit}
+                disabled={isLoading}
+                fullWidth
+                size="lg"
+              >
+                {isLoading
+                  ? "Processing..."
+                  : isNewUser
+                    ? "Set Password"
+                    : "Continue"}
+              </Button>
+
+              {!isNewUser && (
+                <div className={styles.forgotPassword}>
+                  <button
+                    type="button"
+                    onClick={handleForgotPassword}
+                    className={styles.forgotPasswordLink}
+                  >
+                    Forgot Password?
+                  </button>
+                </div>
+              )}
             </div>
-          )}
+          </div>
+        </div>
 
-          {error && <div className={styles.error}>{error}</div>}
-
-          <Button
-            onClick={handleSubmit}
-            disabled={isLoading}
-            fullWidth
-            className={styles.submitButton}
-          >
-            {isLoading
-              ? "Processing..."
-              : isNewUser
-                ? "Set Password"
-                : "Sign In"}
-          </Button>
-
-          {!isNewUser && (
-            <button
-              type="button"
-              onClick={handleForgotPassword}
-              className={styles.forgotPasswordLink}
-            >
-              Forgot your password?
-            </button>
-          )}
+        <div className={styles.imageContainer}>
+          <Image
+            src="/images/login/auth-bg.png"
+            alt="Sports facility background"
+            fill
+            style={{ objectFit: "cover" }}
+            priority
+          />
         </div>
       </div>
     </div>

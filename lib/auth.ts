@@ -1,4 +1,4 @@
-// lib/auth.ts - FIXED redirect to prevent dashboard flashing
+// lib/auth.ts - PRODUCTION SECURITY - Disabled debug mode + sanitized logging
 import { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import FacebookProvider from "next-auth/providers/facebook";
@@ -47,13 +47,12 @@ export const authOptions: NextAuthOptions = {
         password: { type: "password" },
       },
       async authorize(credentials) {
-        console.log(
-          "🔐 Credentials Provider: Starting authorization for",
-          credentials?.email
-        );
+        // PRIORITY 1: Sanitized logging - no sensitive information
+        if (process.env.NODE_ENV === "development") {
+          console.log("🔐 Credentials Provider: Authorization attempt");
+        }
 
         if (!credentials?.email || !credentials?.password) {
-          console.log("❌ Credentials Provider: Missing email or password");
           return null;
         }
 
@@ -67,23 +66,21 @@ export const authOptions: NextAuthOptions = {
             },
           });
 
-          console.log("👤 Credentials Provider: User lookup result:", {
-            found: !!user,
-            hasCredentials: !!user?.credentials,
-            isVerified: user?.isVerified,
-            isActive: user?.isActive,
-          });
+          if (process.env.NODE_ENV === "development") {
+            console.log("👤 Credentials Provider: User lookup result:", {
+              found: !!user,
+              hasCredentials: !!user?.credentials,
+              isVerified: user?.isVerified,
+              isActive: user?.isActive,
+            });
+          }
 
           if (!user || !user.credentials) {
-            console.log(
-              "❌ Credentials Provider: User not found or no credentials"
-            );
             return null;
           }
 
           const lockStatus = await checkAccountLockout(user.id);
           if (lockStatus.locked) {
-            console.log("❌ Credentials Provider: Account is locked");
             throw new Error("Account is locked");
           }
 
@@ -93,24 +90,19 @@ export const authOptions: NextAuthOptions = {
           );
 
           if (!isValidPassword) {
-            console.log("❌ Credentials Provider: Invalid password");
             await recordFailedAttempt(user.id);
             return null;
           }
 
-          if (!user.isActive) {
-            console.log("❌ Credentials Provider: Account is inactive");
-            return null;
-          }
-
-          if (!user.isVerified) {
-            console.log("❌ Credentials Provider: Account is not verified");
+          if (!user.isActive || !user.isVerified) {
             return null;
           }
 
           await resetFailedAttempts(user.id);
 
-          console.log("✅ Credentials Provider: Authorization successful");
+          if (process.env.NODE_ENV === "development") {
+            console.log("✅ Credentials Provider: Authorization successful");
+          }
 
           return {
             id: user.id,
@@ -122,7 +114,8 @@ export const authOptions: NextAuthOptions = {
             isActive: user.isActive,
           };
         } catch (error) {
-          console.error("❌ Credentials Provider: Authorization error:", error);
+          // PRIORITY 1: Sanitized error logging
+          console.error("❌ Credentials Provider: Authorization failed");
           return null;
         }
       },
@@ -142,7 +135,8 @@ export const authOptions: NextAuthOptions = {
         httpOnly: true,
         sameSite: "lax",
         path: "/",
-        secure: false,
+        // PRIORITY 1: Secure cookies in production
+        secure: process.env.NODE_ENV === "production",
         domain: undefined,
       },
     },
@@ -152,7 +146,7 @@ export const authOptions: NextAuthOptions = {
         httpOnly: true,
         sameSite: "lax",
         path: "/",
-        secure: false,
+        secure: process.env.NODE_ENV === "production",
         domain: undefined,
       },
     },
@@ -162,7 +156,7 @@ export const authOptions: NextAuthOptions = {
         httpOnly: true,
         sameSite: "lax",
         path: "/",
-        secure: false,
+        secure: process.env.NODE_ENV === "production",
         domain: undefined,
       },
     },
@@ -170,11 +164,13 @@ export const authOptions: NextAuthOptions = {
 
   callbacks: {
     async signIn({ user, account, profile }) {
-      console.log("🔐 SignIn Callback:", {
-        provider: account?.provider,
-        email: user.email,
-        userId: user.id,
-      });
+      // PRIORITY 1: Reduced logging
+      if (process.env.NODE_ENV === "development") {
+        console.log("🔐 SignIn Callback:", {
+          provider: account?.provider,
+          email: user.email?.substring(0, 3) + "***", // Partial email only
+        });
+      }
 
       try {
         if (account?.provider === "credentials") {
@@ -186,7 +182,6 @@ export const authOptions: NextAuthOptions = {
           account?.provider === "facebook"
         ) {
           if (!user.email) {
-            console.error("❌ OAuth sign-in attempted without email");
             return false;
           }
 
@@ -204,11 +199,8 @@ export const authOptions: NextAuthOptions = {
             );
 
             if (hasThisProvider) {
-              console.log("✅ User signing in with existing OAuth provider");
               return true;
             }
-
-            console.log("⚠️ User exists with different sign-in method");
 
             const hasCredentials = !!existingUser.credentials;
             const hasGoogle = existingUser.accounts.some(
@@ -226,13 +218,12 @@ export const authOptions: NextAuthOptions = {
             return `/auth/error?error=AccountExistsWithDifferentMethod&email=${encodeURIComponent(user.email)}&available=${availableMethods.join(",")}&attempted=${account.provider}`;
           }
 
-          console.log("✅ New OAuth user - allowing account creation");
           return true;
         }
 
         return true;
       } catch (error) {
-        console.error("❌ SignIn Callback Error:", error);
+        console.error("❌ SignIn Callback Error");
         return false;
       }
     },
@@ -257,7 +248,6 @@ export const authOptions: NextAuthOptions = {
 
     async jwt({ token, user, account, trigger }) {
       if (account && user) {
-        console.log("🆕 JWT Callback: Initial sign in");
         token.sub = user.id;
         token.name = user.name;
         token.email = user.email;
@@ -299,7 +289,7 @@ export const authOptions: NextAuthOptions = {
             token.lastRefresh = Date.now();
           }
         } catch (error) {
-          console.error("❌ JWT Callback: Error refreshing user data:", error);
+          console.error("❌ JWT Callback: User refresh failed");
         }
       }
 
@@ -307,17 +297,10 @@ export const authOptions: NextAuthOptions = {
     },
 
     async redirect({ url, baseUrl, token }) {
-      // CRITICAL FIX: Never redirect to dashboard until user is fully set up
-      // Always send OAuth users to /auth/setup which will handle the routing logic
-
       if (url.startsWith("/")) {
         const fullUrl = `${baseUrl}${url}`;
 
-        // If someone tries to go to dashboard, send them to setup instead
         if (url === "/dashboard") {
-          console.log(
-            "🔄 Redirect: Dashboard requested, sending to setup for verification"
-          );
           return `${baseUrl}/auth/setup`;
         }
 
@@ -325,17 +308,13 @@ export const authOptions: NextAuthOptions = {
       }
 
       if (url.startsWith(baseUrl)) {
-        // If it's a dashboard URL, redirect to setup
         if (url.includes("/dashboard")) {
-          console.log("🔄 Redirect: Dashboard URL detected, sending to setup");
           return `${baseUrl}/auth/setup`;
         }
 
         return url;
       }
 
-      // ALL users (OAuth and credentials) go to setup first
-      console.log("🔄 Redirect: Sending user to setup for proper flow");
       return `${baseUrl}/auth/setup`;
     },
   },
@@ -348,13 +327,18 @@ export const authOptions: NextAuthOptions = {
 
   events: {
     async createUser({ user }) {
-      console.log(`Security Event: New user created - ${user.email}`);
+      // PRIORITY 1: Sanitized logging
+      if (process.env.NODE_ENV === "development") {
+        console.log(
+          `Security Event: New user created - ${user.email?.substring(0, 3)}***`
+        );
+      }
     },
 
     async signIn({ user, account }) {
-      console.log(
-        `Security Event: Sign in - ${user.email} via ${account?.provider}`
-      );
+      if (process.env.NODE_ENV === "development") {
+        console.log(`Security Event: Sign in via ${account?.provider}`);
+      }
 
       if (user.email) {
         const credentials = await prisma.userCredentials.findUnique({
@@ -375,33 +359,35 @@ export const authOptions: NextAuthOptions = {
     },
 
     async signOut({ session }) {
-      console.log(
-        `Security Event: Sign out - ${session?.user?.email || "Unknown"}`
-      );
+      if (process.env.NODE_ENV === "development") {
+        console.log("Security Event: Sign out");
+      }
     },
   },
 
   secret: process.env.NEXTAUTH_SECRET,
-  debug: process.env.NODE_ENV === "development",
-  useSecureCookies: false,
+  // PRIORITY 1: Disable debug mode completely in production
+  debug: false,
+  useSecureCookies: process.env.NODE_ENV === "production",
   basePath: process.env.NEXTAUTH_BASEPATH || "/api/auth",
 
+  // PRIORITY 1: Sanitized logging - no sensitive information
   logger: {
     error(code, metadata) {
-      console.error(`NextAuth Error [${code}]:`, metadata);
+      console.error(`NextAuth Error [${code}]`);
     },
     warn(code) {
-      console.warn(`NextAuth Warning [${code}]`);
+      if (process.env.NODE_ENV === "development") {
+        console.warn(`NextAuth Warning [${code}]`);
+      }
     },
     debug(code, metadata) {
-      // Only log important debug messages to reduce noise
-      const importantDebugCodes = [
-        "CREATE_STATE",
-        "GET_AUTHORIZATION_URL",
-        "OAUTH_CALLBACK_RESPONSE",
-      ];
-      if (importantDebugCodes.includes(code)) {
-        console.debug(`NextAuth Debug [${code}]:`, metadata);
+      // Only log critical debug info in development
+      if (process.env.NODE_ENV === "development") {
+        const criticalCodes = ["SIGNIN_ERROR", "SESSION_ERROR"];
+        if (criticalCodes.includes(code)) {
+          console.debug(`NextAuth Debug [${code}]`);
+        }
       }
     },
   },

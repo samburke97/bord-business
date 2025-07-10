@@ -2,6 +2,7 @@
 
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Image from "next/image";
 import ActionHeader from "@/components/layouts/headers/ActionHeader";
 import TitleDescription from "@/components/ui/TitleDescription";
 import TextInput from "@/components/ui/TextInput";
@@ -18,44 +19,67 @@ function ResetPasswordContent() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [newPasswordError, setNewPasswordError] = useState<string | null>(null);
+  const [confirmPasswordError, setConfirmPasswordError] = useState<
+    string | null
+  >(null);
 
   const handleBack = () => {
     router.push("/login");
   };
 
-  const validatePassword = () => {
-    if (!newPassword) {
-      setError("Password is required");
+  const validateNewPassword = (password: string) => {
+    if (!password) {
+      setNewPasswordError("Password is required");
       return false;
     }
 
-    if (newPassword.length < 8) {
-      setError("Password must be at least 8 characters");
+    if (password.length < 8) {
+      setNewPasswordError("Password must be at least 8 characters");
       return false;
     }
 
-    if (newPassword !== confirmPassword) {
-      setError("Passwords do not match");
+    setNewPasswordError(null);
+    return true;
+  };
+
+  const validateConfirmPassword = (
+    password: string,
+    confirmPassword: string
+  ) => {
+    if (!confirmPassword) {
+      setConfirmPasswordError("Please confirm your password");
       return false;
     }
 
-    setError(null);
+    if (password !== confirmPassword) {
+      setConfirmPasswordError("Passwords do not match");
+      return false;
+    }
+
+    setConfirmPasswordError(null);
     return true;
   };
 
   const handleUpdatePassword = async () => {
-    if (!validatePassword()) {
+    const isNewPasswordValid = validateNewPassword(newPassword);
+    const isConfirmPasswordValid = validateConfirmPassword(
+      newPassword,
+      confirmPassword
+    );
+
+    if (!isNewPasswordValid || !isConfirmPasswordValid) {
       return;
     }
 
     if (!token) {
-      setError("Invalid reset link. Please request a new password reset.");
+      setNewPasswordError(
+        "Invalid reset link. Please request a new password reset."
+      );
       return;
     }
 
     setIsLoading(true);
-    setError(null);
 
     try {
       const response = await fetch("/api/auth/reset-password", {
@@ -73,7 +97,8 @@ function ResetPasswordContent() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || "Failed to update password");
+        setNewPasswordError(data.message || "Failed to update password");
+        return;
       }
 
       // Navigate to success page
@@ -82,7 +107,7 @@ function ResetPasswordContent() {
       );
     } catch (error) {
       console.error("Reset password error:", error);
-      setError(
+      setNewPasswordError(
         error instanceof Error
           ? error.message
           : "Something went wrong. Please try again."
@@ -92,63 +117,92 @@ function ResetPasswordContent() {
     }
   };
 
-  const handlePasswordChange =
-    (field: "new" | "confirm") => (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (field === "new") {
-        setNewPassword(e.target.value);
-      } else {
-        setConfirmPassword(e.target.value);
-      }
-      setError(null);
-    };
+  const handleNewPasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewPassword(e.target.value);
+    if (newPasswordError) {
+      setNewPasswordError(null);
+    }
+  };
+
+  const handleConfirmPasswordChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    setConfirmPassword(e.target.value);
+    if (confirmPasswordError) {
+      setConfirmPasswordError(null);
+    }
+  };
+
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
+
+  const passwordIcon = showPassword ? (
+    <Image
+      src="/icons/utility-outline/shown.svg"
+      alt="Hide password"
+      width={20}
+      height={20}
+    />
+  ) : (
+    <Image
+      src="/icons/utility-outline/hidden.svg"
+      alt="Show password"
+      width={20}
+      height={20}
+    />
+  );
 
   return (
     <div className={styles.container}>
-      <ActionHeader
-        type="back"
-        secondaryAction={handleBack}
-        className={styles.headerOverlay}
-      />
-
       <div className={styles.content}>
-        <div className={styles.formContainer}>
-          <TitleDescription
-            title="Change Password"
-            description={`You can now change your password for [email address]`}
+        <div className={styles.leftSection}>
+          <ActionHeader
+            type="back"
+            secondaryAction={handleBack}
+            constrained={false}
           />
 
-          <div className={styles.formFields}>
-            <TextInput
-              id="newPassword"
-              label="New Password"
-              type={showPassword ? "text" : "password"}
-              value={newPassword}
-              onChange={handlePasswordChange("new")}
-              placeholder="Enter your password"
-              error={error}
-              required
-              rightIcon={
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className={styles.passwordToggle}
-                >
-                  {showPassword ? "🙈" : "👁️"}
-                </button>
-              }
-            />
+          <div className={styles.formContainer}>
+            <div className={styles.formWrapper}>
+              <TitleDescription
+                title="Change Password"
+                description={`You can now change your password for ${email || "[email address]"}`}
+              />
 
-            <TextInput
-              id="confirmPassword"
-              label="Repeat Password"
-              type={showPassword ? "text" : "password"}
-              value={confirmPassword}
-              onChange={handlePasswordChange("confirm")}
-              placeholder="Enter your password"
-              required
-            />
+              <div className={styles.formFields}>
+                <TextInput
+                  id="newPassword"
+                  label="New Password"
+                  type={showPassword ? "text" : "password"}
+                  value={newPassword}
+                  onChange={handleNewPasswordChange}
+                  placeholder="Enter your password"
+                  error={newPasswordError}
+                  required
+                  rightIcon={
+                    <button
+                      type="button"
+                      onClick={togglePasswordVisibility}
+                      className={styles.passwordToggle}
+                    >
+                      {passwordIcon}
+                    </button>
+                  }
+                />
 
-            <div className={styles.buttonContainer}>
+                <TextInput
+                  id="confirmPassword"
+                  label="Repeat Password"
+                  type={showPassword ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={handleConfirmPasswordChange}
+                  placeholder="Enter your password"
+                  error={confirmPasswordError}
+                  required
+                />
+              </div>
+
               <Button
                 variant="primary-green"
                 onClick={handleUpdatePassword}
@@ -159,6 +213,16 @@ function ResetPasswordContent() {
               </Button>
             </div>
           </div>
+        </div>
+
+        <div className={styles.imageContainer}>
+          <Image
+            src="/images/login/auth-bg.png"
+            alt="Sports facility background"
+            fill
+            style={{ objectFit: "cover" }}
+            priority
+          />
         </div>
       </div>
     </div>

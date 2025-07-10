@@ -1,26 +1,64 @@
-// middleware.ts - FIXED - Reduced logging and better route protection
+// middleware.ts - ENHANCED SECURITY - Priority 1 fixes without breaking functionality
 import { NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { NextRequest } from "next/server";
 
 export async function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
+  const startTime = Date.now();
 
-  // Apply basic security headers
+  // Reduce logging in production
+  if (process.env.NODE_ENV === "development") {
+    console.log(`🔒 Middleware: Processing ${req.method} ${pathname}`);
+  }
+
+  // PRIORITY 1 FIX: Enhanced security headers with CSP and HSTS
   const response = NextResponse.next();
+
+  // Core security headers
   response.headers.set("X-Content-Type-Options", "nosniff");
   response.headers.set("X-Frame-Options", "DENY");
   response.headers.set("X-XSS-Protection", "1; mode=block");
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
 
+  // PRIORITY 1: Content Security Policy - Carefully configured to maintain functionality
+  const csp = [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://connect.facebook.net https://www.facebook.com",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com data:",
+    "img-src 'self' data: https: blob:",
+    "connect-src 'self' https://accounts.google.com https://www.facebook.com https://graph.facebook.com",
+    "frame-src 'self' https://accounts.google.com https://www.facebook.com",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+  ].join("; ");
+
+  response.headers.set("Content-Security-Policy", csp);
+
+  // PRIORITY 1: HSTS - Force HTTPS in production
+  if (process.env.NODE_ENV === "production") {
+    response.headers.set(
+      "Strict-Transport-Security",
+      "max-age=31536000; includeSubDomains; preload"
+    );
+  }
+
+  // Additional security headers
+  response.headers.set(
+    "Permissions-Policy",
+    "camera=(), microphone=(), geolocation=(), payment=()"
+  );
+
   // ============================================================================
-  // ALWAYS ALLOW: Authentication and public routes (NO LOGGING)
+  // ALWAYS ALLOW: Authentication and public routes
   // ============================================================================
 
   const alwaysAllowRoutes = [
     "/login",
     "/api/auth", // ALL NextAuth routes
-    "/auth", // ALL auth pages including /auth/setup
+    "/auth", // ALL auth pages
     "/verify-email",
     "/_next",
     "/favicon.ico",
@@ -40,7 +78,7 @@ export async function middleware(req: NextRequest) {
   );
 
   if (isAlwaysAllowed) {
-    // NO LOGGING for public routes - reduces noise
+    // Reduced logging for public routes
     return response;
   }
 
@@ -54,11 +92,16 @@ export async function middleware(req: NextRequest) {
       secret: process.env.NEXTAUTH_SECRET,
     });
 
-    // Only log for important routes, not API status checks
-    const shouldLog = !pathname.includes("/api/user/profile-status");
+    // Only log for important routes in development
+    const shouldLog =
+      process.env.NODE_ENV === "development" &&
+      !pathname.includes("/api/user/profile-status");
 
     if (shouldLog) {
-      console.log(`🔒 Middleware: Processing ${req.method} ${pathname}`);
+      console.log(`🔐 Middleware: Token check for ${pathname}:`, {
+        hasToken: !!token,
+        userId: token?.sub,
+      });
     }
 
     if (!token) {
@@ -91,7 +134,11 @@ export async function middleware(req: NextRequest) {
 
     // Check if user account is active
     if (userInfo.isActive === false) {
-      console.log(`❌ Middleware: Account disabled for user ${userInfo.email}`);
+      if (shouldLog) {
+        console.log(
+          `❌ Middleware: Account disabled for user ${userInfo.email}`
+        );
+      }
 
       // For API routes, return 403 JSON response
       if (pathname.startsWith("/api/")) {
@@ -151,7 +198,8 @@ export async function middleware(req: NextRequest) {
 
     return response;
   } catch (error) {
-    console.error("❌ Middleware: Critical error:", error);
+    // PRIORITY 1: Sanitized error logging - no sensitive information
+    console.error("❌ Middleware: Authentication error occurred");
 
     // For API routes, return 500 JSON response
     if (pathname.startsWith("/api/")) {

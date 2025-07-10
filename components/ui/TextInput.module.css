@@ -13,6 +13,11 @@
   display: flex;
   align-items: center;
   gap: 0.25rem;
+  font-family: Inter;
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 20px;
 }
 
 .required {
@@ -34,19 +39,18 @@
   transition: all var(--transition-fast, 0.15s ease);
 }
 
-.inputWrapper:hover {
-  background-color: var(--con-light, #fafafa);
+.inputWrapper:hover:not(:focus-within) {
+  border-color: var(--grey-500, #7e807f);
 }
 
 .inputWrapper:focus-within {
   outline: none;
-  background-color: var(--con-light, #fafafa);
   border-color: var(--grey-500, #7e807f);
 }
 
 .input {
   border: none;
-  outline: none;
+  outline: none; /* Remove browser default focus outline */
   background: transparent;
   font-family: Inter, var(--font-family);
   font-size: 16px;
@@ -56,6 +60,28 @@
   color: var(--for-darkest, #171717);
   width: 100%;
   flex: 1;
+}
+
+/* Additional explicit focus styles to ensure no blue highlight */
+.input:focus {
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+/* Remove autofill background */
+.input:-webkit-autofill,
+.input:-webkit-autofill:hover,
+.input:-webkit-autofill:focus,
+.input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px var(--con-lightest, #fff) inset !important;
+  -webkit-text-fill-color: var(--for-darkest, #171717) !important;
+  background-color: var(--con-lightest, #fff) !important;
+}
+
+/* Firefox autofill */
+.input:-moz-autofill {
+  background-color: var(--con-lightest, #fff) !important;
 }
 
 .input::placeholder {
@@ -113,4 +139,31 @@
 /* Firefox */
 .noSpinner[type="number"] {
   -moz-appearance: textfield;
+}
+
+/* Loading indicator styles */
+.loadingIndicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--grey-300);
+  border-top: 2px solid var(--grey-600);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }

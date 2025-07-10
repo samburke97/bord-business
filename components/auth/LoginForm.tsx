@@ -1,7 +1,7 @@
 // components/auth/LoginForm.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, ChangeEvent } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
@@ -28,7 +28,7 @@ export default function LoginForm({
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [emailError, setEmailError] = useState<string | null>(null);
+  const [generalError, setGeneralError] = useState<string | null>(null);
 
   const handleBack = () => {
     // Route back to the main player app
@@ -37,6 +37,7 @@ export default function LoginForm({
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
+    setGeneralError(null);
     try {
       await signIn("google", {
         callbackUrl,
@@ -44,6 +45,9 @@ export default function LoginForm({
       });
     } catch (error) {
       console.error("Google sign-in error:", error);
+      setGeneralError(
+        "Something went wrong with Google sign-in. Please try again."
+      );
     } finally {
       setIsLoading(false);
     }
@@ -51,6 +55,7 @@ export default function LoginForm({
 
   const handleFacebookSignIn = async () => {
     setIsLoading(true);
+    setGeneralError(null);
     try {
       await signIn("facebook", {
         callbackUrl,
@@ -58,34 +63,45 @@ export default function LoginForm({
       });
     } catch (error) {
       console.error("Facebook sign-in error:", error);
+      setGeneralError(
+        "Something went wrong with Facebook sign-in. Please try again."
+      );
     } finally {
       setIsLoading(false);
     }
   };
 
   const validateEmail = (value: string) => {
-    if (!value || value.trim() === "") {
-      setEmailError("Email is required");
-      return false;
-    }
-
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(value)) {
-      setEmailError("Please enter a valid email address");
       return false;
     }
-
-    setEmailError(null);
     return true;
   };
 
+  const handleEmailChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const newEmail = e.target.value;
+    setEmail(newEmail);
+
+    // Clear general error when user starts typing
+    if (generalError) {
+      setGeneralError(null);
+    }
+  };
+
   const handleEmailContinue = async () => {
+    if (!email || email.trim() === "") {
+      setGeneralError("Please choose at least one sign in option.");
+      return;
+    }
+
     if (!validateEmail(email)) {
+      setGeneralError("Please enter a valid email address.");
       return;
     }
 
     setIsLoading(true);
-    setEmailError(null);
+    setGeneralError(null);
 
     try {
       const continueBusinessSetup =
@@ -136,7 +152,7 @@ export default function LoginForm({
       }
     } catch (error) {
       console.error("Email continue error:", error);
-      setEmailError("Something went wrong. Please try again.");
+      setGeneralError("Something went wrong. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -144,75 +160,81 @@ export default function LoginForm({
 
   return (
     <div className={styles.container}>
-      <ActionHeader
-        type="back"
-        secondaryAction={handleBack}
-        className={styles.headerOverlay}
-      />
-
       <div className={styles.content}>
-        <div className={styles.formContainer}>
-          <div className={styles.formWrapper}>
-            <TitleDescription title={title} description={description} />
+        <div className={styles.leftSection}>
+          <ActionHeader
+            type="back"
+            secondaryAction={handleBack}
+            constrained={false}
+          />
 
-            <div className={styles.authButtons}>
-              <button
-                className={styles.socialButton}
-                onClick={handleGoogleSignIn}
-                disabled={isLoading}
-              >
-                <Image
-                  src="/icons/login/google.svg"
-                  alt="Google"
-                  width={20}
-                  height={20}
-                />
-                <span className={styles.buttonText}>Continue with Google</span>
-              </button>
+          <div className={styles.formContainer}>
+            <div className={styles.formWrapper}>
+              <TitleDescription title={title} description={description} />
 
-              <button
-                className={styles.socialButton}
-                onClick={handleFacebookSignIn}
-                disabled={isLoading}
-              >
-                <Image
-                  src="/icons/login/facebook.svg"
-                  alt="Facebook"
-                  width={20}
-                  height={20}
-                />
-                <span className={styles.buttonText}>
-                  Continue with Facebook
-                </span>
-              </button>
-            </div>
-
-            <div className={styles.divider}>
-              <span>or</span>
-            </div>
-
-            <div className={styles.emailForm}>
-              <TextInput
-                id="email"
-                label="Email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Enter your email address"
-                error={emailError}
-                required
-              />
-
-              <div className={styles.continueButtonContainer}>
-                <Button
-                  variant="primary-green"
-                  onClick={handleEmailContinue}
-                  disabled={isLoading || !email}
-                  fullWidth
+              <div className={styles.authButtons}>
+                <button
+                  className={styles.socialButton}
+                  onClick={handleGoogleSignIn}
+                  disabled={isLoading}
                 >
-                  {isLoading ? "Checking..." : "Continue"}
-                </Button>
+                  <Image
+                    src="/icons/login/google.svg"
+                    alt="Google"
+                    width={32}
+                    height={32}
+                  />
+                  <span className={styles.buttonText}>
+                    Continue with Google
+                  </span>
+                </button>
+
+                <button
+                  className={styles.socialButton}
+                  onClick={handleFacebookSignIn}
+                  disabled={isLoading}
+                >
+                  <Image
+                    src="/icons/login/facebook.svg"
+                    alt="Facebook"
+                    width={32}
+                    height={32}
+                  />
+                  <span className={styles.buttonText}>
+                    Continue with Facebook
+                  </span>
+                </button>
               </div>
+
+              <div className={styles.divider}>
+                <span>OR</span>
+              </div>
+
+              <div className={styles.emailForm}>
+                <TextInput
+                  id="email"
+                  label=""
+                  type="email"
+                  value={email}
+                  onChange={handleEmailChange}
+                  placeholder="Enter your email address"
+                  error={null}
+                  required
+                />
+              </div>
+              <Button
+                variant="primary-green"
+                onClick={handleEmailContinue}
+                disabled={isLoading}
+                fullWidth
+                size="lg"
+              >
+                Continue
+              </Button>
+
+              {generalError && (
+                <div className={styles.generalError}>{generalError}</div>
+              )}
             </div>
           </div>
         </div>

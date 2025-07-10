@@ -129,7 +129,7 @@ const TextInput = forwardRef<HTMLInputElement, TextInputProps>(
               type === "number" ? styles.noSpinner : ""
             }`}
             placeholder={placeholder}
-            disabled={disabled || loading} // USE LOADING HERE BUT DON'T PASS TO DOM
+            disabled={disabled || loading}
             maxLength={maxLength}
             autoFocus={autoFocus}
             required={required}
@@ -138,12 +138,10 @@ const TextInput = forwardRef<HTMLInputElement, TextInputProps>(
             ref={ref}
             aria-invalid={!!error}
             aria-describedby={error ? `${id}-error` : undefined}
-            // NOTE: loading prop is NOT passed to the DOM element
           />
 
           {rightIcon && <div className={styles.rightIcon}>{rightIcon}</div>}
 
-          {/* SHOW LOADING INDICATOR IF LOADING */}
           {loading && (
             <div className={styles.loadingIndicator}>
               <div className={styles.spinner} />

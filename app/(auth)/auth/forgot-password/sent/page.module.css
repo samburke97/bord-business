@@ -1,7 +1,63 @@
+.container {
+  min-height: 100vh;
+  background-color: var(--bg-standard);
+}
+
+.content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: 100vh;
+}
+
+.leftSection {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-standard);
+}
+
+.formContainer {
+  display: flex;
+  flex-direction: column;
+  padding: 40px;
+  max-width: 600px;
+  margin: 0 auto;
+  width: 100%;
+  flex: 1;
+}
+
+.formWrapper {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  align-items: center;
+  text-align: center;
+}
+
+.titleSection {
+  text-align: center;
+}
+
+.title {
+  font-size: 2rem;
+  font-weight: 600;
+  color: var(--for-darkest, #171717);
+  margin: 0 0 1rem 0;
+  text-align: center;
+}
+
+.description {
+  font-size: 1rem;
+  color: var(--for-medium, #7e807f);
+  margin: 0;
+  text-align: center;
+  line-height: 1.5;
+}
+
 .checkIcon {
   display: flex;
   justify-content: center;
-  margin-bottom: 24px;
+  align-items: center;
 }
 
 .checkSvg {
@@ -9,17 +65,74 @@
   height: 64px;
 }
 
-.message {
-  margin: 16px 0;
-  padding: 12px;
-  background: #f0f9ff;
-  border: 1px solid #0ea5e9;
-  border-radius: 8px;
-  text-align: center;
+.resendSection {
+  display: flex;
+  justify-content: center;
 }
 
-.message p {
-  margin: 0;
-  color: #0369a1;
+.resendButton {
+  color: var(--grey-500);
+  text-decoration: none;
   font-size: 14px;
+  font-weight: 400;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.resendButton:hover:not(:disabled) {
+  color: var(--grey-600);
+  background-color: var(--grey-100);
+}
+
+.resendButton:focus {
+  outline: none;
+  background-color: var(--grey-200);
+}
+
+.resendButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.imageContainer {
+  position: relative;
+  background-color: var(--grey-200);
+  overflow: hidden;
+  height: 100vh;
+}
+
+.loadingContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background-color: var(--bg-standard);
+}
+
+/* Mobile responsive */
+@media (max-width: 1024px) {
+  .content {
+    grid-template-columns: 1fr;
+    min-height: calc(100vh - 64px);
+  }
+
+  .formContainer {
+    min-height: calc(100vh - 64px);
+    padding-top: 40px;
+  }
+
+  .imageContainer {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .formContainer {
+    padding: 16px;
+    padding-top: 40px;
+  }
 }
