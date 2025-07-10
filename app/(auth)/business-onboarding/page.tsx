@@ -1,4 +1,4 @@
-// app/(auth)/business-onboarding/page.tsx - SIMPLIFIED - No access verification
+// app/(auth)/business-onboarding/page.tsx - SIMPLE VERSION (No verification needed)
 "use client";
 
 import { useState, useRef, Suspense } from "react";
@@ -78,8 +78,8 @@ function BusinessOnboardingContent() {
   };
 
   const handleClose = () => {
-    // Navigate back to setup (safest option)
-    router.push("/auth/setup");
+    // Navigate back to dashboard - middleware will handle routing
+    router.push("/dashboard");
   };
 
   const createBusiness = async (data: BusinessFormData) => {
@@ -110,7 +110,7 @@ function BusinessOnboardingContent() {
         return;
       }
 
-      // Call the USER business creation API (not admin API)
+      // Call the USER business creation API
       const response = await fetch("/api/user/business", {
         method: "POST",
         headers: {
@@ -124,7 +124,7 @@ function BusinessOnboardingContent() {
           aptSuite: data.aptSuite,
           city: data.city,
           state: data.state,
-          postalCode: data.postcode, // FIXED: API expects postalCode, form has postcode
+          postalCode: data.postcode,
           latitude: data.latitude,
           longitude: data.longitude,
           sports: data.associatedSports,
@@ -146,7 +146,6 @@ function BusinessOnboardingContent() {
       setError(
         error instanceof Error ? error.message : "Failed to create business"
       );
-      // Don't advance to congratulations step on error
     } finally {
       setIsCreating(false);
     }
@@ -154,7 +153,6 @@ function BusinessOnboardingContent() {
 
   const handleHeaderContinue = () => {
     // This will be called by the header when Continue is clicked
-    // Each step component should expose its continue handler
     if (typeof window !== "undefined") {
       // @ts-ignore
       if (window.handleStepContinue) {
@@ -166,9 +164,9 @@ function BusinessOnboardingContent() {
 
   // Handle final redirect to dashboard after business creation
   const handleFinalContinue = () => {
-    // Force navigation to dashboard
     console.log("✅ Business Onboarding: Complete - redirecting to dashboard");
-    window.location.href = "/dashboard";
+    // Use router.push instead of window.location.href for better UX
+    router.push("/dashboard");
   };
 
   const renderStep = () => {
@@ -242,72 +240,53 @@ function BusinessOnboardingContent() {
               }}
               onContinue={handleContinue}
               onBack={handleBack}
-              mode="create"
             />
           </div>
         );
-      case 5:
+      case STEPS.length:
         return (
           <div ref={stepRef}>
             <BusinessCongratulationsStep
               businessName={formData.businessName}
-              onContinue={handleFinalContinue} // Goes to dashboard
+              onContinue={handleFinalContinue}
             />
           </div>
         );
       default:
-        return null;
+        return <div>Unknown step</div>;
     }
   };
 
   return (
-    <div className={styles.container}>
-      {currentStep < STEPS.length && (
-        <LocationDetailsHeader
-          steps={STEPS}
-          currentStep={currentStep}
-          onBack={handleBack}
-          onContinue={handleHeaderContinue}
-          className={styles.header}
-          onClose={handleClose} // Routes back to setup
-          mode="create"
-          disableContinue={isCreating} // Disable while creating
-        />
-      )}
+    <div className={`${styles.container} min-h-screen bg-gray-50`}>
+      <LocationDetailsHeader
+        currentStep={currentStep}
+        totalSteps={STEPS.length}
+        stepTitles={STEPS}
+        onClose={handleClose}
+        onContinue={handleHeaderContinue}
+        showContinue={currentStep < STEPS.length}
+        isLoading={isCreating}
+      />
 
-      {error && (
-        <div className={styles.errorBanner}>
-          <p>Error: {error}</p>
-          <button onClick={() => setError(null)}>Dismiss</button>
+      <main className={styles.main}>
+        <div className={styles.content}>
+          {error && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-700">{error}</p>
+            </div>
+          )}
+
+          {renderStep()}
         </div>
-      )}
-
-      <div className={styles.formContainer}>
-        {isCreating ? (
-          <div className={styles.loadingContainer}>
-            <div className={styles.spinner} />
-            <p>Creating your business...</p>
-          </div>
-        ) : (
-          renderStep()
-        )}
-      </div>
+      </main>
     </div>
   );
 }
 
 export default function BusinessOnboardingPage() {
   return (
-    <Suspense
-      fallback={
-        <div className={styles.container}>
-          <div className={styles.loadingContainer}>
-            <div className={styles.spinner} />
-            <p>Loading...</p>
-          </div>
-        </div>
-      }
-    >
+    <Suspense fallback={<div>Loading...</div>}>
       <BusinessOnboardingContent />
     </Suspense>
   );

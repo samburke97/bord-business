@@ -1,4 +1,4 @@
-// lib/auth.ts - SYNTAX FIXED VERSION
+// lib/auth.ts - COMPLETE FIXED VERSION
 import { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import FacebookProvider from "next-auth/providers/facebook";
@@ -236,9 +236,7 @@ export const authOptions: NextAuthOptions = {
       return token;
     },
 
-    // lib/auth.ts - CRITICAL FIX for redirect callback
-    // REPLACE your existing redirect callback with this:
-
+    // CRITICAL FIX: Fixed redirect callback to prevent infinite loops
     async redirect({ url, baseUrl }) {
       console.log("🔄 Redirect callback:", { url, baseUrl });
 
@@ -255,14 +253,14 @@ export const authOptions: NextAuthOptions = {
         return url;
       }
 
-      // CRITICAL FIX: Instead of fallback to /auth/setup, use home page
-      // The home page has proper routing logic to determine where users should go
-      const homeUrl = `${baseUrl}/`;
+      // CRITICAL FIX: For OAuth logins, redirect to dashboard
+      // The dashboard has proper verification logic that will route users correctly
+      const dashboardUrl = `${baseUrl}/dashboard`;
       console.log(
-        "✅ Redirect: Fallback to home page (was going to setup):",
-        homeUrl
+        "✅ Redirect: OAuth callback - redirecting to dashboard for proper routing:",
+        dashboardUrl
       );
-      return homeUrl;
+      return dashboardUrl;
     },
   },
 

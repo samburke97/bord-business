@@ -1,4 +1,4 @@
-// middleware.ts - FIXED for Facebook OAuth
+// middleware.ts - CORRECTED: No Database Queries in Edge Runtime
 import { NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { NextRequest } from "next/server";
@@ -72,7 +72,8 @@ export async function middleware(req: NextRequest) {
     "/api/auth/session",
     "/api/auth/csrf",
     "/api/auth/providers",
-    "/auth", // ALL auth pages (including /auth/setup)
+    "/api/auth/check-user-status", // CRITICAL: Allow user status check for login flow
+    "/auth/", // ALL auth pages (including /auth/setup, /auth/password, etc.)
     "/verify-email",
     "/_next",
     "/favicon.ico",
@@ -130,6 +131,7 @@ export async function middleware(req: NextRequest) {
       });
     }
 
+    // No token = not authenticated
     if (!token) {
       if (shouldLog) {
         console.log(`❌ Middleware: No valid token found for ${pathname}`);
@@ -184,7 +186,7 @@ export async function middleware(req: NextRequest) {
     }
 
     // ============================================================================
-    // Admin route protection
+    // ADMIN ROUTE PROTECTION
     // ============================================================================
 
     const adminApiRoutes = ["/api/admin"];
@@ -198,7 +200,7 @@ export async function middleware(req: NextRequest) {
     );
 
     // For admin API routes, check role
-    if (isAdminApiRoute && userInfo) {
+    if (isAdminApiRoute) {
       if (
         userInfo.globalRole !== "ADMIN" &&
         userInfo.globalRole !== "SUPER_ADMIN"
@@ -211,7 +213,7 @@ export async function middleware(req: NextRequest) {
     }
 
     // For admin-only routes, check role
-    if (isAdminOnlyRoute && userInfo) {
+    if (isAdminOnlyRoute) {
       if (
         userInfo.globalRole !== "ADMIN" &&
         userInfo.globalRole !== "SUPER_ADMIN"
@@ -222,6 +224,10 @@ export async function middleware(req: NextRequest) {
       }
     }
 
+    // User passed all checks
+    if (shouldLog) {
+      console.log(`✅ Middleware: Access granted to ${pathname}`);
+    }
     return response;
   } catch (error) {
     // PRIORITY 1: Sanitized error logging - no sensitive information
