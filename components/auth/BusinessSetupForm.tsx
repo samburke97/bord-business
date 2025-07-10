@@ -1,9 +1,9 @@
-// components/auth/BusinessSetupForm.tsx - FIXED WITH ORIGINAL UI
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
+import Image from "next/image";
 import ActionHeader from "../layouts/headers/ActionHeader";
 import TitleDescription from "@/components/ui/TitleDescription";
 import TextInput from "@/components/ui/TextInput";
@@ -65,7 +65,6 @@ export default function BusinessSetupForm({
       if (!session && !email) return;
 
       try {
-        // Check if this is an OAuth user and pre-populate fields
         const response = await fetch("/api/user/profile-status", {
           method: "GET",
           credentials: "include",
@@ -76,22 +75,13 @@ export default function BusinessSetupForm({
           const isOAuth = !data.hasPassword;
           setIsOAuthUser(isOAuth);
 
-          console.log("👤 Business Setup: User status check:", {
-            isOAuth,
-            hasFirstName: !!data.firstName,
-            hasLastName: !!data.lastName,
-            hasPhone: !!data.phone,
-            hasDateOfBirth: !!data.dateOfBirth,
-          });
-
-          // Pre-populate fields from session or API
           if (session?.user) {
             const nameParts = session.user.name?.split(" ") || [];
             setFormData((prev) => ({
               ...prev,
               firstName: data.firstName || nameParts[0] || "",
               lastName: data.lastName || nameParts.slice(1).join(" ") || "",
-              mobile: data.phone ? data.phone.replace(/^\+\d+\s/, "") : "", // Remove country code
+              mobile: data.phone ? data.phone.replace(/^\+\d+\s/, "") : "",
               dateOfBirth: data.dateOfBirth
                 ? new Date(data.dateOfBirth).toISOString().split("T")[0]
                 : "",
@@ -107,18 +97,12 @@ export default function BusinessSetupForm({
   }, [session, email]);
 
   const handleBack = () => {
-    if (isOAuthUser) {
-      // OAuth users can't go back to login with different method
-      router.push("/login");
-    } else {
-      router.back();
-    }
+    router.push("/login");
   };
 
   const handleInputChange = (field: keyof FormData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
 
-    // Clear errors when user starts typing
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: undefined }));
     }
@@ -131,17 +115,14 @@ export default function BusinessSetupForm({
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
 
-    // First Name validation
     if (!formData.firstName.trim()) {
       newErrors.firstName = "First name is required";
     }
 
-    // Last Name validation
     if (!formData.lastName.trim()) {
       newErrors.lastName = "Last name is required";
     }
 
-    // Username validation
     if (!formData.username.trim()) {
       newErrors.username = "Username is required";
     } else if (formData.username.length < 3) {
@@ -153,7 +134,6 @@ export default function BusinessSetupForm({
         "Username can only contain letters, numbers, periods, underscores, and hyphens";
     }
 
-    // Date of Birth validation
     if (!formData.dateOfBirth) {
       newErrors.dateOfBirth = "Date of birth is required";
     } else {
@@ -171,14 +151,12 @@ export default function BusinessSetupForm({
       }
     }
 
-    // Mobile validation
     if (!formData.mobile.trim()) {
       newErrors.mobile = "Mobile number is required";
     } else if (!/^\d{8,15}$/.test(formData.mobile.replace(/\s/g, ""))) {
       newErrors.mobile = "Please enter a valid mobile number";
     }
 
-    // Password validation - ONLY for non-OAuth users
     if (!isOAuthUser) {
       if (!formData.password) {
         newErrors.password = "Password is required";
@@ -189,7 +167,6 @@ export default function BusinessSetupForm({
           "Password must contain at least one uppercase letter, one lowercase letter, and one number";
       }
 
-      // Confirm Password validation - ONLY for non-OAuth users
       if (!formData.confirmPassword) {
         newErrors.confirmPassword = "Please confirm your password";
       } else if (formData.password !== formData.confirmPassword) {
@@ -226,7 +203,6 @@ export default function BusinessSetupForm({
           username: "Username is already taken",
         }));
       } else {
-        // Username is available, clear any existing error
         setErrors((prev) => ({ ...prev, username: undefined }));
       }
     } catch (error) {
@@ -245,8 +221,6 @@ export default function BusinessSetupForm({
     setErrors({});
 
     try {
-      console.log("📝 Submitting business setup form...", { isOAuthUser });
-
       const endpoint = isOAuthUser
         ? "/api/user/complete-oauth-profile"
         : "/api/auth/create-business-account";
@@ -284,10 +258,8 @@ export default function BusinessSetupForm({
         throw new Error(data.message || "Failed to complete setup");
       }
 
-      console.log("✅ Business setup completed successfully");
-
       if (isOAuthUser) {
-        // OAuth users go directly to business onboarding
+        // OAuth users continue to business setup within the same flow
         onSetupComplete();
       } else {
         // Email/password users need email verification first
@@ -299,13 +271,12 @@ export default function BusinessSetupForm({
           body: JSON.stringify({ email }),
         });
 
-        // Redirect to email verification
-        window.location.href = `/verify-email?email=${encodeURIComponent(email)}`;
+        // Redirect to email verification - they'll come back to business onboarding after verification
+        window.location.href = `/verify-email?email=${encodeURIComponent(email)}&continue_business_setup=true`;
       }
     } catch (error) {
       console.error("❌ Business setup error:", error);
 
-      // Parse API errors and map to correct fields
       if (error instanceof Error) {
         const errorMessage = error.message;
 
@@ -345,7 +316,6 @@ export default function BusinessSetupForm({
     }
   };
 
-  // Check if basic fields are filled for button state
   const hasBasicFields = useMemo(() => {
     const basicFields =
       formData.firstName.trim() &&
@@ -354,16 +324,13 @@ export default function BusinessSetupForm({
       formData.dateOfBirth &&
       formData.mobile.trim();
 
-    // For OAuth users, basic fields are enough
     if (isOAuthUser) {
       return basicFields;
     }
 
-    // For email/password users, also need password fields
     return basicFields && formData.password && formData.confirmPassword;
   }, [formData, isOAuthUser]);
 
-  // Password requirements only when password exists but incomplete (and not OAuth user)
   const passwordRequirements = useMemo(() => {
     if (isOAuthUser || !formData.password) return null;
 
@@ -428,14 +395,19 @@ export default function BusinessSetupForm({
             <div className={styles.usernameField}>
               <TextInput
                 id="username"
-                label="Username"
+                label="Public Username"
                 value={formData.username}
                 onChange={(e) => handleInputChange("username", e.target.value)}
                 onBlur={handleUsernameBlur}
-                placeholder="Choose a unique username"
+                placeholder="Johnlamb1076"
                 error={errors.username}
                 required
                 disabled={isCheckingUsername}
+                rightIcon={
+                  <span className={styles.usernameCounter}>
+                    {formData.username.length}/25
+                  </span>
+                }
               />
               {isCheckingUsername && (
                 <div className={styles.checkingText}>
@@ -451,12 +423,13 @@ export default function BusinessSetupForm({
               value={formData.dateOfBirth}
               onChange={(e) => handleInputChange("dateOfBirth", e.target.value)}
               error={errors.dateOfBirth}
+              placeholder="DD/MM/YYYY"
               required
             />
 
             <div className={styles.mobileField}>
               <label className={styles.label}>Mobile</label>
-              <div className={styles.mobileInputContainer}>
+              <div className={styles.connectedMobileInput}>
                 <CountryCodeSelect
                   value={formData.countryCode}
                   onChange={handleCountryCodeChange}
@@ -474,60 +447,39 @@ export default function BusinessSetupForm({
               </div>
             </div>
 
-            {/* PASSWORD FIELDS - ONLY SHOW FOR NON-OAUTH USERS */}
             {!isOAuthUser && (
-              <>
-                <div className={styles.passwordField}>
-                  <TextInput
-                    id="password"
-                    label="Password"
-                    type={showPassword ? "text" : "password"}
-                    value={formData.password}
-                    onChange={(e) =>
-                      handleInputChange("password", e.target.value)
-                    }
-                    placeholder="Create a secure password"
-                    error={errors.password}
-                    required
-                    rightIcon={
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className={styles.passwordToggle}
-                      >
-                        {showPassword ? "🙈" : "👁️"}
-                      </button>
-                    }
-                  />
-                </div>
-
-                <div className={styles.passwordField}>
-                  <TextInput
-                    id="confirmPassword"
-                    label="Confirm Password"
-                    type={showConfirmPassword ? "text" : "password"}
-                    value={formData.confirmPassword}
-                    onChange={(e) =>
-                      handleInputChange("confirmPassword", e.target.value)
-                    }
-                    placeholder="Confirm your password"
-                    error={errors.confirmPassword}
-                    required
-                    rightIcon={
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setShowConfirmPassword(!showConfirmPassword)
+              <div className={styles.passwordField}>
+                <TextInput
+                  id="password"
+                  label="Password"
+                  type={showPassword ? "text" : "password"}
+                  value={formData.password}
+                  onChange={(e) =>
+                    handleInputChange("password", e.target.value)
+                  }
+                  placeholder="Enter Password"
+                  error={errors.password}
+                  required
+                  rightIcon={
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className={styles.passwordToggle}
+                    >
+                      <Image
+                        src={
+                          showPassword
+                            ? "/icons/utility-outline/shown.svg"
+                            : "/icons/utility-outline/hidden.svg"
                         }
-                        className={styles.passwordToggle}
-                      >
-                        {showConfirmPassword ? "🙈" : "👁️"}
-                      </button>
-                    }
-                  />
-                </div>
+                        alt={showPassword ? "Hide password" : "Show password"}
+                        width={20}
+                        height={20}
+                      />
+                    </button>
+                  }
+                />
 
-                {/* Only show password requirements when password needs improvement */}
                 {passwordRequirements && (
                   <div className={styles.passwordRequirements}>
                     <p>Password requirements:</p>
@@ -571,7 +523,7 @@ export default function BusinessSetupForm({
                     </ul>
                   </div>
                 )}
-              </>
+              </div>
             )}
 
             <Button
@@ -591,20 +543,10 @@ export default function BusinessSetupForm({
 
             <div className={styles.termsText}>
               <p>
-                By {isOAuthUser ? "continuing" : "creating an account"}, you
-                agree to our{" "}
-                <a href="/terms" target="_blank" rel="noopener noreferrer">
-                  Terms of Service
-                </a>{" "}
-                and{" "}
-                <a href="/privacy" target="_blank" rel="noopener noreferrer">
-                  Privacy Policy
-                </a>
+                The time has come, please provide the details below to create
+                your account for{" "}
                 {!isOAuthUser && (
-                  <>
-                    . We'll create your business account for{" "}
-                    <span className={styles.emailHighlight}>{email}</span>
-                  </>
+                  <span className={styles.emailHighlight}>{email}</span>
                 )}
                 .
               </p>

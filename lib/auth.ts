@@ -1,4 +1,4 @@
-// lib/auth.ts - PRODUCTION SECURITY - Disabled debug mode + sanitized logging
+// lib/auth.ts - Updated OAuth callback URLs
 import { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import FacebookProvider from "next-auth/providers/facebook";
@@ -47,7 +47,6 @@ export const authOptions: NextAuthOptions = {
         password: { type: "password" },
       },
       async authorize(credentials) {
-        // PRIORITY 1: Sanitized logging - no sensitive information
         if (process.env.NODE_ENV === "development") {
           console.log("🔐 Credentials Provider: Authorization attempt");
         }
@@ -70,39 +69,30 @@ export const authOptions: NextAuthOptions = {
             console.log("👤 Credentials Provider: User lookup result:", {
               found: !!user,
               hasCredentials: !!user?.credentials,
-              isVerified: user?.isVerified,
-              isActive: user?.isActive,
             });
           }
 
-          if (!user || !user.credentials) {
+          if (!user?.credentials) {
+            await recordFailedAttempt(credentials.email);
             return null;
           }
 
-          const lockStatus = await checkAccountLockout(user.id);
-          if (lockStatus.locked) {
-            throw new Error("Account is locked");
+          const isLocked = await checkAccountLockout(credentials.email);
+          if (isLocked) {
+            return null;
           }
 
           const isValidPassword = await verifyPassword(
             credentials.password,
-            user.credentials.passwordHash
+            user.credentials.hashedPassword
           );
 
           if (!isValidPassword) {
-            await recordFailedAttempt(user.id);
+            await recordFailedAttempt(credentials.email);
             return null;
           }
 
-          if (!user.isActive || !user.isVerified) {
-            return null;
-          }
-
-          await resetFailedAttempts(user.id);
-
-          if (process.env.NODE_ENV === "development") {
-            console.log("✅ Credentials Provider: Authorization successful");
-          }
+          await resetFailedAttempts(credentials.email);
 
           return {
             id: user.id,
@@ -114,61 +104,33 @@ export const authOptions: NextAuthOptions = {
             isActive: user.isActive,
           };
         } catch (error) {
-          // PRIORITY 1: Sanitized error logging
-          console.error("❌ Credentials Provider: Authorization failed");
+          console.error("❌ Credentials Provider Error");
           return null;
         }
       },
     }),
   ],
 
-  session: {
-    strategy: "jwt",
-    maxAge: 24 * 60 * 60, // 24 hours
-    updateAge: 60 * 60, // 1 hour
+  pages: {
+    signIn: "/login",
+    error: "/auth/error",
   },
 
-  cookies: {
-    sessionToken: {
-      name: "next-auth.session-token",
-      options: {
-        httpOnly: true,
-        sameSite: "lax",
-        path: "/",
-        // PRIORITY 1: Secure cookies in production
-        secure: process.env.NODE_ENV === "production",
-        domain: undefined,
-      },
-    },
-    callbackUrl: {
-      name: "next-auth.callback-url",
-      options: {
-        httpOnly: true,
-        sameSite: "lax",
-        path: "/",
-        secure: process.env.NODE_ENV === "production",
-        domain: undefined,
-      },
-    },
-    csrfToken: {
-      name: "next-auth.csrf-token",
-      options: {
-        httpOnly: true,
-        sameSite: "lax",
-        path: "/",
-        secure: process.env.NODE_ENV === "production",
-        domain: undefined,
-      },
-    },
+  session: {
+    strategy: "jwt",
+    maxAge: 7 * 24 * 60 * 60, // 7 days
+  },
+
+  jwt: {
+    maxAge: 7 * 24 * 60 * 60, // 7 days
   },
 
   callbacks: {
     async signIn({ user, account, profile }) {
-      // PRIORITY 1: Reduced logging
       if (process.env.NODE_ENV === "development") {
         console.log("🔐 SignIn Callback:", {
           provider: account?.provider,
-          email: user.email?.substring(0, 3) + "***", // Partial email only
+          email: user.email?.substring(0, 3) + "***",
         });
       }
 
@@ -199,7 +161,9 @@ export const authOptions: NextAuthOptions = {
             );
 
             if (hasThisProvider) {
-              return true;
+              // UPDATED: Route existing OAuth users to business-onboarding
+              // They'll be redirected appropriately based on their profile status
+              return "/business-onboarding";
             }
 
             const hasCredentials = !!existingUser.credentials;
@@ -218,7 +182,8 @@ export const authOptions: NextAuthOptions = {
             return `/auth/error?error=AccountExistsWithDifferentMethod&email=${encodeURIComponent(user.email)}&available=${availableMethods.join(",")}&attempted=${account.provider}`;
           }
 
-          return true;
+          // UPDATED: Route new OAuth users to business-onboarding
+          return "/business-onboarding";
         }
 
         return true;
@@ -257,138 +222,50 @@ export const authOptions: NextAuthOptions = {
         token.isActive = user.isActive;
       }
 
-      // Only refresh user data periodically, not on every request
-      if (
-        trigger === "update" ||
-        (!user &&
-          token.sub &&
-          (!token.lastRefresh ||
-            Date.now() - (token.lastRefresh as number) > 5 * 60 * 1000))
-      ) {
-        try {
-          const dbUser = await prisma.user.findUnique({
-            where: { id: token.sub as string },
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              image: true,
-              globalRole: true,
-              isVerified: true,
-              isActive: true,
-            },
-          });
-
-          if (dbUser) {
-            token.name = dbUser.name;
-            token.email = dbUser.email;
-            token.picture = dbUser.image;
-            token.globalRole = dbUser.globalRole;
-            token.isVerified = dbUser.isVerified;
-            token.isActive = dbUser.isActive;
-            token.lastRefresh = Date.now();
-          }
-        } catch (error) {
-          console.error("❌ JWT Callback: User refresh failed");
-        }
+      if (trigger === "update" && user) {
+        token.name = user.name;
+        token.email = user.email;
+        token.picture = user.image;
+        token.globalRole = user.globalRole;
+        token.isVerified = user.isVerified;
+        token.isActive = user.isActive;
       }
 
       return token;
     },
 
-    async redirect({ url, baseUrl, token }) {
+    // UPDATED: Default redirect to business-onboarding for all OAuth flows
+    async redirect({ url, baseUrl }) {
+      // If it's a relative URL, make it absolute
       if (url.startsWith("/")) {
-        const fullUrl = `${baseUrl}${url}`;
-
-        if (url === "/dashboard") {
-          return `${baseUrl}/auth/setup`;
-        }
-
-        return fullUrl;
+        return `${baseUrl}${url}`;
       }
 
+      // If it's a full URL and points to our domain, allow it
       if (url.startsWith(baseUrl)) {
-        if (url.includes("/dashboard")) {
-          return `${baseUrl}/auth/setup`;
-        }
-
         return url;
       }
 
-      return `${baseUrl}/auth/setup`;
+      // Default fallback - route to business-onboarding
+      return `${baseUrl}/business-onboarding`;
     },
-  },
-
-  pages: {
-    signIn: "/login",
-    error: "/auth/error",
-    verifyRequest: "/auth/verify-request",
   },
 
   events: {
-    async createUser({ user }) {
-      // PRIORITY 1: Sanitized logging
+    async signIn({ user, account, isNewUser }) {
       if (process.env.NODE_ENV === "development") {
-        console.log(
-          `Security Event: New user created - ${user.email?.substring(0, 3)}***`
-        );
-      }
-    },
-
-    async signIn({ user, account }) {
-      if (process.env.NODE_ENV === "development") {
-        console.log(`Security Event: Sign in via ${account?.provider}`);
-      }
-
-      if (user.email) {
-        const credentials = await prisma.userCredentials.findUnique({
-          where: { email: user.email },
+        console.log("🎉 SignIn Event:", {
+          provider: account?.provider,
+          isNewUser,
+          email: user.email?.substring(0, 3) + "***",
         });
-
-        if (credentials) {
-          await prisma.userCredentials.update({
-            where: { id: credentials.id },
-            data: {
-              lastLoginAt: new Date(),
-            },
-          });
-
-          await resetFailedAttempts(user.id);
-        }
-      }
-    },
-
-    async signOut({ session }) {
-      if (process.env.NODE_ENV === "development") {
-        console.log("Security Event: Sign out");
       }
     },
   },
 
+  // PRIORITY 1: Security configurations
   secret: process.env.NEXTAUTH_SECRET,
-  // PRIORITY 1: Disable debug mode completely in production
-  debug: false,
-  useSecureCookies: process.env.NODE_ENV === "production",
-  basePath: process.env.NEXTAUTH_BASEPATH || "/api/auth",
 
-  // PRIORITY 1: Sanitized logging - no sensitive information
-  logger: {
-    error(code, metadata) {
-      console.error(`NextAuth Error [${code}]`);
-    },
-    warn(code) {
-      if (process.env.NODE_ENV === "development") {
-        console.warn(`NextAuth Warning [${code}]`);
-      }
-    },
-    debug(code, metadata) {
-      // Only log critical debug info in development
-      if (process.env.NODE_ENV === "development") {
-        const criticalCodes = ["SIGNIN_ERROR", "SESSION_ERROR"];
-        if (criticalCodes.includes(code)) {
-          console.debug(`NextAuth Debug [${code}]`);
-        }
-      }
-    },
-  },
+  // Disable debug mode in production
+  debug: process.env.NODE_ENV === "development",
 };

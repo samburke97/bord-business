@@ -22,7 +22,7 @@ export default function AuthFlowManager({
   const searchParams = useSearchParams();
   const { data: session, status } = useSession();
 
-  const [currentStep, setCurrentStep] = useState<FlowStep>("setup"); // DEFAULT TO SETUP
+  const [currentStep, setCurrentStep] = useState<FlowStep>("setup");
   const [email, setEmail] = useState(
     initialEmail || searchParams.get("email") || ""
   );

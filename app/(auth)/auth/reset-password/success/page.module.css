@@ -1,39 +1,64 @@
+/* page.module.css */
 .container {
   min-height: 100vh;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-  position: relative;
-}
-
-.headerOverlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 10;
+  background-color: var(--bg-standard);
 }
 
 .content {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   min-height: 100vh;
-  padding: 20px;
+}
+
+.leftSection {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-standard);
 }
 
 .formContainer {
-  background: white;
-  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
   padding: 40px;
+  max-width: 600px;
+  margin: 0 auto;
   width: 100%;
-  max-width: 400px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  flex: 1;
+}
+
+.formWrapper {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  align-items: center;
   text-align: center;
+}
+
+.titleSection {
+  text-align: center;
+}
+
+.title {
+  font-size: 2rem;
+  font-weight: 600;
+  color: var(--for-darkest, #171717);
+  margin: 0 0 1rem 0;
+  text-align: center;
+}
+
+.description {
+  font-size: 1rem;
+  color: var(--for-medium, #7e807f);
+  margin: 0;
+  text-align: center;
+  line-height: 1.5;
 }
 
 .checkIcon {
   display: flex;
   justify-content: center;
-  margin-bottom: 24px;
+  align-items: center;
 }
 
 .checkSvg {
@@ -41,8 +66,11 @@
   height: 64px;
 }
 
-.buttonContainer {
-  margin-top: 24px;
+.imageContainer {
+  position: relative;
+  background-color: var(--grey-200);
+  overflow: hidden;
+  height: 100vh;
 }
 
 .loadingContainer {
@@ -50,5 +78,29 @@
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  background-color: var(--bg-standard);
+}
+
+/* Mobile responsive */
+@media (max-width: 1024px) {
+  .content {
+    grid-template-columns: 1fr;
+    min-height: calc(100vh - 64px);
+  }
+
+  .formContainer {
+    min-height: calc(100vh - 64px);
+    padding-top: 40px;
+  }
+
+  .imageContainer {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .formContainer {
+    padding: 16px;
+    padding-top: 40px;
+  }
 }

@@ -1,9 +1,9 @@
-// components/auth/LoginForm.tsx
+// components/auth/LoginForm.tsx - Updated to route to business-onboarding
 "use client";
 
-import { useState, ChangeEvent } from "react";
-import { signIn } from "next-auth/react";
+import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { signIn } from "next-auth/react";
 import Image from "next/image";
 import ActionHeader from "../layouts/headers/ActionHeader";
 import TitleDescription from "@/components/ui/TitleDescription";
@@ -12,86 +12,62 @@ import Button from "@/components/ui/Button";
 import styles from "./LoginForm.module.css";
 
 interface LoginFormProps {
-  accountType: "player" | "business";
   title: string;
   description: string;
-  callbackUrl: string;
 }
 
-export default function LoginForm({
-  accountType,
-  title,
-  description,
-  callbackUrl,
-}: LoginFormProps) {
+export default function LoginForm({ title, description }: LoginFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(searchParams.get("email") || "");
   const [isLoading, setIsLoading] = useState(false);
   const [generalError, setGeneralError] = useState<string | null>(null);
 
   const handleBack = () => {
-    // Route back to the main player app
-    window.location.href = "https://bord-player.vercel.app/";
+    router.back();
   };
 
   const handleGoogleSignIn = async () => {
-    setIsLoading(true);
-    setGeneralError(null);
     try {
+      setIsLoading(true);
       await signIn("google", {
-        callbackUrl,
-        redirect: true,
+        callbackUrl: "/business-onboarding", // Updated to route to business onboarding
       });
     } catch (error) {
-      console.error("Google sign-in error:", error);
-      setGeneralError(
-        "Something went wrong with Google sign-in. Please try again."
-      );
+      console.error("Google sign in error:", error);
+      setGeneralError("Failed to sign in with Google. Please try again.");
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleFacebookSignIn = async () => {
-    setIsLoading(true);
-    setGeneralError(null);
     try {
+      setIsLoading(true);
       await signIn("facebook", {
-        callbackUrl,
-        redirect: true,
+        callbackUrl: "/business-onboarding", // Updated to route to business onboarding
       });
     } catch (error) {
-      console.error("Facebook sign-in error:", error);
-      setGeneralError(
-        "Something went wrong with Facebook sign-in. Please try again."
-      );
+      console.error("Facebook sign in error:", error);
+      setGeneralError("Failed to sign in with Facebook. Please try again.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const validateEmail = (value: string) => {
+  const validateEmail = (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(value)) {
-      return false;
-    }
-    return true;
+    return emailRegex.test(email.trim());
   };
 
-  const handleEmailChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const newEmail = e.target.value;
-    setEmail(newEmail);
-
-    // Clear general error when user starts typing
-    if (generalError) {
-      setGeneralError(null);
-    }
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEmail(e.target.value);
+    setGeneralError(null);
   };
 
   const handleEmailContinue = async () => {
-    if (!email || email.trim() === "") {
-      setGeneralError("Please choose at least one sign in option.");
+    if (!email.trim()) {
+      setGeneralError("Please enter your email address.");
       return;
     }
 
@@ -147,8 +123,9 @@ export default function LoginForm({
           );
         }
       } else {
-        // New user - go to setup
-        router.push(`/auth/setup?email=${encodeURIComponent(email)}`);
+        // UPDATED: New user - go directly to business-onboarding instead of auth/setup
+        console.log("📧 New user detected, routing to business-onboarding");
+        router.push(`/business-onboarding?email=${encodeURIComponent(email)}`);
       }
     } catch (error) {
       console.error("Email continue error:", error);

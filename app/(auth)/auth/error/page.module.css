@@ -1,188 +1,113 @@
 /* app/(auth)/auth/error/page.module.css */
 .container {
-  position: relative;
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background: var(--con-lightest, #fff);
-}
-
-.headerOverlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 10;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(8px);
+  background-color: var(--bg-standard);
 }
 
 .content {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem 1rem;
-  margin-top: 80px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: 100vh;
 }
 
-.errorContainer {
-  width: 100%;
-  max-width: 500px;
+.leftSection {
   display: flex;
   flex-direction: column;
+  background-color: var(--bg-standard);
+}
+
+.formContainer {
+  display: flex;
+  flex-direction: column;
+  padding: 40px;
+  max-width: 600px;
+  margin: 0 auto;
+  width: 100%;
+  flex: 1;
+}
+
+.formWrapper {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
   align-items: center;
   text-align: center;
-  gap: 2rem;
+}
+
+.titleSection {
+  text-align: center;
+}
+
+.title {
+  font-size: 2rem;
+  font-weight: 600;
+  color: var(--for-darkest, #171717);
+  margin: 0 0 1rem 0;
+  text-align: center;
+}
+
+.description {
+  font-size: 1rem;
+  color: var(--for-medium, #7e807f);
+  margin: 0;
+  text-align: center;
+  line-height: 1.5;
 }
 
 .iconContainer {
   display: flex;
-  align-items: center;
   justify-content: center;
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  background: var(--con-light, #fafafa);
-  margin-bottom: 1rem;
+  align-items: center;
 }
 
-.icon {
-  font-size: 2.5rem;
+.errorSvg {
+  width: 64px;
+  height: 64px;
 }
 
-.emailInfo {
-  padding: 1.5rem;
-  background: var(--con-light, #fafafa);
-  border-radius: 8px;
-  border-left: 4px solid var(--primary-300, #7ceb92);
-  width: 100%;
-}
-
-.emailText {
-  margin: 0 0 0.5rem 0;
-  font-size: 0.875rem;
-  color: var(--for-medium, #7e807f);
-}
-
-.emailHighlight {
-  color: var(--for-darkest, #171717);
-  font-weight: 500;
-  font-family: monospace;
-}
-
-.providerText {
-  margin: 0;
-  font-size: 0.75rem;
-  color: var(--for-medium, #7e807f);
-  text-transform: capitalize;
-}
-
-.actions {
-  width: 100%;
+.buttonContainer {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 12px;
+  width: 100%;
 }
 
-.helpText {
-  margin-top: 1rem;
+.imageContainer {
+  position: relative;
+  background-color: var(--grey-200);
+  overflow: hidden;
+  height: 100vh;
 }
 
-.helpText p {
-  margin: 0;
-  font-size: 0.875rem;
-  color: var(--for-medium, #7e807f);
-}
-
-.helpLink {
-  color: var(--primary-300, #7ceb92);
-  text-decoration: none;
-  font-weight: 500;
-}
-
-.helpLink:hover {
-  text-decoration: underline;
-}
-
-.loading {
+.loadingContainer {
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  font-size: 0.875rem;
-  color: var(--for-medium, #7e807f);
+  background-color: var(--bg-standard);
 }
 
-@media (max-width: 640px) {
+/* Mobile responsive */
+@media (max-width: 1024px) {
   .content {
-    padding: 1rem;
-    margin-top: 60px;
+    grid-template-columns: 1fr;
+    min-height: calc(100vh - 64px);
   }
 
-  .errorContainer {
-    max-width: 100%;
+  .formContainer {
+    min-height: calc(100vh - 64px);
+    padding-top: 40px;
   }
 
-  .iconContainer {
-    width: 64px;
-    height: 64px;
-  }
-
-  .icon {
-    font-size: 2rem;
+  .imageContainer {
+    display: none;
   }
 }
 
-.existingMethods {
-  margin: 20px 0;
-  padding: 20px;
-  background-color: #f8f9fa;
-  border-radius: 8px;
-}
-
-.subtitle {
-  font-weight: 600;
-  color: #333;
-  margin-bottom: 12px;
-}
-
-.methodsList {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.methodItem {
-  display: flex;
-  align-items: center;
-  padding: 8px 0;
-  color: #666;
-  font-size: 14px;
-}
-
-.methodIcon {
-  margin-right: 8px;
-  font-size: 16px;
-}
-
-.centerText {
-  text-align: center;
-}
-
-.extraContent {
-  margin: 20px 0;
-}
-
-.actions {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-top: 24px;
-}
-
-.icon {
-  font-size: 48px;
-  text-align: center;
-  margin-bottom: 20px;
+@media (max-width: 480px) {
+  .formContainer {
+    padding: 16px;
+    padding-top: 40px;
+  }
 }
