@@ -56,7 +56,7 @@ export default function BusinessSetupForm({
     lastName: "",
     username: "",
     dateOfBirth: "",
-    countryCode: "+61", // Australia default
+    countryCode: "",
     mobile: "",
     password: "",
     confirmPassword: "",
@@ -336,14 +336,6 @@ export default function BusinessSetupForm({
       if (isOAuthUser) {
         onSetupComplete();
       } else {
-        await fetch("/api/auth/send-verification-code", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ email }),
-        });
-
         window.location.href = `/verify-email?email=${encodeURIComponent(email)}`;
       }
     } catch (error) {
@@ -586,84 +578,125 @@ export default function BusinessSetupForm({
             />
 
             {!isOAuthUser && (
-              <div className={styles.passwordField}>
-                <TextInput
-                  id="password"
-                  label="Password"
-                  type={showPassword ? "text" : "password"}
-                  value={formData.password}
-                  onChange={(e) =>
-                    handleInputChange("password", e.target.value)
-                  }
-                  placeholder="Enter Password"
-                  error={errors.password}
-                  required
-                  rightIcon={
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className={styles.passwordToggle}
-                    >
-                      <Image
-                        src={
-                          showPassword
-                            ? "/icons/utility-outline/shown.svg"
-                            : "/icons/utility-outline/hidden.svg"
-                        }
-                        alt={showPassword ? "Hide password" : "Show password"}
-                        width={20}
-                        height={20}
-                      />
-                    </button>
-                  }
-                />
+              <>
+                <div className={styles.passwordField}>
+                  <TextInput
+                    id="password"
+                    label="Password"
+                    type={showPassword ? "text" : "password"}
+                    value={formData.password}
+                    onChange={(e) =>
+                      handleInputChange("password", e.target.value)
+                    }
+                    placeholder="Enter Password"
+                    error={errors.password}
+                    required
+                    rightIcon={
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className={styles.passwordToggle}
+                      >
+                        <Image
+                          src={
+                            showPassword
+                              ? "/icons/utility-outline/shown.svg"
+                              : "/icons/utility-outline/hidden.svg"
+                          }
+                          alt={showPassword ? "Hide password" : "Show password"}
+                          width={20}
+                          height={20}
+                        />
+                      </button>
+                    }
+                  />
 
-                {passwordRequirements && (
-                  <div className={styles.passwordRequirements}>
-                    <p>Password requirements:</p>
-                    <ul>
-                      <li
-                        className={
-                          passwordRequirements.length
-                            ? styles.met
-                            : styles.unmet
+                  {passwordRequirements && (
+                    <div className={styles.passwordRequirements}>
+                      <p>Password requirements:</p>
+                      <ul>
+                        <li
+                          className={
+                            passwordRequirements.length
+                              ? styles.met
+                              : styles.unmet
+                          }
+                        >
+                          At least 8 characters
+                        </li>
+                        <li
+                          className={
+                            passwordRequirements.uppercase
+                              ? styles.met
+                              : styles.unmet
+                          }
+                        >
+                          One uppercase letter
+                        </li>
+                        <li
+                          className={
+                            passwordRequirements.lowercase
+                              ? styles.met
+                              : styles.unmet
+                          }
+                        >
+                          One lowercase letter
+                        </li>
+                        <li
+                          className={
+                            passwordRequirements.number
+                              ? styles.met
+                              : styles.unmet
+                          }
+                        >
+                          One number
+                        </li>
+                      </ul>
+                    </div>
+                  )}
+                </div>
+
+                {/* ADD THIS NEW CONFIRM PASSWORD FIELD */}
+                <div className={styles.passwordField}>
+                  <TextInput
+                    id="confirmPassword"
+                    label="Confirm Password"
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={formData.confirmPassword}
+                    onChange={(e) =>
+                      handleInputChange("confirmPassword", e.target.value)
+                    }
+                    placeholder="Confirm your password"
+                    error={errors.confirmPassword}
+                    required
+                    rightIcon={
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setShowConfirmPassword(!showConfirmPassword)
                         }
+                        className={styles.passwordToggle}
                       >
-                        At least 8 characters
-                      </li>
-                      <li
-                        className={
-                          passwordRequirements.uppercase
-                            ? styles.met
-                            : styles.unmet
-                        }
-                      >
-                        One uppercase letter
-                      </li>
-                      <li
-                        className={
-                          passwordRequirements.lowercase
-                            ? styles.met
-                            : styles.unmet
-                        }
-                      >
-                        One lowercase letter
-                      </li>
-                      <li
-                        className={
-                          passwordRequirements.number
-                            ? styles.met
-                            : styles.unmet
-                        }
-                      >
-                        One number
-                      </li>
-                    </ul>
-                  </div>
-                )}
-              </div>
+                        <Image
+                          src={
+                            showConfirmPassword
+                              ? "/icons/utility-outline/shown.svg"
+                              : "/icons/utility-outline/hidden.svg"
+                          }
+                          alt={
+                            showConfirmPassword
+                              ? "Hide password"
+                              : "Show password"
+                          }
+                          width={20}
+                          height={20}
+                        />
+                      </button>
+                    }
+                  />
+                </div>
+              </>
             )}
-
             <div className={styles.termsSection}>
               <div className={styles.checkboxContainer}>
                 <input
@@ -753,27 +786,6 @@ export default function BusinessSetupForm({
           </Button>
         </div>
       )}
-
-      {/* reCAPTCHA Footer Notice */}
-      <div className={styles.recaptchaNotice}>
-        This site is protected by reCAPTCHA and the Google{" "}
-        <a
-          href="https://policies.google.com/privacy"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Privacy Policy
-        </a>{" "}
-        and{" "}
-        <a
-          href="https://policies.google.com/terms"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Terms of Service
-        </a>{" "}
-        apply.
-      </div>
     </div>
   );
 }

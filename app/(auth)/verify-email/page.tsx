@@ -1,9 +1,10 @@
-// app/(auth)/verify-email/page.tsx - CORRECT - Go to congratulations first
+// app/(auth)/verify-email/page.tsx - Updated with CSS modules
 "use client";
 
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import EmailVerification from "@/components/auth/EmailVerification";
+import styles from "./page.module.css";
 
 function VerifyEmailContent() {
   const searchParams = useSearchParams();
@@ -12,8 +13,6 @@ function VerifyEmailContent() {
   const handleVerificationComplete = () => {
     console.log("✅ Email verification complete - showing congratulations");
 
-    // CORRECT: After email verification, show congratulations
-    // Then congratulations should route to business onboarding (not profile setup again)
     window.location.href = `/auth/congratulations`;
   };
 
@@ -29,36 +28,10 @@ export default function VerifyEmailPage() {
   return (
     <Suspense
       fallback={
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            minHeight: "100vh",
-            backgroundColor: "#f9fafb",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: "16px",
-            }}
-          >
-            <div
-              style={{
-                width: "40px",
-                height: "40px",
-                border: "4px solid #e5e7eb",
-                borderTop: "4px solid #10b981",
-                borderRadius: "50%",
-                animation: "spin 1s linear infinite",
-              }}
-            />
-            <p style={{ color: "#6b7280", margin: 0 }}>
-              Loading verification...
-            </p>
+        <div className={styles.loadingContainer}>
+          <div className={styles.loadingContent}>
+            <div className={styles.spinner} />
+            <p className={styles.loadingText}>Loading verification...</p>
           </div>
         </div>
       }

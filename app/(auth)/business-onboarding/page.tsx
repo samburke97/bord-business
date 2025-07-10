@@ -1,7 +1,7 @@
-// app/(auth)/business-onboarding/page.tsx - ORIGINAL SECURE VERSION
+// app/(auth)/business-onboarding/page.tsx - SIMPLIFIED - No access verification
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import LocationDetailsHeader from "@/components/layouts/headers/LocationDetailsHeader";
@@ -36,13 +36,11 @@ const STEPS = [
   "Confirm Map Location",
 ];
 
-export default function BusinessOnboardingPage() {
+function BusinessOnboardingContent() {
   const router = useRouter();
-  const { data: session, status } = useSession();
+  const { data: session } = useSession();
   const [currentStep, setCurrentStep] = useState(0);
   const [isCreating, setIsCreating] = useState(false);
-  const [isCheckingAccess, setIsCheckingAccess] = useState(true);
-  const [accessMessage, setAccessMessage] = useState("Verifying access...");
   const [error, setError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState<BusinessFormData>({
@@ -60,158 +58,6 @@ export default function BusinessOnboardingPage() {
   });
 
   const stepRef = useRef<HTMLDivElement>(null);
-
-  // CRITICAL: Verify user access on every page load/refresh
-  useEffect(() => {
-    const verifyAccess = async () => {
-      if (status === "loading") {
-        setAccessMessage("Authenticating...");
-        return;
-      }
-
-      // Step 1: Check authentication
-      if (!session) {
-        console.log("❌ Business Onboarding: No session, redirecting to login");
-        router.replace("/login");
-        return;
-      }
-
-      try {
-        setAccessMessage("Checking your account setup...");
-
-        // Step 2: Verify profile is complete
-        console.log("🔍 Business Onboarding: Verifying profile completion...");
-
-        const profileResponse = await fetch("/api/user/profile-status", {
-          method: "GET",
-          credentials: "include",
-          headers: {
-            "Cache-Control": "no-cache, no-store, must-revalidate",
-          },
-        });
-
-        if (!profileResponse.ok) {
-          throw new Error(`Profile check failed: ${profileResponse.status}`);
-        }
-
-        const profileData = await profileResponse.json();
-
-        console.log("👤 Business Onboarding: Profile verification:", {
-          isComplete: profileData.isProfileComplete,
-          user: session.user?.email,
-        });
-
-        // If profile is incomplete, redirect to setup
-        if (!profileData.isProfileComplete) {
-          console.log(
-            "🚫 Business Onboarding: Profile incomplete - redirecting to setup"
-          );
-          router.replace("/auth/setup");
-          return;
-        }
-
-        setAccessMessage("Checking business requirements...");
-
-        // Step 3: Check if user actually NEEDS business setup
-        console.log("🔍 Business Onboarding: Checking business status...");
-
-        const businessResponse = await fetch("/api/user/business-status", {
-          method: "GET",
-          credentials: "include",
-          headers: {
-            "Cache-Control": "no-cache, no-store, must-revalidate",
-          },
-        });
-
-        if (!businessResponse.ok) {
-          throw new Error(`Business check failed: ${businessResponse.status}`);
-        }
-
-        const businessData = await businessResponse.json();
-
-        console.log("🏢 Business Onboarding: Business verification:", {
-          needsSetup: businessData.needsSetup,
-          hasOwnedBusiness: businessData.hasOwnedBusiness,
-          hasBusinessMembership: businessData.hasBusinessMembership,
-          user: session.user?.email,
-        });
-
-        // CRITICAL: If user doesn't need setup, they shouldn't be here
-        if (!businessData.needsSetup) {
-          console.log(
-            "🚫 Business Onboarding: User already has business setup - access denied"
-          );
-          console.log("📊 Business Onboarding: Redirecting to dashboard");
-          router.replace("/dashboard");
-          return;
-        }
-
-        // All checks passed - user needs and can access business onboarding
-        console.log(
-          "✅ Business Onboarding: Access granted - user needs business setup"
-        );
-        setAccessMessage("Setting up business onboarding...");
-        setIsCheckingAccess(false);
-      } catch (error) {
-        console.error(
-          "❌ Business Onboarding: Access verification failed:",
-          error
-        );
-
-        // On error, redirect to setup to be safe
-        console.log(
-          "🔄 Business Onboarding: Error occurred, redirecting to setup"
-        );
-        router.replace("/auth/setup");
-      }
-    };
-
-    verifyAccess();
-  }, [session, status, router]);
-
-  // Show loading while checking access
-  if (status === "loading" || isCheckingAccess) {
-    return (
-      <div className={styles.container}>
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            minHeight: "100vh",
-            gap: "16px",
-          }}
-        >
-          <div
-            style={{
-              width: "40px",
-              height: "40px",
-              border: "4px solid #e5e7eb",
-              borderTop: "4px solid #10b981",
-              borderRadius: "50%",
-              animation: "spin 1s linear infinite",
-            }}
-          />
-          <div style={{ textAlign: "center" }}>
-            <h2
-              style={{
-                fontSize: "18px",
-                fontWeight: "600",
-                color: "#1f2937",
-                margin: "0 0 8px 0",
-              }}
-            >
-              Verifying Access
-            </h2>
-            <p style={{ color: "#6b7280", margin: 0, fontSize: "14px" }}>
-              {accessMessage}
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   const handleContinue = async (data: Partial<BusinessFormData>) => {
     const updatedFormData = { ...formData, ...data };
@@ -438,32 +284,31 @@ export default function BusinessOnboardingPage() {
 
       <div className={styles.formContainer}>
         {isCreating ? (
-          <div className={styles.creatingState}>
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: "16px",
-              }}
-            >
-              <div
-                style={{
-                  width: "40px",
-                  height: "40px",
-                  border: "4px solid #e5e7eb",
-                  borderTop: "4px solid #10b981",
-                  borderRadius: "50%",
-                  animation: "spin 1s linear infinite",
-                }}
-              />
-              <p>Creating your business...</p>
-            </div>
+          <div className={styles.loadingContainer}>
+            <div className={styles.spinner} />
+            <p>Creating your business...</p>
           </div>
         ) : (
           renderStep()
         )}
       </div>
     </div>
+  );
+}
+
+export default function BusinessOnboardingPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className={styles.container}>
+          <div className={styles.loadingContainer}>
+            <div className={styles.spinner} />
+            <p>Loading...</p>
+          </div>
+        </div>
+      }
+    >
+      <BusinessOnboardingContent />
+    </Suspense>
   );
 }

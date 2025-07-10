@@ -1,10 +1,9 @@
-// components/auth/EmailVerification.tsx
+// components/auth/EmailVerification.tsx - Updated to match design
 "use client";
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { signIn } from "next-auth/react";
-import ActionHeader from "../layouts/headers/ActionHeader";
+import ActionHeader from "@/components/layouts/headers/ActionHeader";
 import TitleDescription from "@/components/ui/TitleDescription";
 import Button from "@/components/ui/Button";
 import styles from "./EmailVerification.module.css";
@@ -19,10 +18,11 @@ export default function EmailVerification({
   onVerificationComplete,
 }: EmailVerificationProps) {
   const router = useRouter();
-  const [code, setCode] = useState(["", "", "", ""]);
+  const [code, setCode] = useState<string[]>(["", "", "", ""]);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [isResending, setIsResending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isShaking, setIsShaking] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const handleBack = () => {
@@ -30,43 +30,39 @@ export default function EmailVerification({
   };
 
   const handleCodeChange = (index: number, value: string) => {
-    // Only allow single digits
-    if (value.length > 1) return;
-    if (value && !/^\d$/.test(value)) return;
+    if (!/^\d*$/.test(value)) return; // Only allow digits
 
     const newCode = [...code];
     newCode[index] = value;
     setCode(newCode);
-    setError(null);
 
     // Auto-focus next input
     if (value && index < 3) {
       inputRefs.current[index + 1]?.focus();
     }
+
+    // Clear error when user starts typing
+    if (error) {
+      setError(null);
+    }
   };
 
   const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
     if (e.key === "Backspace" && !code[index] && index > 0) {
+      // Move to previous input on backspace if current is empty
       inputRefs.current[index - 1]?.focus();
     }
   };
 
   const handlePaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
-    const pastedData = e.clipboardData.getData("text");
-    const digits = pastedData.replace(/\D/g, "").slice(0, 4);
+    const paste = e.clipboardData.getData("text");
+    const digits = paste.replace(/\D/g, "").slice(0, 4);
 
-    if (digits.length > 0) {
-      const newCode = [...code];
-      for (let i = 0; i < digits.length && i < 4; i++) {
-        newCode[i] = digits[i];
-      }
+    if (digits.length === 4) {
+      const newCode = digits.split("");
       setCode(newCode);
-      setError(null);
-
-      // Focus the next empty input or the last input
-      const nextIndex = Math.min(digits.length, 3);
-      inputRefs.current[nextIndex]?.focus();
+      inputRefs.current[3]?.focus();
     }
   };
 
@@ -82,7 +78,6 @@ export default function EmailVerification({
     setError(null);
 
     try {
-      // First, verify the email with the API
       const verifyResponse = await fetch("/api/auth/verify-email", {
         method: "POST",
         headers: {
@@ -126,6 +121,17 @@ export default function EmailVerification({
       }
     } catch (error) {
       console.error("Verification error:", error);
+
+      // Show shake animation
+      setIsShaking(true);
+      setTimeout(() => setIsShaking(false), 600);
+
+      // Clear all inputs
+      setCode(["", "", "", ""]);
+
+      // Focus first input
+      inputRefs.current[0]?.focus();
+
       setError(error instanceof Error ? error.message : "Verification failed");
     } finally {
       setIsLoading(false);
@@ -169,12 +175,12 @@ export default function EmailVerification({
     }
   };
 
-  // Auto-submit when all digits are entered
-  useEffect(() => {
-    if (code.every((digit) => digit !== "") && !isLoading) {
-      handleVerify();
-    }
-  }, [code, isLoading]);
+  // Auto-submit when all digits are entered - REMOVED
+  // useEffect(() => {
+  //   if (code.every((digit) => digit !== "") && !isLoading) {
+  //     handleVerify();
+  //   }
+  // }, [code, isLoading]);
 
   const isCodeComplete = code.every((digit) => digit !== "");
 
@@ -183,7 +189,7 @@ export default function EmailVerification({
       <ActionHeader
         type="back"
         secondaryAction={handleBack}
-        className={styles.headerOverlay}
+        className={styles.header}
       />
 
       <div className={styles.content}>
@@ -193,46 +199,51 @@ export default function EmailVerification({
             description={`To verify your email (${email}), please enter the code we sent to your email.`}
           />
 
-          <div className={styles.codeInputContainer}>
-            {code.map((digit, index) => (
-              <input
-                key={index}
-                ref={(el) => (inputRefs.current[index] = el)}
-                type="text"
-                inputMode="numeric"
-                pattern="\d"
-                maxLength={1}
-                value={digit}
-                onChange={(e) => handleCodeChange(index, e.target.value)}
-                onKeyDown={(e) => handleKeyDown(index, e)}
-                onPaste={index === 0 ? handlePaste : undefined}
-                className={styles.codeInput}
-                autoFocus={index === 0}
-                disabled={isLoading}
-              />
-            ))}
-          </div>
-
-          {error && <div className={styles.errorMessage}>{error}</div>}
-
-          <div className={styles.buttonContainer}>
-            <Button
-              variant="primary-green"
-              onClick={handleVerify}
-              disabled={!isCodeComplete || isLoading}
-              fullWidth
+          <div className={styles.formSection}>
+            <div
+              className={`${styles.codeInputContainer} ${isShaking ? styles.shake : ""}`}
             >
-              {isLoading ? "Verifying..." : "Continue"}
-            </Button>
+              {code.map((digit, index) => (
+                <input
+                  key={index}
+                  ref={(el) => (inputRefs.current[index] = el)}
+                  type="text"
+                  inputMode="numeric"
+                  pattern="\d"
+                  maxLength={1}
+                  value={digit}
+                  onChange={(e) => handleCodeChange(index, e.target.value)}
+                  onKeyDown={(e) => handleKeyDown(index, e)}
+                  onPaste={index === 0 ? handlePaste : undefined}
+                  className={`${styles.codeInput} ${error ? styles.codeInputError : ""}`}
+                  autoFocus={index === 0}
+                  disabled={isLoading}
+                  data-filled={digit !== ""}
+                />
+              ))}
+            </div>
 
-            <Button
-              variant="ghost"
-              onClick={handleResendEmail}
-              disabled={isResending || isLoading}
-              fullWidth
-            >
-              {isResending ? "Sending..." : "Resend Email"}
-            </Button>
+            {error && <div className={styles.errorMessage}>{error}</div>}
+
+            <div className={styles.buttonContainer}>
+              <Button
+                variant="primary-green"
+                onClick={handleVerify}
+                disabled={!isCodeComplete || isLoading}
+                fullWidth
+              >
+                {isLoading ? "Verifying..." : "Continue"}
+              </Button>
+
+              <Button
+                variant="secondary"
+                onClick={handleResendEmail}
+                disabled={isResending || isLoading}
+                fullWidth
+              >
+                {isResending ? "Sending..." : "Resend Email"}
+              </Button>
+            </div>
           </div>
         </div>
       </div>

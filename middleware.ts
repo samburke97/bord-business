@@ -1,4 +1,4 @@
-// middleware.ts - ENHANCED SECURITY with reCAPTCHA support
+// middleware.ts - FIXED for Facebook OAuth
 import { NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { NextRequest } from "next/server";
@@ -59,15 +59,21 @@ export async function middleware(req: NextRequest) {
   );
 
   // ============================================================================
-  // ALWAYS ALLOW: Authentication and public routes
+  // CRITICAL FIX: More comprehensive authentication route exclusions
   // ============================================================================
 
   const alwaysAllowRoutes = [
     "/login",
-    "/api/auth", // ALL NextAuth routes
+    "/api/auth/", // CRITICAL: Must include trailing slash for all NextAuth routes
+    "/api/auth/signin",
+    "/api/auth/callback", // CRITICAL: All OAuth callbacks
+    "/api/auth/callback/facebook", // Specific Facebook callback
+    "/api/auth/callback/google", // Specific Google callback
+    "/api/auth/session",
+    "/api/auth/csrf",
+    "/api/auth/providers",
     "/auth", // ALL auth pages (including /auth/setup)
     "/verify-email",
-    "/business-onboarding",
     "/_next",
     "/favicon.ico",
     "/icons",
@@ -80,13 +86,25 @@ export async function middleware(req: NextRequest) {
     ".ico", // Allow ICO files
   ];
 
-  // Check if route should always be allowed
-  const isAlwaysAllowed = alwaysAllowRoutes.some(
-    (route) => pathname.startsWith(route) || pathname.endsWith(route)
-  );
+  // CRITICAL FIX: Better route matching logic
+  const isAlwaysAllowed = alwaysAllowRoutes.some((route) => {
+    if (route.endsWith("/")) {
+      // For routes ending with slash, check if pathname starts with route
+      return pathname.startsWith(route);
+    } else if (route.startsWith(".")) {
+      // For file extensions, check if pathname ends with extension
+      return pathname.endsWith(route);
+    } else {
+      // For exact routes, check exact match or starts with route + slash
+      return pathname === route || pathname.startsWith(route + "/");
+    }
+  });
 
   if (isAlwaysAllowed) {
-    // Reduced logging for public routes
+    // CRITICAL: Always allow OAuth callback processing
+    if (process.env.NODE_ENV === "development") {
+      console.log(`✅ Middleware: Allowing route ${pathname}`);
+    }
     return response;
   }
 

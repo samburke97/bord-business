@@ -1,9 +1,10 @@
-// app/(auth)/auth/congratulations/page.tsx - FIXED - Route to business onboarding
+// app/(auth)/auth/congratulations/page.tsx - Updated with CSS modules
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
-import Congratulations from "@/components/auth/Congratulations";
+import Button from "@/components/ui/Button";
+import styles from "./page.module.css";
 
 export default function CongratulationsPage() {
   const router = useRouter();
@@ -37,38 +38,72 @@ export default function CongratulationsPage() {
 
   if (isLoading) {
     return (
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          minHeight: "100vh",
-        }}
-      >
-        <div style={{ textAlign: "center" }}>
-          <div
-            style={{
-              width: "40px",
-              height: "40px",
-              border: "4px solid #e5e7eb",
-              borderTop: "4px solid #10b981",
-              borderRadius: "50%",
-              animation: "spin 1s linear infinite",
-              margin: "0 auto 16px",
-            }}
-          />
-          <p style={{ color: "#6b7280", margin: 0 }}>
-            Preparing business setup...
-          </p>
+      <div className={styles.loadingContainer}>
+        <div className={styles.loadingContent}>
+          <div className={styles.spinner} />
+          <p className={styles.loadingText}>Preparing business setup...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <Congratulations
-      onContinue={handleContinue}
-      onRemindLater={handleRemindLater}
-    />
+    <div className={styles.container}>
+      <div className={styles.content}>
+        <div className={styles.formContainer}>
+          {/* Checkmark Icon */}
+          <div className={styles.iconContainer}>
+            <div className={styles.checkmarkIcon}>
+              <svg
+                width="32"
+                height="32"
+                viewBox="0 0 32 32"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M26.6667 8L12 22.6667L5.33337 16"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+          </div>
+
+          {/* Title and Description */}
+          <div className={styles.textSection}>
+            <h1 className={styles.title}>Congratulations</h1>
+            <p className={styles.description}>
+              Let's Complete your player account setup
+              <br />
+              or you can come back to it later.
+            </p>
+          </div>
+
+          {/* Buttons */}
+          <div className={styles.buttonContainer}>
+            <Button
+              variant="primary-green"
+              onClick={handleContinue}
+              disabled={isLoading}
+              fullWidth
+            >
+              {isLoading ? "Loading..." : "Continue"}
+            </Button>
+
+            <Button
+              variant="secondary"
+              onClick={handleRemindLater}
+              disabled={isLoading}
+              fullWidth
+            >
+              Remind me Later
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

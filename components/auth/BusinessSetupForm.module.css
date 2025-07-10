@@ -311,34 +311,3 @@
     min-width: 100px;
   }
 }
-
-.recaptchaField {
-  margin: 16px 0;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-}
-
-.errorText {
-  color: #ef4444;
-  font-size: 14px;
-  margin-top: 4px;
-}
-
-.recaptchaNotice {
-  text-align: center;
-  font-size: 12px;
-  color: #6b7280;
-  margin-top: 16px;
-  padding: 16px;
-  line-height: 1.4;
-}
-
-.recaptchaNotice a {
-  color: #3b82f6;
-  text-decoration: none;
-}
-
-.recaptchaNotice a:hover {
-  text-decoration: underline;
-}

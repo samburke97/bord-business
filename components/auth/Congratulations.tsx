@@ -1,7 +1,6 @@
 // components/auth/Congratulations.tsx
 "use client";
 
-import { useRouter } from "next/navigation";
 import Button from "@/components/ui/Button";
 import styles from "./Congratulations.module.css";
 

@@ -1,4 +1,4 @@
-// lib/auth.ts - ORIGINAL VERSION
+// lib/auth.ts - FIXED VERSION - Let redirect callback handle routing
 import { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import FacebookProvider from "next-auth/providers/facebook";
@@ -84,7 +84,7 @@ export const authOptions: NextAuthOptions = {
 
           const isValidPassword = await verifyPassword(
             credentials.password,
-            user.credentials.hashedPassword
+            user.credentials.passwordHash
           );
 
           if (!isValidPassword) {
@@ -161,10 +161,12 @@ export const authOptions: NextAuthOptions = {
             );
 
             if (hasThisProvider) {
-              // ORIGINAL: Route existing OAuth users to setup
-              return "/auth/setup";
+              // FIXED: Just return true, let redirect callback handle routing
+              console.log("✅ SignIn: Existing OAuth user with this provider");
+              return true;
             }
 
+            // Check for account exists with different method
             const hasCredentials = !!existingUser.credentials;
             const hasGoogle = existingUser.accounts.some(
               (acc) => acc.provider === "google"
@@ -178,11 +180,13 @@ export const authOptions: NextAuthOptions = {
             if (hasGoogle) availableMethods.push("google");
             if (hasFacebook) availableMethods.push("facebook");
 
+            // Still return error URL for conflicting accounts
             return `/auth/error?error=AccountExistsWithDifferentMethod&email=${encodeURIComponent(user.email)}&available=${availableMethods.join(",")}&attempted=${account.provider}`;
           }
 
-          // ORIGINAL: Route new OAuth users to setup
-          return "/auth/setup";
+          // FIXED: New OAuth users - just return true, let redirect handle routing
+          console.log("✅ SignIn: New OAuth user");
+          return true;
         }
 
         return true;
@@ -233,20 +237,27 @@ export const authOptions: NextAuthOptions = {
       return token;
     },
 
-    // ORIGINAL: Default redirect to setup for OAuth flows
+    // FIXED: Redirect callback handles all the routing logic
     async redirect({ url, baseUrl }) {
+      console.log("🔄 Redirect callback:", { url, baseUrl });
+
       // If it's a relative URL, make it absolute
       if (url.startsWith("/")) {
-        return `${baseUrl}${url}`;
+        const fullUrl = `${baseUrl}${url}`;
+        console.log("✅ Redirect: Using relative URL:", fullUrl);
+        return fullUrl;
       }
 
       // If it's a full URL and points to our domain, allow it
       if (url.startsWith(baseUrl)) {
+        console.log("✅ Redirect: Using full URL:", url);
         return url;
       }
 
-      // ORIGINAL: Default fallback - route to setup
-      return `${baseUrl}/auth/setup`;
+      // FIXED: Default fallback - route OAuth users to setup
+      const setupUrl = `${baseUrl}/auth/setup`;
+      console.log("✅ Redirect: Fallback to setup:", setupUrl);
+      return setupUrl;
     },
   },
 
