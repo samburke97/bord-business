@@ -1,14 +1,16 @@
+// components/auth/BusinessSetupForm.tsx - Updated with reCAPTCHA v3
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { useGoogleReCaptcha } from "react-google-recaptcha-v3";
 import Image from "next/image";
-import ActionHeader from "../layouts/headers/ActionHeader";
+import ActionHeader from "@/components/layouts/headers/ActionHeader";
 import TitleDescription from "@/components/ui/TitleDescription";
 import TextInput from "@/components/ui/TextInput";
 import Button from "@/components/ui/Button";
-import CountryCodeSelect from "@/components/ui/CountryCodeSelect";
+import PhoneInput from "@/components/ui/PhoneInput";
 import styles from "./BusinessSetupForm.module.css";
 
 interface BusinessSetupFormProps {
@@ -35,6 +37,8 @@ interface FormErrors {
   mobile?: string;
   password?: string;
   confirmPassword?: string;
+  recaptcha?: string;
+  terms?: string; // Add terms error field
 }
 
 export default function BusinessSetupForm({
@@ -43,7 +47,10 @@ export default function BusinessSetupForm({
 }: BusinessSetupFormProps) {
   const { data: session } = useSession();
   const router = useRouter();
+  const { executeRecaptcha } = useGoogleReCaptcha();
+
   const [isOAuthUser, setIsOAuthUser] = useState(false);
+  const [isLargeScreen, setIsLargeScreen] = useState(false);
   const [formData, setFormData] = useState<FormData>({
     firstName: "",
     lastName: "",
@@ -56,9 +63,40 @@ export default function BusinessSetupForm({
   });
   const [errors, setErrors] = useState<FormErrors>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [isCheckingUsername, setIsCheckingUsername] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isCheckingUsername, setIsCheckingUsername] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+
+  // Get reCAPTCHA token
+  const getReCaptchaToken = async (action: string): Promise<string | null> => {
+    if (!executeRecaptcha) {
+      console.log("Execute recaptcha not yet available");
+      return null;
+    }
+
+    try {
+      const token = await executeRecaptcha(action);
+      return token;
+    } catch (error) {
+      console.error("reCAPTCHA execution failed:", error);
+      return null;
+    }
+  };
+
+  // Check screen size
+  useEffect(() => {
+    const checkScreenSize = () => {
+      setIsLargeScreen(window.innerWidth >= 1024);
+    };
+
+    checkScreenSize();
+    window.addEventListener("resize", checkScreenSize);
+
+    return () => {
+      window.removeEventListener("resize", checkScreenSize);
+    };
+  }, []);
 
   useEffect(() => {
     const checkUserStatus = async () => {
@@ -96,8 +134,16 @@ export default function BusinessSetupForm({
     checkUserStatus();
   }, [session, email]);
 
+  const handleHeaderContinue = () => {
+    handleSubmit();
+  };
+
   const handleBack = () => {
-    router.push("/login");
+    if (isOAuthUser) {
+      router.push("/login");
+    } else {
+      router.back();
+    }
   };
 
   const handleInputChange = (field: keyof FormData, value: string) => {
@@ -116,11 +162,11 @@ export default function BusinessSetupForm({
     const newErrors: FormErrors = {};
 
     if (!formData.firstName.trim()) {
-      newErrors.firstName = "First name is required";
+      newErrors.firstName = "Please enter your first name";
     }
 
     if (!formData.lastName.trim()) {
-      newErrors.lastName = "Last name is required";
+      newErrors.lastName = "Please enter your last name";
     }
 
     if (!formData.username.trim()) {
@@ -174,6 +220,11 @@ export default function BusinessSetupForm({
       }
     }
 
+    if (!agreedToTerms) {
+      newErrors.terms =
+        "Please agree to the Terms of Service and Privacy Policy";
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -185,12 +236,18 @@ export default function BusinessSetupForm({
 
     setIsCheckingUsername(true);
     try {
+      // Generate reCAPTCHA token for username check
+      const recaptchaToken = await getReCaptchaToken("username_check");
+
       const response = await fetch("/api/auth/check-username", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ username: formData.username }),
+        body: JSON.stringify({
+          username: formData.username,
+          recaptchaToken,
+        }),
       });
 
       const data = await response.json();
@@ -221,6 +278,22 @@ export default function BusinessSetupForm({
     setErrors({});
 
     try {
+      // Generate reCAPTCHA token for account creation
+      console.log("🔒 Generating reCAPTCHA token...");
+      const recaptchaToken = await getReCaptchaToken(
+        "business_account_creation"
+      );
+
+      if (!recaptchaToken) {
+        setErrors({
+          recaptcha: "reCAPTCHA verification failed. Please try again.",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      console.log("✅ reCAPTCHA token generated successfully");
+
       const endpoint = isOAuthUser
         ? "/api/user/complete-oauth-profile"
         : "/api/auth/create-business-account";
@@ -232,6 +305,7 @@ export default function BusinessSetupForm({
             username: formData.username.trim(),
             dateOfBirth: formData.dateOfBirth,
             fullMobile: `${formData.countryCode} ${formData.mobile.trim()}`,
+            recaptchaToken,
           }
         : {
             email,
@@ -241,6 +315,7 @@ export default function BusinessSetupForm({
             dateOfBirth: formData.dateOfBirth,
             fullMobile: `${formData.countryCode} ${formData.mobile.trim()}`,
             password: formData.password,
+            recaptchaToken,
           };
 
       const response = await fetch(endpoint, {
@@ -259,10 +334,8 @@ export default function BusinessSetupForm({
       }
 
       if (isOAuthUser) {
-        // OAuth users continue to business setup within the same flow
         onSetupComplete();
       } else {
-        // Email/password users need email verification first
         await fetch("/api/auth/send-verification-code", {
           method: "POST",
           headers: {
@@ -271,8 +344,7 @@ export default function BusinessSetupForm({
           body: JSON.stringify({ email }),
         });
 
-        // Redirect to email verification - they'll come back to business onboarding after verification
-        window.location.href = `/verify-email?email=${encodeURIComponent(email)}&continue_business_setup=true`;
+        window.location.href = `/verify-email?email=${encodeURIComponent(email)}`;
       }
     } catch (error) {
       console.error("❌ Business setup error:", error);
@@ -305,6 +377,11 @@ export default function BusinessSetupForm({
           errorMessage.includes("birth")
         ) {
           setErrors({ dateOfBirth: errorMessage });
+        } else if (
+          errorMessage.includes("reCAPTCHA") ||
+          errorMessage.includes("captcha")
+        ) {
+          setErrors({ recaptcha: errorMessage });
         } else {
           setErrors({ password: errorMessage });
         }
@@ -325,11 +402,16 @@ export default function BusinessSetupForm({
       formData.mobile.trim();
 
     if (isOAuthUser) {
-      return basicFields;
+      return basicFields && agreedToTerms;
     }
 
-    return basicFields && formData.password && formData.confirmPassword;
-  }, [formData, isOAuthUser]);
+    return (
+      basicFields &&
+      formData.password &&
+      formData.confirmPassword &&
+      agreedToTerms
+    );
+  }, [formData, isOAuthUser, agreedToTerms]);
 
   const passwordRequirements = useMemo(() => {
     if (isOAuthUser || !formData.password) return null;
@@ -356,15 +438,21 @@ export default function BusinessSetupForm({
     if (isOAuthUser) {
       return "Just a few more details to complete your business account setup.";
     }
-    return `Let's get you started! We'll create your business account for ${email}.`;
+    return `Let's get you started! Please provide the following details to create your account for ${email}.`;
   };
 
   return (
     <div className={styles.container}>
       <ActionHeader
-        type="back"
         secondaryAction={handleBack}
-        className={styles.headerOverlay}
+        primaryAction={isLargeScreen ? handleHeaderContinue : undefined}
+        primaryLabel="Continue"
+        secondaryLabel="Back"
+        isProcessing={isLoading}
+        processingLabel="Loading..."
+        className={styles.header}
+        constrained={false}
+        variant="edit"
       />
 
       <div className={styles.content}>
@@ -404,16 +492,74 @@ export default function BusinessSetupForm({
                 required
                 disabled={isCheckingUsername}
                 rightIcon={
-                  <span className={styles.usernameCounter}>
-                    {formData.username.length}/25
-                  </span>
+                  <div className={styles.usernameRightSection}>
+                    <span className={styles.usernameCounter}>
+                      {formData.username.length}/25
+                    </span>
+                    {isCheckingUsername && (
+                      <div className={styles.usernameSpinner}>
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 16 16"
+                          className={styles.spinner}
+                        >
+                          <circle
+                            cx="8"
+                            cy="8"
+                            r="6"
+                            fill="none"
+                            stroke="var(--for-medium, #7e807f)"
+                            strokeWidth="2"
+                            strokeDasharray="30"
+                            strokeDashoffset="30"
+                          />
+                        </svg>
+                      </div>
+                    )}
+                    {!isCheckingUsername &&
+                      formData.username.length >= 3 &&
+                      !errors.username && (
+                        <div className={styles.usernameAvailable}>
+                          <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 16 16"
+                            fill="none"
+                          >
+                            <path
+                              d="M3 8l3 3 7-7"
+                              stroke="var(--primary-300, #7ceb92)"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </div>
+                      )}
+                    {!isCheckingUsername &&
+                      errors.username &&
+                      errors.username.includes("taken") && (
+                        <div className={styles.usernameTaken}>
+                          <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 16 16"
+                            fill="none"
+                          >
+                            <path
+                              d="M4 4l8 8M12 4l-8 8"
+                              stroke="var(--red-wine-300, #900c40)"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </div>
+                      )}
+                  </div>
                 }
               />
-              {isCheckingUsername && (
-                <div className={styles.checkingText}>
-                  Checking availability...
-                </div>
-              )}
             </div>
 
             <TextInput
@@ -427,25 +573,17 @@ export default function BusinessSetupForm({
               required
             />
 
-            <div className={styles.mobileField}>
-              <label className={styles.label}>Mobile</label>
-              <div className={styles.connectedMobileInput}>
-                <CountryCodeSelect
-                  value={formData.countryCode}
-                  onChange={handleCountryCodeChange}
-                />
-                <TextInput
-                  id="mobile"
-                  label=""
-                  value={formData.mobile}
-                  onChange={(e) => handleInputChange("mobile", e.target.value)}
-                  placeholder="Enter your mobile number"
-                  error={errors.mobile}
-                  type="tel"
-                  required
-                />
-              </div>
-            </div>
+            <PhoneInput
+              id="mobile"
+              label="Mobile"
+              value={formData.mobile}
+              countryCode={formData.countryCode}
+              onChange={(value) => handleInputChange("mobile", value)}
+              onCountryChange={handleCountryCodeChange}
+              placeholder="Enter your mobile number"
+              error={errors.mobile}
+              required
+            />
 
             {!isOAuthUser && (
               <div className={styles.passwordField}>
@@ -526,33 +664,115 @@ export default function BusinessSetupForm({
               </div>
             )}
 
-            <Button
-              variant="primary-green"
-              onClick={handleSubmit}
-              disabled={isLoading || !hasBasicFields || isCheckingUsername}
-              fullWidth
-            >
-              {isLoading
-                ? isOAuthUser
-                  ? "Completing Setup..."
-                  : "Creating Account..."
-                : isOAuthUser
-                  ? "Continue to Business Setup"
-                  : "Create Account"}
-            </Button>
+            <div className={styles.termsSection}>
+              <div className={styles.checkboxContainer}>
+                <input
+                  type="checkbox"
+                  id="agreedToTerms"
+                  checked={agreedToTerms}
+                  onChange={(e) => setAgreedToTerms(e.target.checked)}
+                  className={styles.checkbox}
+                />
+                <label htmlFor="agreedToTerms" className={styles.checkboxLabel}>
+                  <span className={styles.checkmark}>
+                    {agreedToTerms && (
+                      <svg width="12" height="9" viewBox="0 0 12 9" fill="none">
+                        <path
+                          d="M1 4.5L4 7.5L11 1"
+                          stroke="white"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    )}
+                  </span>
+                  <span className={styles.agreementText}>
+                    I agree to the{" "}
+                    <a
+                      href="/privacy-policy"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={styles.legalLink}
+                    >
+                      Privacy Policy
+                    </a>
+                    ,{" "}
+                    <a
+                      href="/terms-of-service"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={styles.legalLink}
+                    >
+                      Terms of Service
+                    </a>{" "}
+                    and{" "}
+                    <a
+                      href="/terms-of-business"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={styles.legalLink}
+                    >
+                      Terms of Business
+                    </a>
+                    .
+                  </span>
+                </label>
+              </div>
 
-            <div className={styles.termsText}>
-              <p>
-                The time has come, please provide the details below to create
-                your account for{" "}
-                {!isOAuthUser && (
-                  <span className={styles.emailHighlight}>{email}</span>
-                )}
-                .
-              </p>
+              {/* Terms error with red asterisk */}
+              {errors.terms && (
+                <div className={styles.errorText}>
+                  <span style={{ color: "#ef4444" }}>*</span> {errors.terms}
+                </div>
+              )}
             </div>
+
+            {/* Show reCAPTCHA error if any */}
+            {errors.recaptcha && (
+              <div className={styles.errorText}>{errors.recaptcha}</div>
+            )}
           </div>
         </div>
+      </div>
+
+      {/* Mobile continue button - fixed at bottom */}
+      {!isLargeScreen && (
+        <div className={styles.mobileButtonContainer}>
+          <Button
+            variant="primary-green"
+            onClick={handleSubmit}
+            disabled={isLoading || !hasBasicFields || isCheckingUsername}
+            fullWidth
+          >
+            {isLoading
+              ? isOAuthUser
+                ? "Completing Setup..."
+                : "Creating Account..."
+              : "Continue"}
+          </Button>
+        </div>
+      )}
+
+      {/* reCAPTCHA Footer Notice */}
+      <div className={styles.recaptchaNotice}>
+        This site is protected by reCAPTCHA and the Google{" "}
+        <a
+          href="https://policies.google.com/privacy"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Privacy Policy
+        </a>{" "}
+        and{" "}
+        <a
+          href="https://policies.google.com/terms"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Terms of Service
+        </a>{" "}
+        apply.
       </div>
     </div>
   );

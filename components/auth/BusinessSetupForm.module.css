@@ -1,20 +1,9 @@
-/* components/auth/BusinessSetupForm.module.css - Final version */
+/* components/auth/BusinessSetupForm.module.css - Using LocationDetailsHeader */
 .container {
-  position: relative;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   background: var(--con-lightest, #fff);
-}
-
-.headerOverlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 10;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(8px);
 }
 
 .content {
@@ -23,8 +12,8 @@
   align-items: flex-start;
   justify-content: center;
   padding: 2rem 1rem;
-  margin-top: 80px;
   overflow-y: auto;
+  padding-bottom: 8rem;
 }
 
 .formContainer {
@@ -73,7 +62,7 @@
   gap: 0.5rem;
 }
 
-/* Connected mobile input styling - matches your design */
+/* Connected mobile input styling */
 .connectedMobileInput {
   display: flex;
   align-items: stretch;
@@ -192,6 +181,72 @@
   color: var(--for-medium, #7e807f);
 }
 
+.termsSection {
+  margin-top: 1.5rem;
+}
+
+.checkboxContainer {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.checkbox {
+  display: none; /* Hide the default checkbox */
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--for-dark, #374151);
+}
+
+.checkmark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--out-medium, #d1d5db);
+  border-radius: 4px;
+  background: var(--con-lightest, #fff);
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  margin-top: 1px; /* Align with text */
+}
+
+.checkbox:checked + .checkboxLabel .checkmark {
+  background: var(--primary-600, #059669);
+  border-color: var(--primary-600, #059669);
+}
+
+.checkboxLabel:hover .checkmark {
+  border-color: var(--primary-300, #7ceb92);
+}
+
+.checkbox:focus + .checkboxLabel .checkmark {
+  outline: 2px solid var(--primary-300, #7ceb92);
+  outline-offset: 2px;
+}
+
+.agreementText {
+  flex: 1;
+}
+
+.legalLink {
+  color: var(--primary-600, #059669);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.legalLink:hover {
+  text-decoration: underline;
+}
+
 .termsText {
   padding: 1rem;
   background: var(--con-light, #fafafa);
@@ -219,10 +274,33 @@
   font-weight: 500;
 }
 
+/* Mobile continue button - fixed at bottom */
+.mobileButtonContainer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 1rem;
+  background: var(--con-lightest, #fff);
+  border-top: 1px solid var(--out-light, #f5f5f5);
+  z-index: 20;
+}
+
+/* Desktop adjustments */
+@media (min-width: 1024px) {
+  .content {
+    padding-bottom: 2rem; /* Reset bottom padding on desktop */
+  }
+}
+
 @media (max-width: 640px) {
+  .header {
+    padding: 1rem;
+  }
+
   .content {
     padding: 1rem;
-    margin-top: 60px;
+    padding-bottom: 8rem; /* Account for mobile button */
   }
 
   .formContainer {
@@ -232,4 +310,35 @@
   .connectedMobileInput > :first-child {
     min-width: 100px;
   }
+}
+
+.recaptchaField {
+  margin: 16px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.errorText {
+  color: #ef4444;
+  font-size: 14px;
+  margin-top: 4px;
+}
+
+.recaptchaNotice {
+  text-align: center;
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 16px;
+  padding: 16px;
+  line-height: 1.4;
+}
+
+.recaptchaNotice a {
+  color: #3b82f6;
+  text-decoration: none;
+}
+
+.recaptchaNotice a:hover {
+  text-decoration: underline;
 }

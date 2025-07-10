@@ -1,4 +1,4 @@
-// middleware.ts - ENHANCED SECURITY - Priority 1 fixes without breaking functionality
+// middleware.ts - ENHANCED SECURITY with reCAPTCHA support
 import { NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { NextRequest } from "next/server";
@@ -21,15 +21,22 @@ export async function middleware(req: NextRequest) {
   response.headers.set("X-XSS-Protection", "1; mode=block");
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
 
-  // PRIORITY 1: Content Security Policy - Carefully configured to maintain functionality
+  // PRIORITY 1: Content Security Policy - Updated to support reCAPTCHA
   const csp = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://connect.facebook.net https://www.facebook.com",
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    // Script sources - include Google reCAPTCHA domains
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://connect.facebook.net https://www.facebook.com https://www.google.com https://www.gstatic.com https://www.recaptcha.net",
+    // Style sources - include Google Fonts and reCAPTCHA
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://www.google.com https://www.gstatic.com",
+    // Font sources
     "font-src 'self' https://fonts.gstatic.com data:",
+    // Image sources - include Google domains
     "img-src 'self' data: https: blob:",
-    "connect-src 'self' https://accounts.google.com https://www.facebook.com https://graph.facebook.com",
-    "frame-src 'self' https://accounts.google.com https://www.facebook.com",
+    // Connect sources - include Google reCAPTCHA API
+    "connect-src 'self' https://accounts.google.com https://www.facebook.com https://graph.facebook.com https://www.google.com https://www.recaptcha.net",
+    // Frame sources - include Google reCAPTCHA and social login
+    "frame-src 'self' https://accounts.google.com https://www.facebook.com https://www.google.com https://www.recaptcha.net https://recaptcha.google.com",
+    // Object and form sources
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -58,8 +65,9 @@ export async function middleware(req: NextRequest) {
   const alwaysAllowRoutes = [
     "/login",
     "/api/auth", // ALL NextAuth routes
-    "/auth", // ALL auth pages
+    "/auth", // ALL auth pages (including /auth/setup)
     "/verify-email",
+    "/business-onboarding",
     "/_next",
     "/favicon.ico",
     "/icons",

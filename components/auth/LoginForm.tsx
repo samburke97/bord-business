@@ -1,9 +1,9 @@
-// components/auth/LoginForm.tsx - Updated to route to business-onboarding
 "use client";
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
+import { useGoogleReCaptcha } from "react-google-recaptcha-v3";
 import Image from "next/image";
 import ActionHeader from "../layouts/headers/ActionHeader";
 import TitleDescription from "@/components/ui/TitleDescription";
@@ -19,9 +19,27 @@ interface LoginFormProps {
 export default function LoginForm({ title, description }: LoginFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { executeRecaptcha } = useGoogleReCaptcha();
+
   const [email, setEmail] = useState(searchParams.get("email") || "");
   const [isLoading, setIsLoading] = useState(false);
   const [generalError, setGeneralError] = useState<string | null>(null);
+
+  // Get reCAPTCHA token
+  const getReCaptchaToken = async (action: string): Promise<string | null> => {
+    if (!executeRecaptcha) {
+      console.log("Execute recaptcha not yet available");
+      return null;
+    }
+
+    try {
+      const token = await executeRecaptcha(action);
+      return token;
+    } catch (error) {
+      console.error("reCAPTCHA execution failed:", error);
+      return null;
+    }
+  };
 
   const handleBack = () => {
     router.back();
@@ -30,8 +48,16 @@ export default function LoginForm({ title, description }: LoginFormProps) {
   const handleGoogleSignIn = async () => {
     try {
       setIsLoading(true);
+
+      // Generate reCAPTCHA token for Google sign-in
+      const recaptchaToken = await getReCaptchaToken("google_signin");
+      if (!recaptchaToken) {
+        setGeneralError("Security verification failed. Please try again.");
+        return;
+      }
+
       await signIn("google", {
-        callbackUrl: "/business-onboarding", // Updated to route to business onboarding
+        callbackUrl: "/auth/setup", // Original - routes to setup
       });
     } catch (error) {
       console.error("Google sign in error:", error);
@@ -44,8 +70,16 @@ export default function LoginForm({ title, description }: LoginFormProps) {
   const handleFacebookSignIn = async () => {
     try {
       setIsLoading(true);
+
+      // Generate reCAPTCHA token for Facebook sign-in
+      const recaptchaToken = await getReCaptchaToken("facebook_signin");
+      if (!recaptchaToken) {
+        setGeneralError("Security verification failed. Please try again.");
+        return;
+      }
+
       await signIn("facebook", {
-        callbackUrl: "/business-onboarding", // Updated to route to business onboarding
+        callbackUrl: "/auth/setup", // Original - routes to setup
       });
     } catch (error) {
       console.error("Facebook sign in error:", error);
@@ -80,13 +114,24 @@ export default function LoginForm({ title, description }: LoginFormProps) {
     setGeneralError(null);
 
     try {
+      // Generate reCAPTCHA token for email continue
+      const recaptchaToken = await getReCaptchaToken("email_continue");
+      if (!recaptchaToken) {
+        setGeneralError("Security verification failed. Please try again.");
+        setIsLoading(false);
+        return;
+      }
+
       const continueBusinessSetup =
         searchParams.get("continue_business_setup") === "true";
 
       const response = await fetch("/api/auth/check-user-status", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({
+          email,
+          recaptchaToken,
+        }),
       });
 
       if (!response.ok) {
@@ -123,9 +168,8 @@ export default function LoginForm({ title, description }: LoginFormProps) {
           );
         }
       } else {
-        // UPDATED: New user - go directly to business-onboarding instead of auth/setup
-        console.log("📧 New user detected, routing to business-onboarding");
-        router.push(`/business-onboarding?email=${encodeURIComponent(email)}`);
+        // ORIGINAL: New user - go to setup
+        router.push(`/auth/setup?email=${encodeURIComponent(email)}`);
       }
     } catch (error) {
       console.error("Email continue error:", error);

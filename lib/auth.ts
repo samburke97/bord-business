@@ -1,4 +1,4 @@
-// lib/auth.ts - Updated OAuth callback URLs
+// lib/auth.ts - ORIGINAL VERSION
 import { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import FacebookProvider from "next-auth/providers/facebook";
@@ -161,9 +161,8 @@ export const authOptions: NextAuthOptions = {
             );
 
             if (hasThisProvider) {
-              // UPDATED: Route existing OAuth users to business-onboarding
-              // They'll be redirected appropriately based on their profile status
-              return "/business-onboarding";
+              // ORIGINAL: Route existing OAuth users to setup
+              return "/auth/setup";
             }
 
             const hasCredentials = !!existingUser.credentials;
@@ -182,8 +181,8 @@ export const authOptions: NextAuthOptions = {
             return `/auth/error?error=AccountExistsWithDifferentMethod&email=${encodeURIComponent(user.email)}&available=${availableMethods.join(",")}&attempted=${account.provider}`;
           }
 
-          // UPDATED: Route new OAuth users to business-onboarding
-          return "/business-onboarding";
+          // ORIGINAL: Route new OAuth users to setup
+          return "/auth/setup";
         }
 
         return true;
@@ -234,7 +233,7 @@ export const authOptions: NextAuthOptions = {
       return token;
     },
 
-    // UPDATED: Default redirect to business-onboarding for all OAuth flows
+    // ORIGINAL: Default redirect to setup for OAuth flows
     async redirect({ url, baseUrl }) {
       // If it's a relative URL, make it absolute
       if (url.startsWith("/")) {
@@ -246,8 +245,8 @@ export const authOptions: NextAuthOptions = {
         return url;
       }
 
-      // Default fallback - route to business-onboarding
-      return `${baseUrl}/business-onboarding`;
+      // ORIGINAL: Default fallback - route to setup
+      return `${baseUrl}/auth/setup`;
     },
   },
 

@@ -1,11 +1,10 @@
-// app/(auth)/business-onboarding/page.tsx - UNIFIED with setup as step 0
+// app/(auth)/business-onboarding/page.tsx - ORIGINAL SECURE VERSION
 "use client";
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import LocationDetailsHeader from "@/components/layouts/headers/LocationDetailsHeader";
-import BusinessSetupForm from "@/components/auth/BusinessSetupForm";
 import BusinessNameStep from "@/components/business/BusinessNameStep";
 import BusinessCategoryStep from "@/components/business/BusinessCategoryStep";
 import SetLocationStep from "@/components/locations/SetLocationStep";
@@ -29,9 +28,7 @@ type BusinessFormData = {
   longitude: number | null;
 };
 
-// UPDATED STEPS - Setup is now step 0
 const STEPS = [
-  "Account Setup",
   "Business Name",
   "Category & Sports",
   "Set Location",
@@ -47,7 +44,6 @@ export default function BusinessOnboardingPage() {
   const [isCheckingAccess, setIsCheckingAccess] = useState(true);
   const [accessMessage, setAccessMessage] = useState("Verifying access...");
   const [error, setError] = useState<string | null>(null);
-  const [email, setEmail] = useState("");
 
   const [formData, setFormData] = useState<BusinessFormData>({
     businessName: "",
@@ -65,6 +61,7 @@ export default function BusinessOnboardingPage() {
 
   const stepRef = useRef<HTMLDivElement>(null);
 
+  // CRITICAL: Verify user access on every page load/refresh
   useEffect(() => {
     const verifyAccess = async () => {
       if (status === "loading") {
@@ -72,60 +69,105 @@ export default function BusinessOnboardingPage() {
         return;
       }
 
-      // Get email from URL params
-      const urlParams = new URLSearchParams(window.location.search);
-      const urlEmail = urlParams.get("email") || "";
-      setEmail(urlEmail);
+      // Step 1: Check authentication
+      if (!session) {
+        console.log("❌ Business Onboarding: No session, redirecting to login");
+        router.replace("/login");
+        return;
+      }
 
-      // CASE 1: OAuth user with session - check their profile status
-      if (session?.user) {
-        console.log("🔐 Business Onboarding: Authenticated user detected");
-        setAccessMessage("Checking your profile...");
+      try {
+        setAccessMessage("Checking your account setup...");
 
-        try {
-          const response = await fetch("/api/user/profile-status", {
-            credentials: "include",
-          });
+        // Step 2: Verify profile is complete
+        console.log("🔍 Business Onboarding: Verifying profile completion...");
 
-          if (response.ok) {
-            const profileData = await response.json();
+        const profileResponse = await fetch("/api/user/profile-status", {
+          method: "GET",
+          credentials: "include",
+          headers: {
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+          },
+        });
 
-            // If profile is complete, skip setup step and start from business name
-            if (profileData.isProfileComplete) {
-              console.log("✅ Profile complete, starting from business name");
-              setCurrentStep(1); // Skip setup step
-            } else {
-              console.log("📝 Profile incomplete, starting from setup");
-              setCurrentStep(0); // Start with setup
-            }
-          }
-        } catch (error) {
-          console.error("❌ Error checking user status:", error);
-          setCurrentStep(0); // Default to setup step
+        if (!profileResponse.ok) {
+          throw new Error(`Profile check failed: ${profileResponse.status}`);
         }
 
-        setIsCheckingAccess(false);
-        return;
-      }
+        const profileData = await profileResponse.json();
 
-      // CASE 2: Email signup flow - no session yet, but has email
-      if (!session && urlEmail) {
-        console.log("📧 Business Onboarding: Email signup flow for:", urlEmail);
-        setCurrentStep(0); // Start with setup
-        setIsCheckingAccess(false);
-        return;
-      }
+        console.log("👤 Business Onboarding: Profile verification:", {
+          isComplete: profileData.isProfileComplete,
+          user: session.user?.email,
+        });
 
-      // CASE 3: No session and no email - redirect to login
-      if (!session && !urlEmail) {
-        console.log("❌ No session or email, redirecting to login");
-        router.push("/login");
-        return;
+        // If profile is incomplete, redirect to setup
+        if (!profileData.isProfileComplete) {
+          console.log(
+            "🚫 Business Onboarding: Profile incomplete - redirecting to setup"
+          );
+          router.replace("/auth/setup");
+          return;
+        }
+
+        setAccessMessage("Checking business requirements...");
+
+        // Step 3: Check if user actually NEEDS business setup
+        console.log("🔍 Business Onboarding: Checking business status...");
+
+        const businessResponse = await fetch("/api/user/business-status", {
+          method: "GET",
+          credentials: "include",
+          headers: {
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+          },
+        });
+
+        if (!businessResponse.ok) {
+          throw new Error(`Business check failed: ${businessResponse.status}`);
+        }
+
+        const businessData = await businessResponse.json();
+
+        console.log("🏢 Business Onboarding: Business verification:", {
+          needsSetup: businessData.needsSetup,
+          hasOwnedBusiness: businessData.hasOwnedBusiness,
+          hasBusinessMembership: businessData.hasBusinessMembership,
+          user: session.user?.email,
+        });
+
+        // CRITICAL: If user doesn't need setup, they shouldn't be here
+        if (!businessData.needsSetup) {
+          console.log(
+            "🚫 Business Onboarding: User already has business setup - access denied"
+          );
+          console.log("📊 Business Onboarding: Redirecting to dashboard");
+          router.replace("/dashboard");
+          return;
+        }
+
+        // All checks passed - user needs and can access business onboarding
+        console.log(
+          "✅ Business Onboarding: Access granted - user needs business setup"
+        );
+        setAccessMessage("Setting up business onboarding...");
+        setIsCheckingAccess(false);
+      } catch (error) {
+        console.error(
+          "❌ Business Onboarding: Access verification failed:",
+          error
+        );
+
+        // On error, redirect to setup to be safe
+        console.log(
+          "🔄 Business Onboarding: Error occurred, redirecting to setup"
+        );
+        router.replace("/auth/setup");
       }
     };
 
     verifyAccess();
-  }, [status, session, router]);
+  }, [session, status, router]);
 
   // Show loading while checking access
   if (status === "loading" || isCheckingAccess) {
@@ -160,7 +202,7 @@ export default function BusinessOnboardingPage() {
                 margin: "0 0 8px 0",
               }}
             >
-              Setting Up Your Business
+              Verifying Access
             </h2>
             <p style={{ color: "#6b7280", margin: 0, fontSize: "14px" }}>
               {accessMessage}
@@ -183,12 +225,6 @@ export default function BusinessOnboardingPage() {
     }
   };
 
-  // Handle setup completion (step 0)
-  const handleSetupComplete = () => {
-    console.log("✅ Setup completed, moving to business name step");
-    setCurrentStep(1); // Move to business name step
-  };
-
   const handleBack = () => {
     if (currentStep > 0) {
       setCurrentStep((prev) => prev - 1);
@@ -196,8 +232,8 @@ export default function BusinessOnboardingPage() {
   };
 
   const handleClose = () => {
-    // Navigate back to login
-    router.push("/login");
+    // Navigate back to setup (safest option)
+    router.push("/auth/setup");
   };
 
   const createBusiness = async (data: BusinessFormData) => {
@@ -216,10 +252,19 @@ export default function BusinessOnboardingPage() {
         !data.state ||
         !data.postcode
       ) {
+        console.error("❌ Business Onboarding: Missing required fields:", {
+          businessName: !!data.businessName,
+          businessCategory: !!data.businessCategory,
+          streetAddress: !!data.streetAddress,
+          city: !!data.city,
+          state: !!data.state,
+          postcode: !!data.postcode,
+        });
         setError("Please complete all required fields");
         return;
       }
 
+      // Call the USER business creation API (not admin API)
       const response = await fetch("/api/user/business", {
         method: "POST",
         headers: {
@@ -233,7 +278,7 @@ export default function BusinessOnboardingPage() {
           aptSuite: data.aptSuite,
           city: data.city,
           state: data.state,
-          postalCode: data.postcode,
+          postalCode: data.postcode, // FIXED: API expects postalCode, form has postcode
           latitude: data.latitude,
           longitude: data.longitude,
           sports: data.associatedSports,
@@ -255,6 +300,7 @@ export default function BusinessOnboardingPage() {
       setError(
         error instanceof Error ? error.message : "Failed to create business"
       );
+      // Don't advance to congratulations step on error
     } finally {
       setIsCreating(false);
     }
@@ -262,6 +308,7 @@ export default function BusinessOnboardingPage() {
 
   const handleHeaderContinue = () => {
     // This will be called by the header when Continue is clicked
+    // Each step component should expose its continue handler
     if (typeof window !== "undefined") {
       // @ts-ignore
       if (window.handleStepContinue) {
@@ -271,7 +318,9 @@ export default function BusinessOnboardingPage() {
     }
   };
 
+  // Handle final redirect to dashboard after business creation
   const handleFinalContinue = () => {
+    // Force navigation to dashboard
     console.log("✅ Business Onboarding: Complete - redirecting to dashboard");
     window.location.href = "/dashboard";
   };
@@ -279,22 +328,12 @@ export default function BusinessOnboardingPage() {
   const renderStep = () => {
     switch (currentStep) {
       case 0:
-        // Setup step - no header continue needed, form handles its own submission
-        return (
-          <div ref={stepRef}>
-            <BusinessSetupForm
-              email={email}
-              onSetupComplete={handleSetupComplete}
-            />
-          </div>
-        );
-      case 1:
         return (
           <div ref={stepRef}>
             <BusinessNameStep formData={formData} onContinue={handleContinue} />
           </div>
         );
-      case 2:
+      case 1:
         return (
           <div ref={stepRef}>
             <BusinessCategoryStep
@@ -304,7 +343,7 @@ export default function BusinessOnboardingPage() {
             />
           </div>
         );
-      case 3:
+      case 2:
         return (
           <div ref={stepRef}>
             <SetLocationStep
@@ -322,7 +361,7 @@ export default function BusinessOnboardingPage() {
             />
           </div>
         );
-      case 4:
+      case 3:
         return (
           <div ref={stepRef}>
             <ConfirmAddressStep
@@ -340,7 +379,7 @@ export default function BusinessOnboardingPage() {
             />
           </div>
         );
-      case 5:
+      case 4:
         return (
           <div ref={stepRef}>
             <ConfirmMapLocationStep
@@ -361,12 +400,12 @@ export default function BusinessOnboardingPage() {
             />
           </div>
         );
-      case 6:
+      case 5:
         return (
           <div ref={stepRef}>
             <BusinessCongratulationsStep
               businessName={formData.businessName}
-              onContinue={handleFinalContinue}
+              onContinue={handleFinalContinue} // Goes to dashboard
             />
           </div>
         );
@@ -377,17 +416,16 @@ export default function BusinessOnboardingPage() {
 
   return (
     <div className={styles.container}>
-      {/* Only show header after setup step (step 0) */}
-      {currentStep > 0 && currentStep < STEPS.length && (
+      {currentStep < STEPS.length && (
         <LocationDetailsHeader
-          steps={STEPS.slice(1)} // Remove "Account Setup" from progress bar
-          currentStep={currentStep - 1} // Adjust for 0-indexing after removing setup step
+          steps={STEPS}
+          currentStep={currentStep}
           onBack={handleBack}
           onContinue={handleHeaderContinue}
           className={styles.header}
-          onClose={handleClose}
+          onClose={handleClose} // Routes back to setup
           mode="create"
-          disableContinue={isCreating}
+          disableContinue={isCreating} // Disable while creating
         />
       )}
 

@@ -1,4 +1,4 @@
-// app/api/auth/create-business-account/route.ts - UPDATED TO SEND EMAIL DIRECTLY
+// app/api/auth/create-business-account/route.ts - UPDATED WITH RECAPTCHA
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import prisma from "@/lib/prisma";
@@ -63,6 +63,77 @@ function validatePasswordStrength(password: string): {
   };
 }
 
+// reCAPTCHA verification function
+async function verifyRecaptcha(token: string): Promise<{
+  success: boolean;
+  score?: number;
+  error?: string;
+}> {
+  const secretKey = process.env.RECAPTCHA_SECRET_KEY;
+
+  if (!secretKey) {
+    console.error("❌ RECAPTCHA_SECRET_KEY not configured");
+    return { success: false, error: "reCAPTCHA not configured" };
+  }
+
+  if (!token) {
+    return { success: false, error: "reCAPTCHA token is required" };
+  }
+
+  try {
+    const response = await fetch(
+      "https://www.google.com/recaptcha/api/siteverify",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: `secret=${secretKey}&response=${token}`,
+      }
+    );
+
+    const data = await response.json();
+
+    if (!data.success) {
+      console.error("❌ reCAPTCHA verification failed:", data["error-codes"]);
+      return {
+        success: false,
+        error: "reCAPTCHA verification failed",
+      };
+    }
+
+    // For reCAPTCHA v3, check the score (0.0 - 1.0)
+    // Lower scores indicate bot-like behavior
+    if (data.score !== undefined) {
+      const threshold = 0.5; // Adjust based on your needs
+      if (data.score < threshold) {
+        console.warn(`⚠️ Low reCAPTCHA score: ${data.score}`);
+        return {
+          success: false,
+          score: data.score,
+          error: "Suspicious activity detected",
+        };
+      }
+    }
+
+    console.log("✅ reCAPTCHA verification successful:", {
+      score: data.score,
+      hostname: data.hostname,
+    });
+
+    return {
+      success: true,
+      score: data.score,
+    };
+  } catch (error) {
+    console.error("❌ reCAPTCHA verification error:", error);
+    return {
+      success: false,
+      error: "reCAPTCHA verification failed",
+    };
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const {
@@ -73,7 +144,27 @@ export async function POST(request: NextRequest) {
       dateOfBirth,
       fullMobile,
       password,
+      recaptchaToken, // ADD THIS LINE
     } = await request.json();
+
+    // ADD RECAPTCHA VERIFICATION FIRST
+    console.log("🔒 Verifying reCAPTCHA...");
+    const recaptchaResult = await verifyRecaptcha(recaptchaToken);
+
+    if (!recaptchaResult.success) {
+      console.error("❌ reCAPTCHA verification failed:", recaptchaResult.error);
+      return NextResponse.json(
+        {
+          message:
+            recaptchaResult.error ||
+            "Security verification failed. Please try again.",
+          code: "RECAPTCHA_FAILED",
+        },
+        { status: 400 }
+      );
+    }
+
+    console.log("✅ reCAPTCHA verification passed");
 
     // Validation
     if (
@@ -218,6 +309,7 @@ export async function POST(request: NextRequest) {
       userId: result.id,
       email: result.email,
       name: result.name,
+      recaptchaScore: recaptchaResult.score, // Log the score for monitoring
     });
 
     // Send verification email directly (don't make internal API call)
