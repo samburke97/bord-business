@@ -25,12 +25,11 @@ const LocationDetailsHeader: React.FC<LocationDetailsHeaderProps> = ({
   onClose,
   disableContinue = false,
   className = "",
-  mode = "create", // Default to create mode
+  mode = "create",
 }) => {
   const isFirstStep = currentStep === 0;
   const isLastStep = currentStep === steps.length - 1;
 
-  // Get button text based on mode and step
   const getButtonText = () => {
     if (isLastStep) {
       return mode === "create" ? "Create" : "Update";
@@ -47,7 +46,6 @@ const LocationDetailsHeader: React.FC<LocationDetailsHeaderProps> = ({
 
         <div className={styles.navigationRow}>
           <div className={styles.leftButtonContainer}>
-            {/* FIXED: Only show close button if it's first step AND onClose is provided */}
             {isFirstStep && onClose ? (
               <IconButton
                 icon={

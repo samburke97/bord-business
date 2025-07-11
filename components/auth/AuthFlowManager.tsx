@@ -1,4 +1,4 @@
-// components/auth/AuthFlowManager.tsx - FIXED - Correct email signup flow
+// components/auth/AuthFlowManager.tsx - FIXED - No infinite loop
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -57,13 +57,37 @@ export default function AuthFlowManager({
           if (response.ok) {
             const profileData = await response.json();
 
-            // If profile is already complete, redirect to home page
+            // CRITICAL FIX: If profile is complete, check business status
             if (profileData.isProfileComplete) {
               console.log(
-                "✅ AuthFlow: OAuth user profile already complete - redirecting to home"
+                "✅ AuthFlow: Profile complete, checking business status"
               );
-              router.push("/");
-              return;
+
+              // Check business status
+              const businessResponse = await fetch(
+                "/api/user/business-status",
+                {
+                  credentials: "include",
+                }
+              );
+
+              if (businessResponse.ok) {
+                const businessData = await businessResponse.json();
+
+                if (businessData.needsSetup) {
+                  console.log(
+                    "🏢 AuthFlow: Business setup needed - redirecting to business onboarding"
+                  );
+                  router.push("/business-onboarding");
+                  return;
+                } else {
+                  console.log(
+                    "✅ AuthFlow: User fully set up - redirecting to dashboard"
+                  );
+                  router.push("/dashboard");
+                  return;
+                }
+              }
             }
           }
         } catch (error) {

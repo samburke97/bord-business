@@ -1,4 +1,4 @@
-// app/(auth)/business-onboarding/page.tsx - SIMPLE VERSION (No verification needed)
+// app/(auth)/business-onboarding/page.tsx - FIXED VERSION
 "use client";
 
 import { useState, useRef, Suspense } from "react";
@@ -28,7 +28,7 @@ type BusinessFormData = {
   longitude: number | null;
 };
 
-const STEPS = [
+const steps = [
   "Business Name",
   "Category & Sports",
   "Set Location",
@@ -63,7 +63,7 @@ function BusinessOnboardingContent() {
     const updatedFormData = { ...formData, ...data };
     setFormData(updatedFormData);
 
-    if (currentStep < STEPS.length - 1) {
+    if (currentStep < steps.length - 1) {
       setCurrentStep((prev) => prev + 1);
     } else {
       // Final step - create the business
@@ -140,7 +140,7 @@ function BusinessOnboardingContent() {
       console.log("✅ Business Onboarding: Business created successfully!");
 
       // Show congratulations step
-      setCurrentStep(STEPS.length);
+      setCurrentStep(steps.length);
     } catch (error) {
       console.error("❌ Business Onboarding: Error creating business:", error);
       setError(
@@ -243,7 +243,7 @@ function BusinessOnboardingContent() {
             />
           </div>
         );
-      case STEPS.length:
+      case steps.length:
         return (
           <div ref={stepRef}>
             <BusinessCongratulationsStep
@@ -261,11 +261,11 @@ function BusinessOnboardingContent() {
     <div className={`${styles.container} min-h-screen bg-gray-50`}>
       <LocationDetailsHeader
         currentStep={currentStep}
-        totalSteps={STEPS.length}
-        stepTitles={STEPS}
+        totalSteps={steps.length}
+        steps={steps}
         onClose={handleClose}
         onContinue={handleHeaderContinue}
-        showContinue={currentStep < STEPS.length}
+        showContinue={currentStep < steps.length}
         isLoading={isCreating}
       />
 

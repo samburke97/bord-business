@@ -479,7 +479,7 @@ export default function BusinessSetupForm({
                 value={formData.username}
                 onChange={(e) => handleInputChange("username", e.target.value)}
                 onBlur={handleUsernameBlur}
-                placeholder="Johnlamb1076"
+                placeholder="Create your username"
                 error={errors.username}
                 required
                 disabled={isCheckingUsername}
