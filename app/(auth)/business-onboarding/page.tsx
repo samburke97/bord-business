@@ -5,12 +5,12 @@ import { useState, useRef, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import LocationDetailsHeader from "@/components/layouts/headers/LocationDetailsHeader";
-import BusinessNameStep from "@/components/business/BusinessNameStep";
-import BusinessCategoryStep from "@/components/business/BusinessCategoryStep";
+import BusinessNameStep from "@/components/locations/BusinessNameStep";
+import BusinessCategoryStep from "@/components/locations/BusinessCategoryStep";
 import SetLocationStep from "@/components/locations/SetLocationStep";
 import ConfirmAddressStep from "@/components/locations/ConfirmAddressStep";
 import ConfirmMapLocationStep from "@/components/locations/ConfirmMapLocationStep";
-import BusinessCongratulationsStep from "@/components/business/BusinssCongratulationsStep";
+import BusinessCongratulationsStep from "@/components/locations/BusinessCongratulationsStep";
 import styles from "./page.module.css";
 
 // Define the business form data structure
