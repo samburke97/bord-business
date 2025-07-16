@@ -1,4 +1,4 @@
-// components/business/BusinessNameStep.tsx
+// components/business/BusinessNameStep.tsx - FIXED VERSION
 "use client";
 
 import { useState, useEffect } from "react";
@@ -53,25 +53,29 @@ export default function BusinessNameStep({
   };
 
   return (
-    <div className={styles.container}>
-      <TitleDescription
-        title="What's your business name?"
-        description="This is your brand name, the name players will see. Your legal name can be added later."
-      />
-
-      <div className={styles.formField}>
-        <TextInput
-          id="businessName"
-          label="Business Name"
-          value={businessName}
-          onChange={handleNameChange}
-          placeholder="Enter your business name"
-          maxLength={50}
-          showCharCount={true}
-          error={error}
-          required
-          autoFocus
+    <div className={styles.pageContainer}>
+      <div className={styles.container}>
+        <TitleDescription
+          title="What's your business name?"
+          description="This is your brand name, the name players will see. Your legal name can be added later."
         />
+
+        <div className={styles.formSection}>
+          <div className={styles.inputGroup}>
+            <TextInput
+              id="businessName"
+              label="Business Name"
+              value={businessName}
+              onChange={handleNameChange}
+              placeholder="Enter your business name"
+              maxLength={50}
+              showCharCount={true}
+              error={error}
+              required
+              autoFocus
+            />
+          </div>
+        </div>
       </div>
     </div>
   );

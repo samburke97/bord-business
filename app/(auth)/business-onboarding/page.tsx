@@ -1,4 +1,4 @@
-// app/(auth)/business-onboarding/page.tsx - FIXED VERSION
+// app/(auth)/business-onboarding/page.tsx - FIXED VERSION WITH PROPER BACK NAVIGATION
 "use client";
 
 import { useState, useRef, Suspense } from "react";
@@ -60,8 +60,16 @@ function BusinessOnboardingContent() {
   const stepRef = useRef<HTMLDivElement>(null);
 
   const handleContinue = async (data: Partial<BusinessFormData>) => {
+    // Always save data as we progress
     const updatedFormData = { ...formData, ...data };
     setFormData(updatedFormData);
+
+    // Log the data being saved for debugging
+    console.log(
+      `📝 Business Onboarding: Saving step ${currentStep} data:`,
+      data
+    );
+    console.log(`💾 Business Onboarding: Updated form data:`, updatedFormData);
 
     if (currentStep < steps.length - 1) {
       setCurrentStep((prev) => prev + 1);
@@ -73,11 +81,19 @@ function BusinessOnboardingContent() {
 
   const handleBack = () => {
     if (currentStep > 0) {
+      console.log(
+        `⬅️ Business Onboarding: Going back from step ${currentStep} to ${currentStep - 1}`
+      );
+      console.log(`💾 Business Onboarding: Current saved data:`, formData);
       setCurrentStep((prev) => prev - 1);
+    } else {
+      // If we're at step 0, close and go to dashboard
+      handleClose();
     }
   };
 
   const handleClose = () => {
+    console.log("❌ Business Onboarding: Closing and returning to dashboard");
     // Navigate back to dashboard - middleware will handle routing
     router.push("/dashboard");
   };
@@ -263,7 +279,8 @@ function BusinessOnboardingContent() {
         currentStep={currentStep}
         totalSteps={steps.length}
         steps={steps}
-        onClose={handleClose}
+        onClose={currentStep === 0 ? handleClose : undefined} // Only show close on first step
+        onBack={currentStep > 0 ? handleBack : undefined} // Only show back after first step
         onContinue={handleHeaderContinue}
         showContinue={currentStep < steps.length}
         isLoading={isCreating}

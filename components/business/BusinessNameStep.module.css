@@ -1,15 +1,22 @@
+/* components/business/BusinessNameStep.module.css - FIXED VERSION */
+
 .pageContainer {
   display: flex;
   justify-content: center;
-  padding: 1.5rem;
+  align-items: flex-start;
+  padding: 2rem 1.5rem;
   width: 100%;
   min-height: calc(100vh - 136px);
+  background: #fafafa;
 }
 
 .container {
   width: 100%;
   max-width: 896px;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .formSection {
@@ -17,13 +24,13 @@
   flex-direction: column;
   width: 100%;
   margin-top: 2rem;
+  align-items: center;
 }
 
 .inputGroup {
   margin-bottom: 2rem;
+  width: 100%;
   max-width: 500px;
-  margin-left: auto;
-  margin-right: auto;
 }
 
 .label {
@@ -33,4 +40,22 @@
   color: var(--text-color);
   margin-bottom: 0.5rem;
   text-align: left;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .pageContainer {
+    padding: 1rem;
+    min-height: calc(100vh - 120px);
+  }
+
+  .inputGroup {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .pageContainer {
+    padding: 1rem 0.75rem;
+  }
 }

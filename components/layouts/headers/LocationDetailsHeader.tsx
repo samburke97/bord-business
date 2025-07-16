@@ -1,4 +1,4 @@
-// components/layouts/headers/LocationDetailsHeader.tsx - FIXED CLOSE BUTTON LOGIC
+// components/layouts/headers/LocationDetailsHeader.tsx - FIXED VERSION
 "use client";
 
 import Button from "@/components/ui/Button";
@@ -8,37 +8,29 @@ import styles from "./LocationDetailsHeader.module.css";
 
 interface LocationDetailsHeaderProps {
   currentStep: number;
+  totalSteps: number;
   steps: string[];
-  onBack: () => void;
-  onContinue: () => void;
   onClose?: () => void;
-  disableContinue?: boolean;
-  className?: string;
-  mode?: "create" | "edit";
+  onBack?: () => void;
+  onContinue: () => void;
+  showContinue?: boolean;
+  isLoading?: boolean;
 }
 
-const LocationDetailsHeader: React.FC<LocationDetailsHeaderProps> = ({
+export default function LocationDetailsHeader({
   currentStep,
+  totalSteps,
   steps,
+  onClose,
   onBack,
   onContinue,
-  onClose,
-  disableContinue = false,
-  className = "",
-  mode = "create",
-}) => {
+  showContinue = true,
+  isLoading = false,
+}: LocationDetailsHeaderProps) {
   const isFirstStep = currentStep === 0;
-  const isLastStep = currentStep === steps.length - 1;
-
-  const getButtonText = () => {
-    if (isLastStep) {
-      return mode === "create" ? "Create" : "Update";
-    }
-    return "Continue";
-  };
 
   return (
-    <header className={`${styles.header} ${className}`}>
+    <header className={styles.header}>
       <div className={styles.headerContent}>
         <div className={styles.progressContainer}>
           <ProgressBar steps={steps} currentStep={currentStep} />
@@ -46,50 +38,54 @@ const LocationDetailsHeader: React.FC<LocationDetailsHeaderProps> = ({
 
         <div className={styles.navigationRow}>
           <div className={styles.leftButtonContainer}>
-            {isFirstStep && onClose ? (
-              <IconButton
-                icon={
-                  <img
-                    src="/icons/utility-outline/cross.svg"
-                    alt="Close"
-                    width={20}
-                    height={20}
+            {isFirstStep
+              ? // First step: show close button only if onClose is provided
+                onClose && (
+                  <IconButton
+                    icon={
+                      <img
+                        src="/icons/utility-outline/cross.svg"
+                        alt="Close"
+                        width={20}
+                        height={20}
+                      />
+                    }
+                    onClick={onClose}
+                    aria-label="Close"
+                    variant="ghost"
                   />
-                }
-                onClick={onClose}
-                aria-label="Close"
-                variant="ghost"
-              />
-            ) : !isFirstStep ? (
-              <IconButton
-                icon={
-                  <img
-                    src="/icons/utility-outline/back.svg"
-                    alt="Back"
-                    width={20}
-                    height={20}
+                )
+              : // Not first step: show back button
+                onBack && (
+                  <IconButton
+                    icon={
+                      <img
+                        src="/icons/utility-outline/back.svg"
+                        alt="Back"
+                        width={20}
+                        height={20}
+                      />
+                    }
+                    onClick={onBack}
+                    aria-label="Go back"
+                    variant="ghost"
                   />
-                }
-                onClick={onBack}
-                aria-label="Go back"
-                variant="ghost"
-              />
-            ) : null}
+                )}
           </div>
 
-          <div className={styles.continueButtonContainer}>
-            <Button
-              onClick={onContinue}
-              disabled={disableContinue}
-              className={styles.continueButton}
-            >
-              {getButtonText()}
-            </Button>
-          </div>
+          {showContinue && (
+            <div className={styles.continueButtonContainer}>
+              <Button
+                onClick={onContinue}
+                disabled={isLoading}
+                className={styles.continueButton}
+              >
+                {isLoading ? "Creating..." : "Continue"}
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </header>
   );
-};
-
-export default LocationDetailsHeader;
+}
