@@ -1,3 +1,4 @@
+// components/auth/LoginForm.tsx - IMPROVED with method tracking
 "use client";
 
 import { useState } from "react";
@@ -56,8 +57,9 @@ export default function LoginForm({ title, description }: LoginFormProps) {
         return;
       }
 
+      // CRITICAL FIX: Tell AuthFlowManager this is an OAuth flow
       await signIn("google", {
-        callbackUrl: "/", // FIXED: Use home page routing instead of /auth/setup
+        callbackUrl: "/auth/setup?method=oauth&provider=google",
       });
     } catch (error) {
       console.error("Google sign in error:", error);
@@ -78,8 +80,9 @@ export default function LoginForm({ title, description }: LoginFormProps) {
         return;
       }
 
+      // CRITICAL FIX: Tell AuthFlowManager this is an OAuth flow
       await signIn("facebook", {
-        callbackUrl: "/", // FIXED: Use home page routing instead of /auth/setup
+        callbackUrl: "/auth/setup?method=oauth&provider=facebook",
       });
     } catch (error) {
       console.error("Facebook sign in error:", error);
@@ -88,6 +91,7 @@ export default function LoginForm({ title, description }: LoginFormProps) {
       setIsLoading(false);
     }
   };
+
   const validateEmail = (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email.trim());
@@ -167,8 +171,10 @@ export default function LoginForm({ title, description }: LoginFormProps) {
           );
         }
       } else {
-        // ORIGINAL: New user - go to setup
-        router.push(`/auth/setup?email=${encodeURIComponent(email)}`);
+        // CRITICAL FIX: Tell AuthFlowManager this is an email flow
+        router.push(
+          `/auth/setup?email=${encodeURIComponent(email)}&method=email`
+        );
       }
     } catch (error) {
       console.error("Email continue error:", error);

@@ -1,3 +1,4 @@
+// app/page.tsx - Updated home page routing
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
@@ -13,10 +14,20 @@ export default async function Home() {
     return;
   }
 
-  // CRITICAL FIX: Never redirect to dashboard from here
-  // Always send authenticated users to /auth/setup which will handle the proper routing
-  console.log(
-    "🏠 Home page: Authenticated user, sending to setup for verification"
-  );
-  redirect("/auth/setup");
+  // CRITICAL FIX: Check if user came from OAuth by checking their accounts
+  // If they have OAuth accounts and no email credentials, send to OAuth setup
+  try {
+    // You can check if this is an OAuth user by looking at their account type
+    // For now, since all authenticated users should go through proper verification,
+    // send everyone to OAuth setup which will handle routing properly
+    console.log(
+      "🏠 Home page: Authenticated user, sending to OAuth setup for verification"
+    );
+    redirect("/oauth/setup");
+  } catch (error) {
+    console.error(
+      "🏠 Home page: Error checking user type, falling back to OAuth setup"
+    );
+    redirect("/oauth/setup");
+  }
 }
