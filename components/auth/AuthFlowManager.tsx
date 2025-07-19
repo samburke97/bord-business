@@ -309,6 +309,7 @@ export default function AuthFlowManager({
         <BusinessSetupForm
           email={email}
           onSetupComplete={handleSetupComplete}
+          isOAuth={!!session?.user} // ADD THIS
         />
       );
 

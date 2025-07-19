@@ -20,6 +20,14 @@ enum UserRole {
   SUPER_ADMIN // Super admin
 }
 
+enum UserStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
+
 enum BusinessRole {
   OWNER // Business owner (can do everything)
   MANAGER // Can manage most aspects
@@ -211,9 +219,11 @@ model User {
   emailVerified DateTime?
   image         String?
   phone         String?
+ 
 
   // Global role (for platform-wide permissions)
   globalRole UserRole @default(USER) @map("global_role")
+  status UserStatus @default(ACTIVE)
 
   // Profile information
   bio         String?

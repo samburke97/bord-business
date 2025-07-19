@@ -16,6 +16,7 @@ import styles from "./BusinessSetupForm.module.css";
 interface BusinessSetupFormProps {
   email: string;
   onSetupComplete: () => void;
+  isOAuth?: boolean;
 }
 
 interface FormData {
@@ -44,12 +45,11 @@ interface FormErrors {
 export default function BusinessSetupForm({
   email,
   onSetupComplete,
+  isOAuth = false,
 }: BusinessSetupFormProps) {
   const { data: session } = useSession();
   const router = useRouter();
   const { executeRecaptcha } = useGoogleReCaptcha();
-
-  const [isOAuthUser, setIsOAuthUser] = useState(false);
   const [isLargeScreen, setIsLargeScreen] = useState(false);
   const [formData, setFormData] = useState<FormData>({
     firstName: "",
@@ -67,6 +67,8 @@ export default function BusinessSetupForm({
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+
+  const isOAuthUser = isOAuth;
 
   // Get reCAPTCHA token
   const getReCaptchaToken = async (action: string): Promise<string | null> => {
@@ -139,6 +141,7 @@ export default function BusinessSetupForm({
   };
 
   const handleBack = () => {
+    // Always go back to login during setup phase
     router.push("/login");
   };
 
