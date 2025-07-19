@@ -1,4 +1,4 @@
-// components/auth/AuthFlowManager.tsx - FIXED - No infinite loop
+// components/auth/AuthFlowManager.tsx - FIXED OAuth Flow
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -37,18 +37,23 @@ export default function AuthFlowManager({
       console.log("🚀 AuthFlow: Starting initialization...", {
         hasSession: !!session,
         status,
-        email,
+        email: email ? email.substring(0, 3) + "***" : "none",
+        sessionEmail: session?.user?.email
+          ? session.user.email.substring(0, 3) + "***"
+          : "none",
       });
 
       if (status === "loading") {
+        console.log("⏳ AuthFlow: Session still loading...");
         return;
       }
 
-      // OAUTH USER: Has session but needs profile setup
+      // OAUTH USER: Has session - this means they used OAuth sign-in
       if (session?.user) {
-        console.log("🔐 AuthFlow: OAuth user detected");
+        console.log(
+          "🔐 AuthFlow: OAuth user detected, checking profile status..."
+        );
 
-        // CRITICAL FIX: Check if OAuth user has already completed setup
         try {
           const response = await fetch("/api/user/profile-status", {
             credentials: "include",
@@ -56,14 +61,22 @@ export default function AuthFlowManager({
 
           if (response.ok) {
             const profileData = await response.json();
+            console.log("📋 AuthFlow: Profile status:", profileData);
 
-            // CRITICAL FIX: If profile is complete, check business status
-            if (profileData.isProfileComplete) {
+            // CRITICAL FIX: Only redirect if profile is ACTUALLY complete
+            // Check for ALL required fields: firstName, lastName, username, phone, dateOfBirth
+            if (
+              profileData.isProfileComplete &&
+              profileData.firstName &&
+              profileData.lastName &&
+              profileData.username &&
+              profileData.phone &&
+              profileData.dateOfBirth
+            ) {
               console.log(
-                "✅ AuthFlow: Profile complete, checking business status"
+                "✅ AuthFlow: Profile is fully complete, checking business status"
               );
 
-              // Check business status
               const businessResponse = await fetch(
                 "/api/user/business-status",
                 {
@@ -88,29 +101,41 @@ export default function AuthFlowManager({
                   return;
                 }
               }
+            } else {
+              console.log("📝 AuthFlow: Profile incomplete, missing fields:", {
+                firstName: !profileData.firstName,
+                lastName: !profileData.lastName,
+                username: !profileData.username,
+                phone: !profileData.phone,
+                dateOfBirth: !profileData.dateOfBirth,
+              });
             }
           }
         } catch (error) {
           console.error("❌ AuthFlow: Error checking profile status:", error);
         }
 
-        // If profile is not complete, show setup
-        console.log("📝 AuthFlow: OAuth user needs profile setup");
+        // CRITICAL FIX: OAuth users go directly to setup form (no email verification needed)
+        console.log(
+          "📝 AuthFlow: OAuth user needs profile setup - showing setup form"
+        );
         setCurrentStep("setup");
         setUserInfo({
-          isNewUser: false,
+          isNewUser: false, // OAuth users are not "new" in the email signup sense
           userName: session.user.name || undefined,
         });
+        // CRITICAL: Use session email for OAuth users, not URL parameter
+        setEmail(session.user.email || "");
         setIsInitializing(false);
         return;
       }
 
-      // EMAIL SIGNUP: No session, but has email - go directly to setup form
+      // EMAIL SIGNUP: No session, but has email parameter - this is email signup flow
       if (!session && email) {
         console.log(
-          "📧 AuthFlow: Email signup flow - going directly to setup form"
+          "📧 AuthFlow: Email signup flow - starting with email verification"
         );
-        setCurrentStep("setup");
+        setCurrentStep("verification"); // CRITICAL: Email users start with verification
         setUserInfo({
           isNewUser: true,
           userName: undefined,
@@ -119,7 +144,7 @@ export default function AuthFlowManager({
         return;
       }
 
-      // FALLBACK: No session and no email
+      // FALLBACK: No session and no email - redirect to login
       console.log("❌ AuthFlow: No session or email, redirecting to login");
       router.push("/login");
     };
@@ -129,7 +154,7 @@ export default function AuthFlowManager({
 
   const handleVerificationComplete = useCallback(
     (data: { isExistingUser: boolean }) => {
-      console.log("✅ AuthFlow: Verification complete, user data:", data);
+      console.log("✅ AuthFlow: Email verification complete, user data:", data);
 
       setUserInfo({
         isNewUser: !data.isExistingUser,
@@ -221,8 +246,8 @@ export default function AuthFlowManager({
               }}
             >
               {status === "loading"
-                ? "Checking authentication..."
-                : "Preparing your account..."}
+                ? "Checking your authentication..."
+                : "Determining the best path for you..."}
             </p>
           </div>
         </div>
@@ -230,7 +255,7 @@ export default function AuthFlowManager({
     );
   }
 
-  // Render current step
+  // Render the appropriate step
   switch (currentStep) {
     case "verification":
       return (
@@ -253,7 +278,7 @@ export default function AuthFlowManager({
     case "setup":
       return (
         <BusinessSetupForm
-          email={email || session?.user?.email || ""}
+          email={email}
           onSetupComplete={handleSetupComplete}
         />
       );
@@ -261,24 +286,12 @@ export default function AuthFlowManager({
     case "complete":
       return (
         <Congratulations
-          onContinue={handleContinueToDashboard}
+          onContinueToDashboard={handleContinueToDashboard}
           onRemindLater={handleRemindLater}
         />
       );
 
     default:
-      console.error("❌ AuthFlow: Unknown step:", currentStep);
-      return (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            minHeight: "100vh",
-          }}
-        >
-          <div>Error: Unknown authentication step</div>
-        </div>
-      );
+      return null;
   }
 }

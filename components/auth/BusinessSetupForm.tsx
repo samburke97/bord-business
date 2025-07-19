@@ -1,4 +1,4 @@
-// components/auth/BusinessSetupForm.tsx - COMPLETE FIXED VERSION
+// components/auth/BusinessSetupForm.tsx - Updated with reCAPTCHA v3
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -38,27 +38,18 @@ interface FormErrors {
   password?: string;
   confirmPassword?: string;
   recaptcha?: string;
-  terms?: string;
+  terms?: string; // Add terms error field
 }
 
 export default function BusinessSetupForm({
   email,
   onSetupComplete,
 }: BusinessSetupFormProps) {
-  const { data: session, status } = useSession();
+  const { data: session } = useSession();
   const router = useRouter();
   const { executeRecaptcha } = useGoogleReCaptcha();
 
-  // CRITICAL FIX: Determine user type immediately from props and session
-  const isOAuthUser = useMemo(() => {
-    // If we have a session but no email prop from URL params, it's OAuth
-    // (AuthFlowManager should only pass email for actual email signups)
-    if (session && !email) return true;
-    // If we have email prop (from URL params), it's email signup
-    if (email && !session) return false;
-    // Default to email signup for safety
-    return false;
-  }, [session, email]);
+  const [isOAuthUser, setIsOAuthUser] = useState(false);
   const [isLargeScreen, setIsLargeScreen] = useState(false);
   const [formData, setFormData] = useState<FormData>({
     firstName: "",
@@ -107,25 +98,47 @@ export default function BusinessSetupForm({
     };
   }, []);
 
-  // CRITICAL FIX: Pre-populate OAuth user data on mount
   useEffect(() => {
-    if (isOAuthUser && session?.user?.name) {
-      const nameParts = session.user.name.split(" ");
-      setFormData((prev) => ({
-        ...prev,
-        firstName: nameParts[0] || "",
-        lastName: nameParts.slice(1).join(" ") || "",
-      }));
-    }
-  }, [isOAuthUser, session]);
+    const checkUserStatus = async () => {
+      if (!session && !email) return;
+
+      try {
+        const response = await fetch("/api/user/profile-status", {
+          method: "GET",
+          credentials: "include",
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const isOAuth = !data.hasPassword;
+          setIsOAuthUser(isOAuth);
+
+          if (session?.user) {
+            const nameParts = session.user.name?.split(" ") || [];
+            setFormData((prev) => ({
+              ...prev,
+              firstName: data.firstName || nameParts[0] || "",
+              lastName: data.lastName || nameParts.slice(1).join(" ") || "",
+              mobile: data.phone ? data.phone.replace(/^\+\d+\s/, "") : "",
+              dateOfBirth: data.dateOfBirth
+                ? new Date(data.dateOfBirth).toISOString().split("T")[0]
+                : "",
+            }));
+          }
+        }
+      } catch (error) {
+        console.error("❌ Error checking user status:", error);
+      }
+    };
+
+    checkUserStatus();
+  }, [session, email]);
 
   const handleHeaderContinue = () => {
     handleSubmit();
   };
 
   const handleBack = () => {
-    // FIXED: Both OAuth and email users should go back to login
-    // OAuth users aren't fully set up yet, so home page will just redirect them back here
     router.push("/login");
   };
 
@@ -186,7 +199,6 @@ export default function BusinessSetupForm({
       newErrors.mobile = "Please enter a valid mobile number";
     }
 
-    // CRITICAL FIX: Only validate password for non-OAuth users
     if (!isOAuthUser) {
       if (!formData.password) {
         newErrors.password = "Password is required";
@@ -561,7 +573,6 @@ export default function BusinessSetupForm({
               required
             />
 
-            {/* CRITICAL FIX: Only show password fields for non-OAuth users */}
             {!isOAuthUser && (
               <>
                 <div className={styles.passwordField}>
@@ -641,6 +652,7 @@ export default function BusinessSetupForm({
                   )}
                 </div>
 
+                {/* ADD THIS NEW CONFIRM PASSWORD FIELD */}
                 <div className={styles.passwordField}>
                   <TextInput
                     id="confirmPassword"
@@ -681,7 +693,6 @@ export default function BusinessSetupForm({
                 </div>
               </>
             )}
-
             <div className={styles.termsSection}>
               <div className={styles.checkboxContainer}>
                 <input
