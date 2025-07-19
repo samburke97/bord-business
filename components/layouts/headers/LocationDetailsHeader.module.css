@@ -20,6 +20,7 @@
 
 .progressContainer {
   width: 100%;
+  margin-bottom: 18px;
 }
 
 .navigationRow {
@@ -27,10 +28,10 @@
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: 8px 0;
+  padding: 0;
 }
 
-.backButtonContainer {
+.leftButtonContainer {
   display: flex;
   align-items: center;
 }
@@ -46,8 +47,78 @@
   white-space: nowrap;
 }
 
-@media (min-width: 768px) {
+/* Mobile Back Button Container (shows above progress bar on mobile) */
+.mobileBackContainer {
+  display: none;
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+/* Mobile Fixed Continue Button */
+.mobileButtonContainer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 1rem;
+  background: var(--con-lightest, #fff);
+  border-top: 1px solid var(--out-light, #f5f5f5);
+  z-index: 20;
+  display: none; /* Hidden on desktop */
+}
+
+.mobileContinueButton {
+  height: 48px;
+  font-weight: 500;
+}
+
+/* Mobile Styles (< 1024px) */
+@media (max-width: 1023px) {
+  /* Show mobile back button above progress bar */
+  .mobileBackContainer {
+    display: flex;
+    justify-content: flex-start;
+  }
+
+  /* Hide desktop navigation row on mobile */
+  .navigationRow {
+    display: none;
+  }
+
+  /* Show mobile continue button */
+  .mobileButtonContainer {
+    display: block;
+  }
+
   .headerContent {
-    padding: 0 px;
+    padding: 0 4px;
+  }
+}
+
+/* Desktop Styles (>= 1024px) */
+@media (min-width: 1024px) {
+  /* Hide mobile elements on desktop */
+  .mobileBackContainer {
+    display: none;
+  }
+
+  .mobileButtonContainer {
+    display: none;
+  }
+
+  /* Show desktop navigation */
+  .navigationRow {
+    display: flex;
+  }
+
+  .headerContent {
+    padding: 0 16px;
+  }
+}
+
+/* Tablet specific adjustments */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .headerContent {
+    padding: 0 12px;
   }
 }

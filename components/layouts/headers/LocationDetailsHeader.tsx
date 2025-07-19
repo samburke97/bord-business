@@ -1,4 +1,4 @@
-// components/layouts/headers/LocationDetailsHeader.tsx - FIXED VERSION
+// components/layouts/headers/LocationDetailsHeader.tsx - RESPONSIVE VERSION
 "use client";
 
 import Button from "@/components/ui/Button";
@@ -30,62 +30,114 @@ export default function LocationDetailsHeader({
   const isFirstStep = currentStep === 0;
 
   return (
-    <header className={styles.header}>
-      <div className={styles.headerContent}>
-        <div className={styles.progressContainer}>
-          <ProgressBar steps={steps} currentStep={currentStep} />
-        </div>
-
-        <div className={styles.navigationRow}>
-          <div className={styles.leftButtonContainer}>
-            {isFirstStep
-              ? // First step: show close button only if onClose is provided
-                onClose && (
-                  <IconButton
-                    icon={
-                      <img
-                        src="/icons/utility-outline/cross.svg"
-                        alt="Close"
-                        width={20}
-                        height={20}
-                      />
-                    }
-                    onClick={onClose}
-                    aria-label="Close"
-                    variant="ghost"
+    <>
+      {/* Desktop Header */}
+      <header className={styles.header}>
+        <div className={styles.headerContent}>
+          {/* Mobile Back Button (above progress bar on mobile) */}
+          <div className={styles.mobileBackContainer}>
+            {!isFirstStep && onBack && (
+              <IconButton
+                icon={
+                  <img
+                    src="/icons/utility-outline/back.svg"
+                    alt="Back"
+                    width={20}
+                    height={20}
                   />
-                )
-              : // Not first step: show back button
-                onBack && (
-                  <IconButton
-                    icon={
-                      <img
-                        src="/icons/utility-outline/back.svg"
-                        alt="Back"
-                        width={20}
-                        height={20}
-                      />
-                    }
-                    onClick={onBack}
-                    aria-label="Go back"
-                    variant="ghost"
+                }
+                onClick={onBack}
+                aria-label="Go back"
+                variant="ghost"
+              />
+            )}
+            {isFirstStep && onClose && (
+              <IconButton
+                icon={
+                  <img
+                    src="/icons/utility-outline/cross.svg"
+                    alt="Close"
+                    width={20}
+                    height={20}
                   />
-                )}
+                }
+                onClick={onClose}
+                aria-label="Close"
+                variant="ghost"
+              />
+            )}
           </div>
 
-          {showContinue && (
-            <div className={styles.continueButtonContainer}>
-              <Button
-                onClick={onContinue}
-                disabled={isLoading}
-                className={styles.continueButton}
-              >
-                {isLoading ? "Creating..." : "Continue"}
-              </Button>
+          <div className={styles.progressContainer}>
+            <ProgressBar steps={steps} currentStep={currentStep} />
+          </div>
+
+          {/* Desktop Navigation Row */}
+          <div className={styles.navigationRow}>
+            <div className={styles.leftButtonContainer}>
+              {isFirstStep
+                ? // First step: show close button only if onClose is provided
+                  onClose && (
+                    <IconButton
+                      icon={
+                        <img
+                          src="/icons/utility-outline/cross.svg"
+                          alt="Close"
+                          width={20}
+                          height={20}
+                        />
+                      }
+                      onClick={onClose}
+                      aria-label="Close"
+                      variant="ghost"
+                    />
+                  )
+                : // Not first step: show back button
+                  onBack && (
+                    <IconButton
+                      icon={
+                        <img
+                          src="/icons/utility-outline/back.svg"
+                          alt="Back"
+                          width={20}
+                          height={20}
+                        />
+                      }
+                      onClick={onBack}
+                      aria-label="Go back"
+                      variant="ghost"
+                    />
+                  )}
             </div>
-          )}
+
+            {showContinue && (
+              <div className={styles.continueButtonContainer}>
+                <Button
+                  onClick={onContinue}
+                  disabled={isLoading}
+                  className={styles.continueButton}
+                >
+                  {isLoading ? "Creating..." : "Continue"}
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
-    </header>
+      </header>
+
+      {/* Mobile Fixed Continue Button */}
+      {showContinue && (
+        <div className={styles.mobileButtonContainer}>
+          <Button
+            onClick={onContinue}
+            disabled={isLoading}
+            fullWidth
+            className={styles.mobileContinueButton}
+          >
+            {isLoading ? "Creating..." : "Continue"}
+          </Button>
+        </div>
+      )}
+    </>
   );
 }

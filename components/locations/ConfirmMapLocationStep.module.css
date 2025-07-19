@@ -1,11 +1,25 @@
-.container {
-  width: 100%;
-  max-width: 800px;
-  margin: 0 auto;
+/* components/locations/ConfirmMapLocationStep.module.css - CONSISTENT VERSION */
+
+/* Import base step styles */
+@import "./StepLayout.module.css";
+
+/* Use the consistent base styles */
+.stepPageContainer {
+  composes: stepPageContainer from "./StepLayout.module.css";
 }
 
+.stepContainer {
+  composes: stepContainer from "./StepLayout.module.css";
+}
+
+.stepFormSection {
+  composes: stepFormSection from "./StepLayout.module.css";
+}
+
+/* Map specific styles */
 .mapWrapper {
   width: 100%;
+  max-width: 600px; /* Match other step widths */
   height: 500px;
   border-radius: 0.5rem;
   overflow: hidden;
@@ -70,4 +84,11 @@
 
 .mapContainer :global(.mapboxgl-marker:active) {
   cursor: grabbing;
+}
+
+/* Mobile responsive */
+@media (max-width: 1023px) {
+  .mapWrapper {
+    max-width: 100%;
+  }
 }

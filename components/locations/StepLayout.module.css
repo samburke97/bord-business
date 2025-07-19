@@ -1,0 +1,130 @@
+/* components/locations/StepLayout.module.css - BASE STYLES FOR ALL STEPS */
+
+/* Base page container for all steps */
+.stepPageContainer {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 1.5rem;
+  width: 100%;
+  min-height: auto;
+  background: var(--bg-standard);
+}
+
+/* Main container for step content */
+.stepContainer {
+  width: 100%;
+  max-width: 896px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Form section wrapper */
+.stepFormSection {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  margin-top: 2rem;
+  align-items: center;
+}
+
+/* Individual input/field groups */
+.stepInputGroup {
+  margin-bottom: 2rem;
+  width: 100%;
+  max-width: 600px;
+}
+
+/* Field labels */
+.stepFieldLabel {
+  display: block;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text-color);
+  margin-bottom: 0.5rem;
+  line-height: 20px;
+  text-align: left;
+}
+
+/* Error styles */
+.stepErrorInput {
+  border: 1px solid var(--red-wine-300) !important;
+  border-radius: 4px;
+}
+
+.stepErrorMessage {
+  color: var(--red-wine-300);
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+  text-align: left;
+}
+
+/* Search and dropdown sections */
+.stepSearchSection {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 2rem;
+  width: 100%;
+  max-width: 600px;
+}
+
+.stepSearchContainer {
+  margin-bottom: 1rem;
+}
+
+/* Data table and selectable content areas */
+.stepDataSection {
+  width: 100%;
+  max-width: 600px;
+  margin-bottom: 2rem;
+}
+
+/* Empty and loading states */
+.stepEmptyState {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  color: var(--text-light);
+  font-size: var(--font-size-sm);
+  text-align: center;
+}
+
+.stepLoadingState {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  color: var(--text-light);
+  text-align: center;
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 1023px) {
+  .stepPageContainer {
+    padding: 1rem;
+    padding-bottom: 6rem; /* Account for mobile continue button */
+  }
+
+  .stepInputGroup,
+  .stepSearchSection,
+  .stepDataSection {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .stepPageContainer {
+    padding: 1rem 0.75rem;
+    padding-bottom: 6rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .stepPageContainer {
+    padding: 1rem 0.5rem;
+    padding-bottom: 6rem;
+  }
+}

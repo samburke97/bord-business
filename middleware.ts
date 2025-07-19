@@ -24,18 +24,20 @@ export async function middleware(req: NextRequest) {
   // PRIORITY 1: Content Security Policy - Updated to support reCAPTCHA
   const csp = [
     "default-src 'self'",
-    // Script sources - include Google reCAPTCHA domains
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://connect.facebook.net https://www.facebook.com https://www.google.com https://www.gstatic.com https://www.recaptcha.net",
-    // Style sources - include Google Fonts and reCAPTCHA
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://www.google.com https://www.gstatic.com",
+    // Script sources - include Google reCAPTCHA domains and Mapbox
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://connect.facebook.net https://www.facebook.com https://www.google.com https://www.gstatic.com https://www.recaptcha.net https://api.mapbox.com",
+    // Style sources - include Google Fonts, reCAPTCHA, and Mapbox
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://www.google.com https://www.gstatic.com https://api.mapbox.com",
     // Font sources
     "font-src 'self' https://fonts.gstatic.com data:",
-    // Image sources - include Google domains
-    "img-src 'self' data: https: blob:",
-    // Connect sources - include Google reCAPTCHA API
-    "connect-src 'self' https://accounts.google.com https://www.facebook.com https://graph.facebook.com https://www.google.com https://www.recaptcha.net",
+    // Image sources - include Google domains and Mapbox tiles
+    "img-src 'self' data: https: blob: https://api.mapbox.com https://*.tiles.mapbox.com",
+    // Connect sources - include Google reCAPTCHA API and Mapbox API
+    "connect-src 'self' https://accounts.google.com https://www.facebook.com https://graph.facebook.com https://www.google.com https://www.recaptcha.net https://api.mapbox.com https://*.tiles.mapbox.com https://events.mapbox.com",
     // Frame sources - include Google reCAPTCHA and social login
     "frame-src 'self' https://accounts.google.com https://www.facebook.com https://www.google.com https://www.recaptcha.net https://recaptcha.google.com",
+    // Worker sources - allow blob URLs for Mapbox workers
+    "worker-src 'self' blob:",
     // Object and form sources
     "object-src 'none'",
     "base-uri 'self'",

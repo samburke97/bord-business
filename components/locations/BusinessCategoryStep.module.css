@@ -1,70 +1,53 @@
-.pageContainer {
-  display: flex;
-  justify-content: center;
-  padding: 1.5rem;
-  width: 100%;
-  min-height: calc(100vh - 136px);
+/* components/locations/BusinessCategoryStep.module.css - CONSISTENT VERSION */
+
+/* Import base step styles */
+@import "./StepLayout.module.css";
+
+/* Use the consistent base styles */
+.stepPageContainer {
+  composes: stepPageContainer from "./StepLayout.module.css";
 }
 
-.container {
-  width: 100%;
-  max-width: 896px;
+.stepContainer {
+  composes: stepContainer from "./StepLayout.module.css";
 }
 
-.formSection {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  margin-top: 2rem;
+.stepFormSection {
+  composes: stepFormSection from "./StepLayout.module.css";
 }
 
-.inputGroup {
-  margin-bottom: 2rem;
+.stepInputGroup {
+  composes: stepInputGroup from "./StepLayout.module.css";
 }
 
-.label {
-  display: block;
-  font-size: 16px; /* Changed from var(--font-size-sm) to match TextInput */
-  font-weight: 500;
-  color: var(--text-color);
-  margin-bottom: 0.5rem;
-  line-height: 20px; /* Added to match TextInput */
+.stepFieldLabel {
+  composes: stepFieldLabel from "./StepLayout.module.css";
 }
 
-.sportsSection {
-  display: flex;
-  flex-direction: column;
-  margin-bottom: 2rem;
+.stepErrorInput {
+  composes: stepErrorInput from "./StepLayout.module.css";
 }
 
-.searchContainer {
-  margin-bottom: 1rem;
+.stepErrorMessage {
+  composes: stepErrorMessage from "./StepLayout.module.css";
 }
 
-.emptyState {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem;
-  color: var(--text-light);
-  font-size: var(--font-size-sm);
+.stepSearchSection {
+  composes: stepSearchSection from "./StepLayout.module.css";
 }
 
-.loadingState {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem;
-  color: var(--text-light);
+.stepSearchContainer {
+  composes: stepSearchContainer from "./StepLayout.module.css";
 }
 
-.errorInput {
-  border: 1px solid var(--red-wine);
-  border-radius: 4px;
+.stepDataSection {
+  composes: stepDataSection from "./StepLayout.module.css";
 }
 
-.errorMessage {
-  color: var(--red-wine);
-  font-size: 0.875rem;
-  margin-top: 0.25rem;
+.stepEmptyState {
+  composes: stepEmptyState from "./StepLayout.module.css";
+}
+
+.stepLoadingState {
+  composes: stepLoadingState from "./StepLayout.module.css";
 }

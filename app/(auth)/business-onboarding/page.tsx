@@ -1,4 +1,3 @@
-// app/(auth)/business-onboarding/page.tsx - FIXED VERSION WITH PROPER BACK NAVIGATION
 "use client";
 
 import { useState, useRef, Suspense } from "react";
@@ -94,10 +93,10 @@ function BusinessOnboardingContent() {
 
   const handleClose = () => {
     console.log("❌ Business Onboarding: Closing and returning to dashboard");
-    // Navigate back to dashboard - middleware will handle routing
     router.push("/dashboard");
   };
 
+  // Fixed createBusiness function with proper CSRF token extraction
   const createBusiness = async (data: BusinessFormData) => {
     try {
       setIsCreating(true);
@@ -126,12 +125,57 @@ function BusinessOnboardingContent() {
         return;
       }
 
-      // Call the USER business creation API
+      // Get CSRF token from NextAuth API
+      console.log("🔒 Getting CSRF token from NextAuth...");
+      const csrfResponse = await fetch("/api/auth/csrf", {
+        credentials: "same-origin",
+      });
+
+      if (!csrfResponse.ok) {
+        console.error("❌ Failed to get CSRF token:", csrfResponse.status);
+        setError(
+          "Security setup failed. Please refresh the page and try again."
+        );
+        return;
+      }
+
+      const csrfData = await csrfResponse.json();
+      const csrfToken = csrfData.csrfToken;
+
+      console.log("🔑 CSRF Response:", {
+        status: csrfResponse.status,
+        hasToken: !!csrfToken,
+        tokenLength: csrfToken?.length || 0,
+        tokenPreview: csrfToken?.substring(0, 20) + "...",
+      });
+
+      if (!csrfToken) {
+        console.error("❌ No CSRF token in response:", csrfData);
+        setError(
+          "Security token missing. Please refresh the page and try again."
+        );
+        return;
+      }
+
+      // Debug: Log all cookies
+      console.log("🍪 All cookies:", document.cookie);
+
+      // Debug: Check specific NextAuth cookies
+      const cookies = document.cookie.split(";").map((c) => c.trim());
+      const nextAuthCookies = cookies.filter((c) => c.includes("next-auth"));
+      console.log("🔐 NextAuth cookies:", nextAuthCookies);
+
+      // Call the USER business creation API with enhanced headers
+      console.log("📡 Making API call with CSRF token...");
       const response = await fetch("/api/user/business", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "x-csrf-token": csrfToken,
+          // Add additional debugging headers
+          "X-Debug-Request": "business-creation",
         },
+        credentials: "same-origin", // This is crucial for including cookies
         body: JSON.stringify({
           businessName: data.businessName,
           businessType: data.businessCategory,
@@ -147,10 +191,56 @@ function BusinessOnboardingContent() {
         }),
       });
 
+      console.log("📡 API Response received:", {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+      });
+
       const responseData = await response.json();
+      console.log("📦 Response data:", responseData);
 
       if (!response.ok) {
-        throw new Error(responseData.error || "Failed to create business");
+        // Handle specific error cases with user-friendly messages
+        if (response.status === 401) {
+          setError("Session expired. Please log in again.");
+          setTimeout(() => router.push("/login"), 2000);
+          return;
+        }
+
+        if (response.status === 403) {
+          // Check if it's a CSRF error specifically
+          if (
+            responseData.error?.includes("CSRF") ||
+            responseData.message?.includes("CSRF")
+          ) {
+            console.error("❌ CSRF Error Details:", {
+              sentToken: csrfToken?.substring(0, 20) + "...",
+              error: responseData.error,
+              message: responseData.message,
+            });
+            setError(
+              "Security validation failed. Please refresh the page and try again."
+            );
+          } else {
+            setError(
+              "You don't have permission to create a business. Please contact support."
+            );
+          }
+          return;
+        }
+
+        if (response.status >= 500) {
+          setError("Server error. Please try again in a few moments.");
+          return;
+        }
+
+        // For other errors, show a generic message instead of the raw API error
+        console.error("❌ API Error:", responseData);
+        setError(
+          "Unable to create business. Please try again or contact support if the problem persists."
+        );
+        return;
       }
 
       console.log("✅ Business Onboarding: Business created successfully!");
@@ -159,9 +249,15 @@ function BusinessOnboardingContent() {
       setCurrentStep(steps.length);
     } catch (error) {
       console.error("❌ Business Onboarding: Error creating business:", error);
-      setError(
-        error instanceof Error ? error.message : "Failed to create business"
-      );
+
+      // Show user-friendly error message instead of technical details
+      if (error instanceof TypeError && error.message.includes("fetch")) {
+        setError("Network error. Please check your connection and try again.");
+      } else {
+        setError(
+          "Something went wrong. Please try again or contact support if the problem persists."
+        );
+      }
     } finally {
       setIsCreating(false);
     }
@@ -181,7 +277,6 @@ function BusinessOnboardingContent() {
   // Handle final redirect to dashboard after business creation
   const handleFinalContinue = () => {
     console.log("✅ Business Onboarding: Complete - redirecting to dashboard");
-    // Use router.push instead of window.location.href for better UX
     router.push("/dashboard");
   };
 
@@ -244,13 +339,6 @@ function BusinessOnboardingContent() {
           <div ref={stepRef}>
             <ConfirmMapLocationStep
               formData={{
-                name: formData.businessName,
-                address: formData.address,
-                streetAddress: formData.streetAddress,
-                aptSuite: formData.aptSuite,
-                city: formData.city,
-                state: formData.state,
-                postcode: formData.postcode,
                 latitude: formData.latitude,
                 longitude: formData.longitude,
               }}
@@ -262,40 +350,40 @@ function BusinessOnboardingContent() {
       case steps.length:
         return (
           <div ref={stepRef}>
-            <BusinessCongratulationsStep
-              businessName={formData.businessName}
-              onContinue={handleFinalContinue}
-            />
+            <BusinessCongratulationsStep onContinue={handleFinalContinue} />
           </div>
         );
       default:
-        return <div>Unknown step</div>;
+        return null;
     }
   };
 
   return (
-    <div className={`${styles.container} min-h-screen bg-gray-50`}>
-      <LocationDetailsHeader
-        currentStep={currentStep}
-        totalSteps={steps.length}
-        steps={steps}
-        onClose={currentStep === 0 ? handleClose : undefined} // Only show close on first step
-        onBack={currentStep > 0 ? handleBack : undefined} // Only show back after first step
-        onContinue={handleHeaderContinue}
-        showContinue={currentStep < steps.length}
-        isLoading={isCreating}
-      />
+    <div className={styles.container}>
+      {/* Header - shows for all steps except congratulations */}
+      {currentStep < steps.length && (
+        <LocationDetailsHeader
+          currentStep={currentStep}
+          totalSteps={steps.length}
+          steps={steps}
+          onClose={currentStep === 0 ? handleClose : undefined}
+          onBack={currentStep > 0 ? handleBack : undefined}
+          onContinue={handleHeaderContinue}
+          showContinue={true}
+          isLoading={isCreating}
+        />
+      )}
 
       <main className={styles.main}>
-        <div className={styles.content}>
-          {error && (
-            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-red-700">{error}</p>
-            </div>
-          )}
+        {/* Error Display */}
+        {error && (
+          <div className={styles.errorContainer}>
+            <p>{error}</p>
+          </div>
+        )}
 
-          {renderStep()}
-        </div>
+        {/* Step Content */}
+        <div className={styles.content}>{renderStep()}</div>
       </main>
     </div>
   );

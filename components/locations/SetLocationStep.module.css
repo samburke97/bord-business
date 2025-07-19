@@ -1,12 +1,26 @@
-.container {
-  width: 100%;
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 2rem;
+/* components/locations/SetLocationStep.module.css - CONSISTENT LAYOUT + ORIGINAL DROPDOWN */
+
+/* Import base step styles */
+@import "./StepLayout.module.css";
+
+/* Use the consistent base styles for layout */
+.stepPageContainer {
+  composes: stepPageContainer from "./StepLayout.module.css";
 }
 
+.stepContainer {
+  composes: stepContainer from "./StepLayout.module.css";
+}
+
+.stepFormSection {
+  composes: stepFormSection from "./StepLayout.module.css";
+}
+
+/* CONSISTENT WIDTH LIKE OTHER STEPS */
 .formField {
   margin-bottom: 1.5rem;
+  width: 100%;
+  max-width: 600px; /* Match other step inputs */
 }
 
 .searchContainer {

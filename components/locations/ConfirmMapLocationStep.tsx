@@ -1,15 +1,17 @@
+// components/locations/ConfirmMapLocationStep.tsx - CONSISTENT VERSION
 "use client";
+
 import { useState, useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import TitleDescription from "@/components/ui/TitleDescription";
 import styles from "./ConfirmMapLocationStep.module.css";
-import TitleDescription from "../ui/TitleDescription";
 import "mapbox-gl/dist/mapbox-gl.css";
 
 interface ConfirmMapLocationStepProps {
   formData: {
-    name: string;
+    name?: string;
     categoryId?: string;
-    sports: any[];
+    sports?: any[];
     streetAddress?: string;
     aptSuite?: string;
     city?: string;
@@ -33,8 +35,8 @@ export default function ConfirmMapLocationStep({
   const router = useRouter();
   const pathname = usePathname();
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const [map, setMap] = useState<mapboxgl.Map | null>(null);
-  const [marker, setMarker] = useState<mapboxgl.Marker | null>(null);
+  const [map, setMap] = useState<any>(null);
+  const [marker, setMarker] = useState<any>(null);
   const [currentPosition, setCurrentPosition] = useState({
     lat: formData.latitude || -26.403708,
     lng: formData.longitude || 153.033031,
@@ -148,19 +150,26 @@ export default function ConfirmMapLocationStep({
         delete window.handleMapContinue;
       }
     };
-  }, [currentPosition, mode, pathname]); // Re-register when position, mode, or path changes
+  }, [currentPosition, mode, pathname]);
 
   return (
-    <div className={styles.container}>
-      <TitleDescription
-        title={mode === "edit" ? "Update Map Location" : "Confirm Map Location"}
-        description="Drag the map so the pin matches the exact location of your business."
-      />
-      <div className={styles.mapWrapper}>
-        <div className={styles.mapContainer} ref={mapContainerRef}></div>
-        {!mapLoaded && (
-          <div className={styles.loadingIndicator}>Loading map...</div>
-        )}
+    <div className={styles.stepPageContainer}>
+      <div className={styles.stepContainer}>
+        <TitleDescription
+          title={
+            mode === "edit" ? "Update Map Location" : "Confirm Map Location"
+          }
+          description="Drag the map so the pin matches the exact location of your business."
+        />
+
+        <div className={styles.stepFormSection}>
+          <div className={styles.mapWrapper}>
+            <div className={styles.mapContainer} ref={mapContainerRef}></div>
+            {!mapLoaded && (
+              <div className={styles.loadingIndicator}>Loading map...</div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

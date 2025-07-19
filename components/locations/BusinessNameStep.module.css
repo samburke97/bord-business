@@ -1,61 +1,29 @@
-/* components/business/BusinessNameStep.module.css - FIXED VERSION */
+/* components/locations/BusinessNameStep.module.css - CONSISTENT VERSION */
 
-.pageContainer {
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  padding: 1.5rem; /* Reduced from 2rem 1.5rem */
-  width: 100%;
-  min-height: auto; /* Remove min-height calculation */
-  background: #fafafa;
+/* Import base step styles */
+@import "./StepLayout.module.css";
+
+/* Use the consistent base styles */
+.stepPageContainer {
+  composes: stepPageContainer from "./StepLayout.module.css";
 }
 
-.container {
-  width: 100%;
-  max-width: 896px;
-  text-align: left; /* Changed from center to left */
+.stepContainer {
+  composes: stepContainer from "./StepLayout.module.css";
+}
+
+.stepFormSection {
+  composes: stepFormSection from "./StepLayout.module.css";
+}
+
+.stepInputGroup {
+  composes: stepInputGroup from "./StepLayout.module.css";
+}
+
+/* Any component-specific styles can be added here */
+.stepInputGroup {
+  /* Ensure the input group is properly centered and sized */
   display: flex;
   flex-direction: column;
-  align-items: center;
-}
-
-.formSection {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  margin-top: 2rem;
-  align-items: center;
-}
-
-.inputGroup {
-  margin-bottom: 2rem;
-  width: 100%;
-  max-width: 600px; /* Match TitleDescription width */
-}
-
-.label {
-  display: block;
-  font-size: var(--font-size-sm);
-  font-weight: 500;
-  color: var(--text-color);
-  margin-bottom: 0.5rem;
-  text-align: left;
-}
-
-/* Mobile responsiveness */
-@media (max-width: 768px) {
-  .pageContainer {
-    padding: 1rem;
-    min-height: calc(100vh - 120px);
-  }
-
-  .inputGroup {
-    max-width: 100%;
-  }
-}
-
-@media (max-width: 480px) {
-  .pageContainer {
-    padding: 1rem 0.75rem;
-  }
+  align-items: stretch;
 }

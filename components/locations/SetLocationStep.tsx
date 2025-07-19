@@ -1,3 +1,4 @@
+// components/locations/SetLocationStep.tsx - ORIGINAL FUNCTIONALITY, CONSISTENT STYLING ONLY
 "use client";
 
 import { useState, useRef, useEffect } from "react";
@@ -58,25 +59,37 @@ export default function SetLocationStep({
       return;
     }
 
+    console.log("🔍 Starting search for:", query);
+    console.log("🗝️ Token exists:", !!MAPBOX_TOKEN);
+    console.log("🌐 URL:", MAPBOX_GEOCODING_URL);
+
     setIsLoading(true);
     try {
+      const url = `${MAPBOX_GEOCODING_URL}/${encodeURIComponent(
+        query
+      )}.json?access_token=${MAPBOX_TOKEN}&country=au&types=address&limit=5`;
+
+      console.log("📡 Full URL:", url);
+
       // Limit search to Australia with country code 'au'
-      const response = await fetch(
-        `${MAPBOX_GEOCODING_URL}/${encodeURIComponent(
-          query
-        )}.json?access_token=${MAPBOX_TOKEN}&country=au&types=address&limit=5`
-      );
+      const response = await fetch(url);
+
+      console.log("📬 Response status:", response.status);
+      console.log("📬 Response ok:", response.ok);
 
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error("❌ API Error:", errorText);
         throw new Error("Failed to fetch address suggestions");
       }
 
       const data = await response.json();
+      console.log("✅ Success! Data:", data);
 
       setSearchResults(data.features || []);
       setIsDropdownOpen(true);
     } catch (error) {
-      console.error("Error searching for address:", error);
+      console.error("💥 Catch block error:", error);
       setSearchResults([]);
       setIsDropdownOpen(true); // Still show dropdown for "Add Manually" option
     } finally {
@@ -189,74 +202,79 @@ export default function SetLocationStep({
 
   useEffect(() => {
     // @ts-ignore
-    window.handleLocationContinue = handleContinueFromHeader;
+    window.handleStepContinue = handleContinueFromHeader;
 
     return () => {
       // @ts-ignore
-      delete window.handleLocationContinue;
+      delete window.handleStepContinue;
     };
   }, [searchQuery, formData]);
 
   return (
-    <div className={styles.container}>
-      <TitleDescription
-        title="Set Location"
-        description="Use the search bar below to search for your address, if it doesn't
-        appear, you can add it manually."
-      />
+    <div className={styles.stepPageContainer}>
+      <div className={styles.stepContainer}>
+        <TitleDescription
+          title="Set Business Location"
+          description="Use the search bar below to search for your address, if it doesn't appear you can add it manually."
+        />
 
-      <div className={styles.formField}>
-        <div className={styles.searchContainer}>
-          <SearchInput
-            placeholder="Search for your address"
-            value={searchQuery}
-            onChange={handleSearchInputChange}
-            onClear={clearSearch}
-            label="Business Address"
-          />
+        <div className={styles.stepFormSection}>
+          <div className={styles.formField}>
+            <div className={styles.searchContainer}>
+              <SearchInput
+                placeholder="Search for your address"
+                value={searchQuery}
+                onChange={handleSearchInputChange}
+                onClear={clearSearch}
+                label="Business Address"
+              />
 
-          {isDropdownOpen && (
-            <div className={styles.searchResults}>
-              {isLoading ? (
-                <div className={styles.loading}>Loading results...</div>
-              ) : searchResults.length > 0 ? (
-                // Show search results if available
-                searchResults.map((feature) => (
-                  <div
-                    key={feature.id}
-                    className={styles.searchResultItem}
-                    onClick={() => handleAddressSelect(feature)}
-                  >
-                    <span className={styles.locationIcon}>
-                      <img
-                        src="/icons/utility-outline/location.svg"
-                        alt="Location"
-                        width={20}
-                        height={20}
-                      />
-                    </span>
-                    <span>{feature.place_name}</span>
+              {isDropdownOpen && (
+                <div className={styles.searchResults}>
+                  {isLoading ? (
+                    <div className={styles.loading}>Loading results...</div>
+                  ) : searchResults.length > 0 ? (
+                    // Show search results if available
+                    searchResults.map((feature) => (
+                      <div
+                        key={feature.id}
+                        className={styles.searchResultItem}
+                        onClick={() => handleAddressSelect(feature)}
+                      >
+                        <span className={styles.locationIcon}>
+                          <img
+                            src="/icons/utility-outline/location.svg"
+                            alt="Location"
+                            width={20}
+                            height={20}
+                          />
+                        </span>
+                        <span>{feature.place_name}</span>
+                      </div>
+                    ))
+                  ) : (
+                    // No results found message
+                    <div className={styles.noResults}>
+                      No addresses found matching your search.
+                    </div>
+                  )}
+
+                  <div className={styles.addManuallyContainer}>
+                    <button
+                      type="button"
+                      onClick={handleAddManually}
+                      className={styles.addManuallyButton}
+                    >
+                      <span className={styles.plusIcon}>+</span>
+                      <span className={styles.addManuallyText}>
+                        Add Manually
+                      </span>
+                    </button>
                   </div>
-                ))
-              ) : (
-                // No results found message
-                <div className={styles.noResults}>
-                  No addresses found matching your search.
                 </div>
               )}
-
-              <div className={styles.addManuallyContainer}>
-                <button
-                  type="button"
-                  onClick={handleAddManually}
-                  className={styles.addManuallyButton}
-                >
-                  <span className={styles.plusIcon}>+</span>
-                  <span className={styles.addManuallyText}>Add Manually</span>
-                </button>
-              </div>
             </div>
-          )}
+          </div>
         </div>
       </div>
     </div>

@@ -1,10 +1,42 @@
-.container {
-  width: 100%;
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 2rem;
+/* components/locations/ConfirmAddressStep.module.css - CONSISTENT VERSION */
+
+/* Import base step styles */
+@import "./StepLayout.module.css";
+
+/* Use the consistent base styles */
+.stepPageContainer {
+  composes: stepPageContainer from "./StepLayout.module.css";
 }
 
-.formField {
-  margin-bottom: 1.5rem;
+.stepContainer {
+  composes: stepContainer from "./StepLayout.module.css";
+}
+
+.stepFormSection {
+  composes: stepFormSection from "./StepLayout.module.css";
+}
+
+.stepInputGroup {
+  composes: stepInputGroup from "./StepLayout.module.css";
+}
+
+/* Address row for city, state, postcode */
+.addressRow {
+  display: flex;
+  gap: 1rem;
+  width: 100%;
+  max-width: 600px;
+}
+
+.addressRow .stepInputGroup {
+  flex: 1;
+  margin-bottom: 2rem;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .addressRow {
+    flex-direction: column;
+    gap: 0;
+  }
 }

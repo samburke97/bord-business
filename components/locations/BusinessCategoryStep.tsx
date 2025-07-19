@@ -1,3 +1,4 @@
+// components/locations/BusinessCategoryStep.tsx - CONSISTENT VERSION
 "use client";
 
 import { useState, useEffect } from "react";
@@ -138,59 +139,62 @@ export default function BusinessCategoryStep({
   }, [businessCategory, selectedSports]);
 
   return (
-    <div className={styles.pageContainer}>
-      <div className={styles.container}>
+    <div className={styles.stepPageContainer}>
+      <div className={styles.stepContainer}>
         <TitleDescription
           title="Category and Associated Sports"
           description="Select your business category and add sports your business is associated with."
         />
 
-        <div className={styles.formSection}>
-          <div className={styles.inputGroup}>
-            <label htmlFor="businessCategory" className={styles.label}>
-              Business Category
-            </label>
+        <div className={styles.stepFormSection}>
+          <div className={styles.stepInputGroup}>
+            <label className={styles.stepFieldLabel}>Business Category *</label>
             <SearchDropDown
-              label=""
+              options={BUSINESS_CATEGORIES}
               value={businessCategory}
               onChange={handleCategoryChange}
-              placeholder="Select category"
-              options={BUSINESS_CATEGORIES}
-              required
-              className={categoryError ? styles.errorInput : ""}
+              placeholder="Select business category"
+              className={categoryError ? styles.stepErrorInput : ""}
             />
             {categoryError && (
-              <div className={styles.errorMessage}>
-                Please select a business category.
+              <div className={styles.stepErrorMessage}>
+                Please select a business category
               </div>
             )}
           </div>
 
-          <div className={styles.sportsSection}>
-            <label className={styles.label}>Associated Sports</label>
-            <div className={styles.searchContainer}>
+          <div className={styles.stepSearchSection}>
+            <label className={styles.stepFieldLabel}>
+              Associated Sports (Optional)
+            </label>
+            <div className={styles.stepSearchContainer}>
               <SearchInput
+                placeholder="Search for sports to add"
                 value={sportsSearchQuery}
-                onChange={(e) => handleSportsSearch(e.target.value)}
-                placeholder="Search sports"
-                onSearch={handleSportsSearch}
-                onClear={() => handleSportsSearch("")}
+                onChange={handleSportsSearch}
               />
             </div>
 
-            {filteredSports.length === 0 && !isLoading ? (
-              <EmptyState message="No sports found." />
-            ) : (
-              <SelectableDataTable
-                items={filteredSports}
-                selected={selectedSports}
-                onAdd={handleAddSport}
-                onRemove={handleRemoveSport}
-                isLoading={isLoading}
-                itemType="sport"
-                nameColumnConfig={{ header: "Sport Name", align: "left" }}
-              />
-            )}
+            <div className={styles.stepDataSection}>
+              {isLoading ? (
+                <div className={styles.stepLoadingState}>Loading sports...</div>
+              ) : filteredSports.length === 0 ? (
+                <div className={styles.stepEmptyState}>
+                  {sportsSearchQuery
+                    ? `No sports found matching "${sportsSearchQuery}"`
+                    : "No sports available"}
+                </div>
+              ) : (
+                <SelectableDataTable
+                  items={filteredSports}
+                  selected={selectedSports}
+                  onAdd={handleAddSport}
+                  onRemove={(sportId: string) => handleRemoveSport(sportId)}
+                  itemType="sport"
+                  emptyMessage="No sports available"
+                />
+              )}
+            </div>
           </div>
         </div>
       </div>

@@ -1,17 +1,17 @@
-/* app/(auth)/business-onboarding/page.module.css - FIXED VERSION */
+/* app/(auth)/business-onboarding/page.module.css - RESPONSIVE VERSION */
 
 .container {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #fafafa;
+  background: var(--bg-standard);
 }
 
 .main {
   flex: 1;
   display: flex;
   flex-direction: column;
-  margin-top: 80px;
+  margin-top: 80px; /* Account for header height */
 }
 
 .content {
@@ -24,19 +24,34 @@
   width: 100%;
 }
 
-@media (max-width: 768px) {
-  .main {
-    margin-top: 75px; /* Reduced from 120px */
-  }
-}
-
 /* Error styling */
 .errorContainer {
   max-width: 500px;
   margin: 0 auto 1rem;
   padding: 1rem;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
+  background: var(--red-wine-100);
+  border: 1px solid var(--red-wine-200);
   border-radius: 8px;
-  color: #dc2626;
+  color: var(--red-wine-300);
+  text-align: center;
+}
+
+/* Mobile specific adjustments */
+@media (max-width: 1023px) {
+  .main {
+    margin-top: 75px; /* Slightly reduced for mobile */
+    padding-bottom: 6rem; /* Account for mobile continue button */
+  }
+}
+
+@media (max-width: 768px) {
+  .main {
+    margin-top: 70px;
+  }
+}
+
+@media (max-width: 480px) {
+  .main {
+    margin-top: 65px;
+  }
 }

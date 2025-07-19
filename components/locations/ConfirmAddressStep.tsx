@@ -1,10 +1,9 @@
-// components/locations/ConfirmAddressStep.tsx - FIXED
 "use client";
 
 import { useState, useEffect } from "react";
 import TextInput from "@/components/ui/TextInput";
+import TitleDescription from "@/components/ui/TitleDescription";
 import styles from "./ConfirmAddressStep.module.css";
-import TitleDescription from "../ui/TitleDescription";
 
 interface ConfirmAddressStepProps {
   formData: {
@@ -52,66 +51,76 @@ export default function ConfirmAddressStep({
     window.handleStepContinue = handleContinue;
 
     return () => {
-      // @ts-ignore - FIX: Delete the correct property name
+      // @ts-ignore
       delete window.handleStepContinue;
     };
   }, [streetAddress, aptSuite, city, postcode, state]);
 
   return (
-    <div className={styles.container}>
-      <TitleDescription
-        title="Confirm Address Details"
-        description="Please add and review your details before continuing."
-      />
-
-      <div className={styles.formField}>
-        <TextInput
-          id="streetAddress"
-          label="Street Address"
-          value={streetAddress}
-          onChange={(e) => setStreetAddress(e.target.value)}
-          placeholder="Enter street address"
+    <div className={styles.stepPageContainer}>
+      <div className={styles.stepContainer}>
+        <TitleDescription
+          title="Confirm Address Details"
+          description="Please add and review your details before continuing."
         />
-      </div>
 
-      <div className={styles.formField}>
-        <TextInput
-          id="aptSuite"
-          label="Apt./Suite etc"
-          value={aptSuite}
-          onChange={(e) => setAptSuite(e.target.value)}
-          placeholder="Enter apt./suite"
-        />
-      </div>
+        <div className={styles.stepFormSection}>
+          <div className={styles.stepInputGroup}>
+            <TextInput
+              id="streetAddress"
+              label="Street Address"
+              value={streetAddress}
+              onChange={(e) => setStreetAddress(e.target.value)}
+              placeholder="Enter street address"
+              required
+            />
+          </div>
 
-      <div className={styles.formField}>
-        <TextInput
-          id="city"
-          label="City"
-          value={city}
-          onChange={(e) => setCity(e.target.value)}
-          placeholder="Enter city"
-        />
-      </div>
+          <div className={styles.stepInputGroup}>
+            <TextInput
+              id="aptSuite"
+              label="Apt/Suite (Optional)"
+              value={aptSuite}
+              onChange={(e) => setAptSuite(e.target.value)}
+              placeholder="Enter apartment or suite number"
+            />
+          </div>
 
-      <div className={styles.formField}>
-        <TextInput
-          id="postcode"
-          label="Postcode"
-          value={postcode}
-          onChange={(e) => setPostcode(e.target.value)}
-          placeholder="Enter postcode"
-        />
-      </div>
+          <div className={styles.addressRow}>
+            <div className={styles.stepInputGroup}>
+              <TextInput
+                id="city"
+                label="City"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder="Enter city"
+                required
+              />
+            </div>
 
-      <div className={styles.formField}>
-        <TextInput
-          id="state"
-          label="State/County"
-          value={state}
-          onChange={(e) => setState(e.target.value)}
-          placeholder="Enter state/county"
-        />
+            <div className={styles.stepInputGroup}>
+              <TextInput
+                id="state"
+                label="State"
+                value={state}
+                onChange={(e) => setState(e.target.value)}
+                placeholder="Enter state"
+                required
+              />
+            </div>
+
+            <div className={styles.stepInputGroup}>
+              <TextInput
+                id="postcode"
+                label="Postcode"
+                value={postcode}
+                onChange={(e) => setPostcode(e.target.value)}
+                placeholder="Enter postcode"
+                required
+              />
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
