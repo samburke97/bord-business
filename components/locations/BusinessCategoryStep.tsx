@@ -1,4 +1,4 @@
-// components/locations/BusinessCategoryStep.tsx - CONSISTENT VERSION
+// components/locations/BusinessCategoryStep.tsx - FIXED: Dynamic Categories from Admin
 "use client";
 
 import { useState, useEffect } from "react";
@@ -25,16 +25,11 @@ interface Sport {
   status?: string;
 }
 
-const BUSINESS_CATEGORIES = [
-  { value: "SPORTS_CENTER", label: "Sports Center" },
-  { value: "GYM", label: "Gym" },
-  { value: "SWIMMING_POOL", label: "Swimming Pool" },
-  { value: "TENNIS_CLUB", label: "Tennis Club" },
-  { value: "FOOTBALL_CLUB", label: "Football Club" },
-  { value: "BASKETBALL_COURT", label: "Basketball Court" },
-  { value: "GOLF_COURSE", label: "Golf Course" },
-  { value: "OTHER", label: "Other" },
-];
+interface Category {
+  id: string;
+  name: string;
+  imageUrl?: string;
+}
 
 export default function BusinessCategoryStep({
   formData,
@@ -44,29 +39,92 @@ export default function BusinessCategoryStep({
   const [businessCategory, setBusinessCategory] = useState(
     formData.businessCategory || ""
   );
-  const [categoryName, setCategoryName] = useState("");
+  const [categories, setCategories] = useState<Category[]>([]);
   const [selectedSports, setSelectedSports] = useState<Sport[]>(
     formData.associatedSports || []
   );
   const [availableSports, setAvailableSports] = useState<Sport[]>([]);
   const [filteredSports, setFilteredSports] = useState<Sport[]>([]);
   const [sportsSearchQuery, setSportsSearchQuery] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingCategories, setIsLoadingCategories] = useState(false);
+  const [isLoadingSports, setIsLoadingSports] = useState(false);
   const [categoryError, setCategoryError] = useState(false);
+
+  // Load categories from admin-defined categories
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        setIsLoadingCategories(true);
+        console.log(
+          "🏷️ BusinessCategory: Loading categories from admin API..."
+        );
+
+        const response = await fetch("/api/groups/categories", {
+          credentials: "include",
+        });
+
+        if (response.ok) {
+          const categoriesData = await response.json();
+          console.log(
+            "✅ BusinessCategory: Categories loaded:",
+            categoriesData
+          );
+          setCategories(categoriesData);
+        } else {
+          console.error(
+            "❌ BusinessCategory: Failed to load categories:",
+            response.status
+          );
+          // Fallback to empty array - let user know categories couldn't load
+          setCategories([]);
+        }
+      } catch (error) {
+        console.error("❌ BusinessCategory: Error loading categories:", error);
+        // Fallback to empty array
+        setCategories([]);
+      } finally {
+        setIsLoadingCategories(false);
+      }
+    };
+
+    loadCategories();
+  }, []);
 
   // Load available sports
   useEffect(() => {
     const loadSports = async () => {
       try {
-        setIsLoading(true);
-        const response = await fetch("/api/sports");
+        setIsLoadingSports(true);
+        console.log("⚽ BusinessCategory: Loading sports...");
+
+        const response = await fetch("/api/sports", {
+          credentials: "include",
+        });
+
         if (response.ok) {
           const sports = await response.json();
+          console.log("✅ BusinessCategory: Sports loaded:", sports.length);
           setAvailableSports(sports);
           setFilteredSports(sports);
+        } else {
+          console.error(
+            "❌ BusinessCategory: Failed to load sports:",
+            response.status
+          );
+          // Fallback to default sports
+          const defaultSports = [
+            { id: "1", name: "Football", status: "active" },
+            { id: "2", name: "Basketball", status: "active" },
+            { id: "3", name: "Tennis", status: "active" },
+            { id: "4", name: "Swimming", status: "active" },
+            { id: "5", name: "Volleyball", status: "active" },
+          ];
+          setAvailableSports(defaultSports);
+          setFilteredSports(defaultSports);
         }
       } catch (error) {
-        console.error("Error loading sports:", error);
+        console.error("❌ BusinessCategory: Error loading sports:", error);
+        // Fallback to default sports
         const defaultSports = [
           { id: "1", name: "Football", status: "active" },
           { id: "2", name: "Basketball", status: "active" },
@@ -77,13 +135,14 @@ export default function BusinessCategoryStep({
         setAvailableSports(defaultSports);
         setFilteredSports(defaultSports);
       } finally {
-        setIsLoading(false);
+        setIsLoadingSports(false);
       }
     };
 
     loadSports();
   }, []);
 
+  // Filter sports based on search query
   useEffect(() => {
     if (sportsSearchQuery) {
       const filtered = availableSports.filter((sport) =>
@@ -98,8 +157,7 @@ export default function BusinessCategoryStep({
   const handleCategoryChange = (value: string) => {
     setBusinessCategory(value);
     setCategoryError(false);
-    const category = BUSINESS_CATEGORIES.find((cat) => cat.value === value);
-    setCategoryName(category?.label || "");
+    console.log("🏷️ BusinessCategory: Category selected:", value);
   };
 
   const handleSportsSearch = (value: string) => {
@@ -108,27 +166,47 @@ export default function BusinessCategoryStep({
 
   const handleAddSport = (sport: Sport) => {
     if (!selectedSports.find((s) => s.id === sport.id)) {
-      setSelectedSports([...selectedSports, sport]);
+      const updatedSports = [...selectedSports, sport];
+      setSelectedSports(updatedSports);
+      console.log("⚽ BusinessCategory: Sport added:", sport.name);
     }
   };
 
   const handleRemoveSport = (sportId: string) => {
-    setSelectedSports(selectedSports.filter((sport) => sport.id !== sportId));
+    const updatedSports = selectedSports.filter(
+      (sport) => sport.id !== sportId
+    );
+    setSelectedSports(updatedSports);
+    console.log("⚽ BusinessCategory: Sport removed:", sportId);
   };
 
   const handleContinue = () => {
     if (!businessCategory) {
       setCategoryError(true);
+      console.log("❌ BusinessCategory: No category selected");
       return;
     }
 
     setCategoryError(false);
-    onContinue({
+
+    // Find the selected category details
+    const selectedCategoryData = categories.find(
+      (cat) => cat.id === businessCategory
+    );
+
+    console.log("✅ BusinessCategory: Continuing with data:", {
       businessCategory,
+      categoryName: selectedCategoryData?.name,
+      associatedSports: selectedSports,
+    });
+
+    onContinue({
+      businessCategory, // This will be the category ID from admin-defined categories
       associatedSports: selectedSports,
     });
   };
 
+  // Expose continue handler for header button
   useEffect(() => {
     // @ts-ignore
     window.handleStepContinue = handleContinue;
@@ -136,7 +214,13 @@ export default function BusinessCategoryStep({
       // @ts-ignore
       delete window.handleStepContinue;
     };
-  }, [businessCategory, selectedSports]);
+  }, [businessCategory, selectedSports, categories]);
+
+  // Prepare category options for dropdown
+  const categoryOptions = categories.map((category) => ({
+    value: category.id,
+    label: category.name,
+  }));
 
   return (
     <div className={styles.stepPageContainer}>
@@ -149,16 +233,37 @@ export default function BusinessCategoryStep({
         <div className={styles.stepFormSection}>
           <div className={styles.stepInputGroup}>
             <label className={styles.stepFieldLabel}>Business Category *</label>
+
             <SearchDropDown
-              options={BUSINESS_CATEGORIES}
+              options={categoryOptions}
               value={businessCategory}
               onChange={handleCategoryChange}
-              placeholder="Select business category"
+              placeholder={
+                isLoadingCategories
+                  ? "Loading categories..."
+                  : categories.length === 0
+                    ? "No categories available"
+                    : "Select business category"
+              }
+              disabled={isLoadingCategories || categories.length === 0}
               className={categoryError ? styles.stepErrorInput : ""}
             />
+
             {categoryError && (
               <div className={styles.stepErrorMessage}>
                 Please select a business category
+              </div>
+            )}
+
+            {!isLoadingCategories && categories.length === 0 && (
+              <div
+                style={{
+                  fontSize: "14px",
+                  color: "var(--for-light)",
+                  marginTop: "8px",
+                }}
+              >
+                Categories need to be configured by an administrator.
               </div>
             )}
           </div>
@@ -172,11 +277,12 @@ export default function BusinessCategoryStep({
                 placeholder="Search for sports to add"
                 value={sportsSearchQuery}
                 onChange={handleSportsSearch}
+                disabled={isLoadingSports}
               />
             </div>
 
             <div className={styles.stepDataSection}>
-              {isLoading ? (
+              {isLoadingSports ? (
                 <div className={styles.stepLoadingState}>Loading sports...</div>
               ) : filteredSports.length === 0 ? (
                 <div className={styles.stepEmptyState}>

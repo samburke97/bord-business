@@ -1,72 +1,49 @@
+// lib/auth.ts - FIXED: Added missing status field
 import { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import FacebookProvider from "next-auth/providers/facebook";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import prisma from "@/lib/prisma";
 import {
+  verifyPassword,
   checkAccountLockout,
   recordFailedAttempt,
   resetFailedAttempts,
-  generateSecureToken,
-  verifyPassword,
 } from "@/lib/security/password";
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
-
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-      authorization: {
-        params: {
-          prompt: "consent",
-          access_type: "offline",
-          response_type: "code",
-        },
-      },
     }),
-
     FacebookProvider({
       clientId: process.env.FACEBOOK_CLIENT_ID!,
       clientSecret: process.env.FACEBOOK_CLIENT_SECRET!,
-      authorization: {
-        params: {
-          scope: "email",
-        },
-      },
     }),
-
     CredentialsProvider({
-      id: "credentials",
       name: "credentials",
       credentials: {
-        email: { type: "email" },
-        password: { type: "password" },
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (process.env.NODE_ENV === "development") {
-          console.log("🔐 Credentials Provider: Authorization attempt");
-        }
-
         if (!credentials?.email || !credentials?.password) {
           return null;
         }
 
         try {
           const user = await prisma.user.findUnique({
-            where: { email: credentials.email.toLowerCase().trim() },
+            where: { email: credentials.email.toLowerCase() },
             include: {
               credentials: true,
-              ownedBusinesses: true,
-              businessMemberships: true,
             },
           });
 
           if (process.env.NODE_ENV === "development") {
-            console.log("👤 Credentials Provider: User lookup result:", {
-              found: !!user,
+            console.log("🔐 Credentials Auth:", {
+              email: credentials.email.substring(0, 3) + "***",
+              hasUser: !!user,
               hasCredentials: !!user?.credentials,
             });
           }
@@ -104,6 +81,7 @@ export const authOptions: NextAuthOptions = {
             globalRole: user.globalRole,
             isVerified: user.isVerified,
             isActive: user.isActive,
+            status: user.status, // CRITICAL FIX: Include status
           };
         } catch (error) {
           console.error("❌ Credentials Provider Error:", error);
@@ -207,6 +185,7 @@ export const authOptions: NextAuthOptions = {
         session.user.globalRole = (token.globalRole as string) || "USER";
         session.user.isVerified = (token.isVerified as boolean) || false;
         session.user.isActive = (token.isActive as boolean) || false;
+        session.user.status = (token.status as string) || "PENDING"; // CRITICAL FIX: Add status
       }
 
       return session;
@@ -221,60 +200,110 @@ export const authOptions: NextAuthOptions = {
         token.globalRole = user.globalRole;
         token.isVerified = user.isVerified;
         token.isActive = user.isActive;
+        token.status = user.status; // CRITICAL FIX: Add status
       }
 
-      if (trigger === "update" && user) {
-        token.name = user.name;
-        token.email = user.email;
-        token.picture = user.image;
-        token.globalRole = user.globalRole;
-        token.isVerified = user.isVerified;
-        token.isActive = user.isActive;
+      if (trigger === "update") {
+        // When session is updated, refresh user data from database
+        console.log("🔄 JWT: Updating session from database");
+
+        if (token.sub) {
+          const freshUser = await prisma.user.findUnique({
+            where: { id: token.sub },
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              image: true,
+              globalRole: true,
+              isVerified: true,
+              isActive: true,
+              status: true, // CRITICAL FIX: Include status
+            },
+          });
+
+          if (freshUser) {
+            token.name = freshUser.name;
+            token.email = freshUser.email;
+            token.picture = freshUser.image;
+            token.globalRole = freshUser.globalRole;
+            token.isVerified = freshUser.isVerified;
+            token.isActive = freshUser.isActive;
+            token.status = freshUser.status; // CRITICAL FIX: Update status
+          }
+        }
       }
 
       return token;
     },
 
-    // CRITICAL FIX: Fixed redirect callback to prevent infinite loops
     async redirect({ url, baseUrl }) {
       console.log("🔄 Redirect callback:", { url, baseUrl });
 
-      // Allow relative URLs (starting with /)
-      if (url.startsWith("/")) {
-        const fullUrl = `${baseUrl}${url}`;
-        console.log("✅ Redirect: Using relative URL:", fullUrl);
-        return fullUrl;
-      }
-
-      // Allow full URLs that start with baseUrl
-      if (url.startsWith(baseUrl)) {
-        console.log("✅ Redirect: Using full URL:", url);
+      // Handle OAuth success redirects
+      if (url.includes("oauth/setup") || url.includes("auth/complete-setup")) {
         return url;
       }
 
-      // CRITICAL FIX: For OAuth logins, redirect to dashboard
-      // The dashboard has proper verification logic that will route users correctly
-      const dashboardUrl = `${baseUrl}/dashboard`;
-      console.log(
-        "✅ Redirect: OAuth callback - redirecting to dashboard for proper routing:",
-        dashboardUrl
-      );
-      return dashboardUrl;
+      // Handle error redirects
+      if (url.includes("auth/error")) {
+        return url;
+      }
+
+      // For relative URLs, return as-is
+      if (url.startsWith("/")) {
+        return `${baseUrl}${url}`;
+      }
+
+      // For absolute URLs on same domain, return as-is
+      if (url.startsWith(baseUrl)) {
+        return url;
+      }
+
+      // Default fallback to base URL
+      return baseUrl;
     },
   },
 
   events: {
-    async signIn({ user, account, isNewUser }) {
-      if (process.env.NODE_ENV === "development") {
-        console.log("🎉 SignIn Event:", {
-          provider: account?.provider,
-          isNewUser,
-          email: user.email?.substring(0, 3) + "***",
-        });
+    async signIn({ user, account, profile, isNewUser }) {
+      console.log("📝 SignIn Event:", {
+        provider: account?.provider,
+        isNewUser,
+        email: user.email?.substring(0, 3) + "***",
+      });
+
+      if (
+        account &&
+        (account.provider === "google" || account.provider === "facebook")
+      ) {
+        try {
+          const existingUser = await prisma.user.findUnique({
+            where: { email: user.email! },
+          });
+
+          if (!existingUser) {
+            // Create new OAuth user with PENDING status
+            console.log("🆕 Creating new OAuth user with PENDING status");
+
+            const newUser = await prisma.user.create({
+              data: {
+                email: user.email!,
+                name: user.name || user.email!,
+                image: user.image,
+                globalRole: "USER",
+                isVerified: false, // Will be set to true when profile is completed
+                isActive: false, // Will be set to true when profile is completed
+                status: "PENDING", // CRITICAL FIX: Set PENDING status for new OAuth users
+              },
+            });
+
+            console.log("✅ New OAuth user created:", newUser.id);
+          }
+        } catch (error) {
+          console.error("❌ SignIn Event Error:", error);
+        }
       }
     },
   },
-
-  secret: process.env.NEXTAUTH_SECRET,
-  debug: process.env.NODE_ENV === "development",
 };

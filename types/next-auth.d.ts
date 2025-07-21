@@ -1,6 +1,6 @@
-// types/next-auth.d.ts - CORRECTED TYPES
+// types/next-auth.d.ts - FIXED: Added missing status field
 import "next-auth";
-import { UserRole } from "@prisma/client";
+import { UserRole, UserStatus } from "@prisma/client";
 
 declare module "next-auth" {
   interface User {
@@ -12,6 +12,7 @@ declare module "next-auth" {
     globalRole?: UserRole;
     isVerified?: boolean;
     isActive?: boolean;
+    status?: UserStatus; // CRITICAL FIX: Add status field
   }
 
   interface Session {
@@ -24,6 +25,7 @@ declare module "next-auth" {
       globalRole?: UserRole;
       isVerified?: boolean;
       isActive?: boolean;
+      status?: UserStatus; // CRITICAL FIX: Add status field
     };
   }
 }
@@ -39,5 +41,6 @@ declare module "next-auth/jwt" {
     globalRole?: UserRole;
     isVerified?: boolean;
     isActive?: boolean;
+    status?: UserStatus; // CRITICAL FIX: Add status field
   }
 }

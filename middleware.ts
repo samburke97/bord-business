@@ -1,4 +1,4 @@
-// middleware.ts - CORRECTED: No Database Queries in Edge Runtime + PENDING User Support
+// middleware.ts - CORRECTED: Added OAuth routes and business status endpoint
 import { NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { NextRequest } from "next/server";
@@ -76,6 +76,7 @@ export async function middleware(req: NextRequest) {
     "/api/auth/providers",
     "/api/auth/check-user-status", // CRITICAL: Allow user status check for login flow
     "/auth/", // ALL auth pages (including /auth/setup, /auth/password, etc.)
+    "/oauth/", // CRITICAL ADD: All OAuth setup pages
     "/verify-email",
     "/_next",
     "/favicon.ico",
@@ -171,8 +172,11 @@ export async function middleware(req: NextRequest) {
     const allowedForPendingUsers = [
       "/api/user/activate-profile",
       "/api/user/profile-status",
+      "/api/user/business-status", // CRITICAL ADD: Allow business status check
       "/api/auth/check-username",
       "/auth/complete-setup",
+      "/oauth/setup", // CRITICAL ADD: Allow OAuth setup page
+      "/oauth/", // CRITICAL ADD: All OAuth routes
     ];
 
     const isPendingUserAllowedRoute = allowedForPendingUsers.some((route) =>

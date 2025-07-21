@@ -35,18 +35,6 @@ enum BusinessRole {
   VIEWER // Read-only access
 }
 
-enum BusinessType {
-  SPORTS_CENTER
-  GYM
-  SWIMMING_POOL
-  TENNIS_CLUB
-  GOLF_COURSE
-  CLIMBING_GYM
-  MARTIAL_ARTS
-  DANCE_STUDIO
-  YOGA_STUDIO
-  OTHER
-}
 
 enum BookingStatus {
   PENDING
@@ -64,7 +52,6 @@ enum GroupType {
   GENERAL
 }
 
-// NEW: Security event types for enterprise logging
 enum SecurityEventType {
   LOGIN_SUCCESS
   LOGIN_FAILED
@@ -319,7 +306,10 @@ model Business {
   // Business details
   logo         String?
   coverImage   String?      @map("cover_image")
-  businessType BusinessType @default(SPORTS_CENTER) @map("business_type")
+  
+  // CHANGED: Use dynamic category instead of enum
+  categoryId   String?      @map("category_id")
+  category     Tag?         @relation("business_category", fields: [categoryId], references: [id])
 
   // Settings
   isActive   Boolean @default(true) @map("is_active")
@@ -340,7 +330,7 @@ model Business {
   @@index([ownerId])
   @@index([slug])
   @@index([isActive])
-  @@index([businessType])
+  @@index([categoryId]) 
   @@map("businesses")
 }
 
@@ -403,16 +393,17 @@ model Tag {
   isDeleted  Boolean   @default(false)
   deletedAt  DateTime?
 
-  // Relationships
+  // Existing relationships
   centers               CenterTag[]
   centerAsFacility      CenterFacility[]
   centerAsEstablishment Center[]         @relation("establishment")
   groups                GroupTag[]
   images                TagImage[]
   sports                SportTag[]
-
-  // Activity relationships
-  activitiesAsType Activity[] @relation("activity_type")
+  activitiesAsType      Activity[]       @relation("activity_type")
+  
+  // NEW: Business category relationship
+  businessesAsCategory  Business[]       @relation("business_category")
 
   @@index([name])
   @@map("tags")
