@@ -1,4 +1,4 @@
-// app/api/auth/check-user-status/route.ts - FIXED - Return proper methods array
+// app/api/auth/check-user-status/route.ts - COMPLETE: Properly detect OAuth vs Email users
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
@@ -32,11 +32,11 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // FIXED: Build the methods array properly
+    // ✅ FIXED: Build the methods array properly - check for valid password hash
     const methods: string[] = [];
 
-    // Add email method if user has credentials (password)
-    if (user.credentials) {
+    // Add email method ONLY if user has credentials AND a valid password hash
+    if (user.credentials && user.credentials.passwordHash) {
       methods.push("email");
     }
 
@@ -51,6 +51,7 @@ export async function POST(request: NextRequest) {
       email: normalizedEmail,
       exists: true,
       hasCredentials: !!user.credentials,
+      hasPasswordHash: !!user.credentials?.passwordHash,
       oauthProviders: user.accounts.map((acc) => acc.provider),
       methods: methods,
     });
@@ -62,12 +63,13 @@ export async function POST(request: NextRequest) {
       isActive: user.isActive,
       needsVerification: !user.isVerified,
 
-      // FIXED: Include the methods array that LoginForm expects
+      // ✅ FIXED: Include the methods array that LoginForm expects
       methods: methods,
 
       // Keep other info for debugging/logging
       providers: user.accounts.map((acc) => acc.provider),
       hasCredentials: !!user.credentials,
+      hasPasswordHash: !!user.credentials?.passwordHash,
     });
   } catch (error) {
     console.error("❌ User status check error:", error);

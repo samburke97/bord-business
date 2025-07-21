@@ -1,4 +1,3 @@
-// components/auth/PasswordScreen.tsx
 "use client";
 
 import { useState } from "react";

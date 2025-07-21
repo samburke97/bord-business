@@ -1,4 +1,4 @@
-// components/auth/LoginForm.tsx - IMPROVED with method tracking
+// components/auth/LoginForm.tsx - ONLY routing changes, ALL styling preserved
 "use client";
 
 import { useState } from "react";
@@ -57,9 +57,8 @@ export default function LoginForm({ title, description }: LoginFormProps) {
         return;
       }
 
-      // CRITICAL FIX: Tell AuthFlowManager this is an OAuth flow
       await signIn("google", {
-        callbackUrl: "/auth/setup?method=oauth&provider=google",
+        callbackUrl: "/auth/oauth/setup",
       });
     } catch (error) {
       console.error("Google sign in error:", error);
@@ -80,9 +79,9 @@ export default function LoginForm({ title, description }: LoginFormProps) {
         return;
       }
 
-      // CRITICAL FIX: Tell AuthFlowManager this is an OAuth flow
+      // ✅ FIXED: Route OAuth users to dedicated OAuth flow
       await signIn("facebook", {
-        callbackUrl: "/auth/setup?method=oauth&provider=facebook",
+        callbackUrl: "/auth/oauth/setup",
       });
     } catch (error) {
       console.error("Facebook sign in error:", error);
@@ -125,9 +124,6 @@ export default function LoginForm({ title, description }: LoginFormProps) {
         return;
       }
 
-      const continueBusinessSetup =
-        searchParams.get("continue_business_setup") === "true";
-
       const response = await fetch("/api/auth/check-user-status", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -156,25 +152,15 @@ export default function LoginForm({ title, description }: LoginFormProps) {
           return;
         }
 
-        // User has email credentials - continue normal flow
-        if (continueBusinessSetup) {
-          router.push(
-            `/auth/password?email=${encodeURIComponent(email)}&type=login&name=${encodeURIComponent(
-              userData.name || ""
-            )}&continue_business_setup=true`
-          );
-        } else {
-          router.push(
-            `/auth/password?email=${encodeURIComponent(email)}&type=login&name=${encodeURIComponent(
-              userData.name || ""
-            )}`
-          );
-        }
-      } else {
-        // CRITICAL FIX: Tell AuthFlowManager this is an email flow
+        // User has email credentials - continue to password screen
         router.push(
-          `/auth/setup?email=${encodeURIComponent(email)}&method=email`
+          `/auth/password?email=${encodeURIComponent(email)}&type=login&name=${encodeURIComponent(
+            userData.name || ""
+          )}`
         );
+      } else {
+        // ✅ FIXED: Route new email users to dedicated email flow
+        router.push(`/auth/email/setup?email=${encodeURIComponent(email)}`);
       }
     } catch (error) {
       console.error("Email continue error:", error);
@@ -248,6 +234,7 @@ export default function LoginForm({ title, description }: LoginFormProps) {
                   required
                 />
               </div>
+
               <Button
                 variant="primary-green"
                 onClick={handleEmailContinue}

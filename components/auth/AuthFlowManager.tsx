@@ -1,4 +1,4 @@
-// components/auth/AuthFlowManager.tsx - NO FLASH FIX
+// components/auth/AuthFlowManager.tsx - FIXED: Respects URL path for correct flow
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -41,6 +41,7 @@ export default function AuthFlowManager({
         hasSession: !!session,
         status,
         authMethod,
+        pathname: window.location.pathname,
         email: email ? email.substring(0, 3) + "***" : "none",
         sessionEmail: session?.user?.email
           ? session.user.email.substring(0, 3) + "***"
@@ -52,7 +53,61 @@ export default function AuthFlowManager({
         return;
       }
 
-      // CRITICAL FIX: Check OAuth method FIRST - go straight to profile setup
+      // PRIORITY 1: Check URL path first to determine intended step
+      const pathname = window.location.pathname;
+
+      // If we're explicitly on /auth/setup, show setup form regardless of method
+      if (pathname === "/auth/setup") {
+        console.log("📝 AuthFlow: On /auth/setup page - showing setup form");
+        if (authMethod === "oauth" && session?.user) {
+          // OAuth users on setup page
+          setCurrentStep("setup");
+          setUserInfo({
+            isNewUser: false,
+            userName: session.user.name || undefined,
+          });
+          setEmail(session.user.email || "");
+        } else {
+          // Email users on setup page (new user flow)
+          setCurrentStep("setup");
+          setUserInfo({
+            isNewUser: true,
+            userName: undefined,
+          });
+        }
+        setIsInitializing(false);
+        return;
+      }
+
+      // If we're explicitly on verification pages, show verification
+      if (pathname === "/auth/verify" || pathname === "/verify-email") {
+        console.log("📧 AuthFlow: On verification page - showing verification");
+        setCurrentStep("verification");
+        setUserInfo({
+          isNewUser: true,
+          userName: undefined,
+        });
+        setIsInitializing(false);
+        return;
+      }
+
+      // If we're on password page, show password screen
+      if (pathname === "/auth/password") {
+        console.log("🔑 AuthFlow: On password page - showing password screen");
+        const type = searchParams.get("type");
+        const name = searchParams.get("name");
+        setCurrentStep("password");
+        setUserInfo({
+          isNewUser: type === "setup",
+          userName: name || undefined,
+        });
+        setIsInitializing(false);
+        return;
+      }
+
+      // PRIORITY 2: Method-based logic for flows without explicit paths
+
+      // OAuth method - go to profile setup
       if (authMethod === "oauth") {
         console.log(
           "🔐 AuthFlow: OAuth method detected - going directly to profile setup"
@@ -67,12 +122,15 @@ export default function AuthFlowManager({
         return;
       }
 
-      // CRITICAL FIX: Check email method FIRST - go straight to verification
+      // Email method - determine next step based on context
       if (authMethod === "email") {
         console.log(
-          "📧 AuthFlow: Email method detected - going directly to verification"
+          "📧 AuthFlow: Email method detected - determining correct step"
         );
-        setCurrentStep("verification");
+
+        // For email method, we need to determine if this is a new signup
+        // or returning to continue a flow. Default to setup for new users.
+        setCurrentStep("setup");
         setUserInfo({
           isNewUser: true,
           userName: undefined,
@@ -163,9 +221,10 @@ export default function AuthFlowManager({
       // EMAIL SIGNUP: No session, but has email parameter
       if (!session && email) {
         console.log(
-          "📧 AuthFlow: Email signup flow - starting with email verification"
+          "📧 AuthFlow: Email signup flow - defaulting to setup (not verification)"
         );
-        setCurrentStep("verification");
+        // Changed: Default to setup instead of verification for new email users
+        setCurrentStep("setup");
         setUserInfo({
           isNewUser: true,
           userName: undefined,
@@ -211,10 +270,21 @@ export default function AuthFlowManager({
 
   const handleSetupComplete = useCallback(() => {
     console.log(
-      "✅ AuthFlow: Profile setup complete - redirecting to business onboarding"
+      "✅ AuthFlow: Profile setup complete - checking if verification needed"
     );
-    router.push("/business-onboarding");
-  }, [router]);
+
+    // For email users, go to verification after setup
+    if (authMethod === "email" || (!session?.user && email)) {
+      console.log("📧 AuthFlow: Email user - redirecting to verification");
+      router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+    } else {
+      // For OAuth users, go to business onboarding
+      console.log(
+        "🔐 AuthFlow: OAuth user - redirecting to business onboarding"
+      );
+      router.push("/business-onboarding");
+    }
+  }, [router, authMethod, session, email]);
 
   const handleContinueToDashboard = useCallback(() => {
     console.log("🏠 AuthFlow: Continuing to dashboard");
@@ -309,7 +379,7 @@ export default function AuthFlowManager({
         <BusinessSetupForm
           email={email}
           onSetupComplete={handleSetupComplete}
-          isOAuth={!!session?.user} // ADD THIS
+          isOAuth={!!session?.user}
         />
       );
 

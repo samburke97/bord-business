@@ -1,4 +1,4 @@
-// lib/auth.ts - FIXED: Added missing status field
+// lib/auth.ts - FIXED: Email users never PENDING, only OAuth users
 import { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import FacebookProvider from "next-auth/providers/facebook";
@@ -81,7 +81,7 @@ export const authOptions: NextAuthOptions = {
             globalRole: user.globalRole,
             isVerified: user.isVerified,
             isActive: user.isActive,
-            status: user.status, // CRITICAL FIX: Include status
+            status: user.status,
           };
         } catch (error) {
           console.error("❌ Credentials Provider Error:", error);
@@ -185,7 +185,15 @@ export const authOptions: NextAuthOptions = {
         session.user.globalRole = (token.globalRole as string) || "USER";
         session.user.isVerified = (token.isVerified as boolean) || false;
         session.user.isActive = (token.isActive as boolean) || false;
-        session.user.status = (token.status as string) || "PENDING"; // CRITICAL FIX: Add status
+
+        // ✅ FIXED: Different default status logic
+        if (token.status) {
+          session.user.status = token.status as string;
+        } else {
+          // Email users (who have credentials/passwords) should never be PENDING
+          // Only OAuth users without completed profiles are PENDING
+          session.user.status = session.user.isVerified ? "ACTIVE" : "PENDING";
+        }
       }
 
       return session;
@@ -200,7 +208,7 @@ export const authOptions: NextAuthOptions = {
         token.globalRole = user.globalRole;
         token.isVerified = user.isVerified;
         token.isActive = user.isActive;
-        token.status = user.status; // CRITICAL FIX: Add status
+        token.status = user.status;
       }
 
       if (trigger === "update") {
@@ -218,7 +226,7 @@ export const authOptions: NextAuthOptions = {
               globalRole: true,
               isVerified: true,
               isActive: true,
-              status: true, // CRITICAL FIX: Include status
+              status: true,
             },
           });
 
@@ -229,7 +237,7 @@ export const authOptions: NextAuthOptions = {
             token.globalRole = freshUser.globalRole;
             token.isVerified = freshUser.isVerified;
             token.isActive = freshUser.isActive;
-            token.status = freshUser.status; // CRITICAL FIX: Update status
+            token.status = freshUser.status;
           }
         }
       }
@@ -294,7 +302,7 @@ export const authOptions: NextAuthOptions = {
                 globalRole: "USER",
                 isVerified: false, // Will be set to true when profile is completed
                 isActive: false, // Will be set to true when profile is completed
-                status: "PENDING", // CRITICAL FIX: Set PENDING status for new OAuth users
+                status: "PENDING", // ✅ Only OAuth users get PENDING status
               },
             });
 

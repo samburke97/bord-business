@@ -239,9 +239,10 @@ export async function POST(request: NextRequest) {
       username,
       phone: fullMobile,
       dateOfBirth: new Date(dateOfBirth),
-      isVerified: false, // They still need to verify email
+      isVerified: false,
       isActive: true,
       globalRole: "USER" as const,
+      status: "ACTIVE",
     };
 
     // Use transaction to create user and credentials

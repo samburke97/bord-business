@@ -1,19 +1,27 @@
-// app/(auth)/verify-email/page.tsx - Updated with CSS modules
+// app/(auth)/verify-email/page.tsx - Email verification with proper flow
 "use client";
 
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
+import { useRouter } from "next/navigation";
 import EmailVerification from "@/components/auth/EmailVerification";
-import styles from "./page.module.css";
+import styles from "./page.module.css"; // Preserve existing styles
 
 function VerifyEmailContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const email = searchParams.get("email") || "";
+
+  if (!email) {
+    // Redirect back to login if no email
+    router.push("/login");
+    return null;
+  }
 
   const handleVerificationComplete = () => {
     console.log("✅ Email verification complete - showing congratulations");
-
-    window.location.href = `/auth/congratulations`;
+    // After successful verification, go to congratulations page
+    router.push("/auth/congratulations");
   };
 
   return (

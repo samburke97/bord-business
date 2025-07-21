@@ -1,84 +1,76 @@
-// app/(auth)/auth/congratulations/page.tsx - Updated with CSS modules
+// app/(auth)/auth/congratulations/page.tsx - Fixed congratulations flow
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
+import Image from "next/image";
+import ActionHeader from "@/components/layouts/headers/ActionHeader";
 import Button from "@/components/ui/Button";
-import styles from "./page.module.css";
+import styles from "./page.module.css"; // Preserve existing styles
 
 export default function CongratulationsPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
 
-  // Get email from URL params if available (passed from verification)
-  const email = searchParams.get("email") || "";
+  const handleBack = () => {
+    router.back();
+  };
 
-  const handleContinue = async () => {
+  const handleContinue = () => {
+    console.log("🎉 Congratulations: Continue to business onboarding");
     setIsLoading(true);
-
-    try {
-      // CRITICAL FIX: This should go to business onboarding, not dashboard
-      console.log("🏗️ Congratulations: Redirecting to business onboarding");
-      router.push("/business-onboarding");
-    } catch (error) {
-      console.error("❌ Congratulations: Continue error:", error);
-      // Fallback to business onboarding
-      router.push("/business-onboarding");
-    } finally {
-      setIsLoading(false);
-    }
+    router.push("/business-onboarding");
   };
 
   const handleRemindLater = () => {
-    // Route back to bord-player app like in login form
-    console.log("⏰ Congratulations: Remind later selected");
-    window.location.href = "https://bord-player.vercel.app/";
+    console.log("⏰ Congratulations: Remind later - go to dashboard");
+    setIsLoading(true);
+    router.push("/dashboard");
   };
-
-  if (isLoading) {
-    return (
-      <div className={styles.loadingContainer}>
-        <div className={styles.loadingContent}>
-          <div className={styles.spinner} />
-          <p className={styles.loadingText}>Preparing business setup...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className={styles.container}>
+      <ActionHeader
+        type="back"
+        secondaryAction={handleBack}
+        constrained={false}
+      />
+
       <div className={styles.content}>
-        <div className={styles.formContainer}>
-          {/* Checkmark Icon */}
+        <div className={styles.celebrationSection}>
+          {/* Success Icon */}
           <div className={styles.iconContainer}>
-            <div className={styles.checkmarkIcon}>
-              <svg
-                width="32"
-                height="32"
-                viewBox="0 0 32 32"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M26.6667 8L12 22.6667L5.33337 16"
-                  stroke="currentColor"
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </div>
+            <svg
+              width="80"
+              height="80"
+              viewBox="0 0 80 80"
+              fill="none"
+              className={styles.successIcon}
+            >
+              <circle
+                cx="40"
+                cy="40"
+                r="38"
+                fill="#10B981"
+                stroke="#059669"
+                strokeWidth="2"
+              />
+              <path
+                d="M25 40l10 10 20-20"
+                stroke="white"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
           </div>
 
-          {/* Title and Description */}
-          <div className={styles.textSection}>
-            <h1 className={styles.title}>Congratulations</h1>
+          {/* Congratulations Text */}
+          <div className={styles.messageSection}>
+            <h1 className={styles.title}>Congratulations!</h1>
             <p className={styles.description}>
-              Let's Complete your player account setup
-              <br />
-              or you can come back to it later.
+              Your email has been successfully verified and your account is now
+              active. You're ready to start setting up your business profile.
             </p>
           </div>
 
@@ -90,7 +82,7 @@ export default function CongratulationsPage() {
               disabled={isLoading}
               fullWidth
             >
-              {isLoading ? "Loading..." : "Continue"}
+              {isLoading ? "Loading..." : "Continue to Business Setup"}
             </Button>
 
             <Button
@@ -99,7 +91,7 @@ export default function CongratulationsPage() {
               disabled={isLoading}
               fullWidth
             >
-              Remind me Later
+              Skip for Now
             </Button>
           </div>
         </div>
