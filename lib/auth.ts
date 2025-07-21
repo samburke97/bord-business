@@ -1,4 +1,3 @@
-// lib/auth.ts - Clean Enterprise Solution
 import { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import FacebookProvider from "next-auth/providers/facebook";
@@ -9,37 +8,12 @@ import {
   checkAccountLockout,
   recordFailedAttempt,
   resetFailedAttempts,
+  generateSecureToken,
   verifyPassword,
 } from "@/lib/security/password";
 
-// Custom adapter that creates OAuth users with PENDING status
-function createCustomAdapter() {
-  const baseAdapter = PrismaAdapter(prisma);
-
-  return {
-    ...baseAdapter,
-    createUser: async (user: any) => {
-      console.log("📝 Creating user with adapter:", user);
-
-      // For OAuth users, create with PENDING status
-      const newUser = await prisma.user.create({
-        data: {
-          name: user.name,
-          email: user.email,
-          image: user.image,
-          status: "PENDING", // CRITICAL: OAuth users start as PENDING
-          isVerified: false,
-          isActive: false,
-        },
-      });
-
-      return newUser;
-    },
-  };
-}
-
 export const authOptions: NextAuthOptions = {
-  adapter: createCustomAdapter(),
+  adapter: PrismaAdapter(prisma),
 
   providers: [
     GoogleProvider({
@@ -72,22 +46,35 @@ export const authOptions: NextAuthOptions = {
         password: { type: "password" },
       },
       async authorize(credentials) {
+        if (process.env.NODE_ENV === "development") {
+          console.log("🔐 Credentials Provider: Authorization attempt");
+        }
+
         if (!credentials?.email || !credentials?.password) {
           return null;
         }
 
         try {
           const user = await prisma.user.findUnique({
-            where: {
-              email: credentials.email.toLowerCase().trim(),
-              status: "ACTIVE", // CRITICAL: Only allow ACTIVE users to login
-            },
+            where: { email: credentials.email.toLowerCase().trim() },
             include: {
               credentials: true,
+              ownedBusinesses: true,
+              businessMemberships: true,
             },
           });
 
+          if (process.env.NODE_ENV === "development") {
+            console.log("👤 Credentials Provider: User lookup result:", {
+              found: !!user,
+              hasCredentials: !!user?.credentials,
+            });
+          }
+
           if (!user?.credentials) {
+            if (user) {
+              console.log("❌ User found but no credentials record");
+            }
             return null;
           }
 
@@ -117,7 +104,6 @@ export const authOptions: NextAuthOptions = {
             globalRole: user.globalRole,
             isVerified: user.isVerified,
             isActive: user.isActive,
-            status: user.status,
           };
         } catch (error) {
           console.error("❌ Credentials Provider Error:", error);
@@ -134,20 +120,24 @@ export const authOptions: NextAuthOptions = {
 
   session: {
     strategy: "jwt",
-    maxAge: 7 * 24 * 60 * 60,
+    maxAge: 7 * 24 * 60 * 60, // 7 days
+  },
+
+  jwt: {
+    maxAge: 7 * 24 * 60 * 60, // 7 days
   },
 
   callbacks: {
     async signIn({ user, account, profile }) {
-      console.log("🔐 SignIn Callback:", {
-        provider: account?.provider,
-        email: user.email?.substring(0, 3) + "***",
-        userStatus: (user as any).status,
-      });
+      if (process.env.NODE_ENV === "development") {
+        console.log("🔐 SignIn Callback:", {
+          provider: account?.provider,
+          email: user.email?.substring(0, 3) + "***",
+        });
+      }
 
       try {
         if (account?.provider === "credentials") {
-          // Credentials users already filtered by ACTIVE status
           return true;
         }
 
@@ -173,20 +163,10 @@ export const authOptions: NextAuthOptions = {
             );
 
             if (hasThisProvider) {
-              // Check if user is ACTIVE
-              if (existingUser.status !== "ACTIVE") {
-                console.log(
-                  "❌ SignIn: User exists but not ACTIVE:",
-                  existingUser.status
-                );
-                return `/auth/complete-setup?email=${encodeURIComponent(user.email)}`;
-              }
-
-              console.log("✅ SignIn: Existing ACTIVE OAuth user");
+              console.log("✅ SignIn: Existing OAuth user with this provider");
               return true;
             }
 
-            // Account exists with different method
             const hasCredentials = !!existingUser.credentials;
             const hasGoogle = existingUser.accounts.some(
               (acc) => acc.provider === "google"
@@ -203,8 +183,7 @@ export const authOptions: NextAuthOptions = {
             return `/auth/error?error=AccountExistsWithDifferentMethod&email=${encodeURIComponent(user.email)}&available=${availableMethods.join(",")}&attempted=${account.provider}`;
           }
 
-          // New OAuth user - will be created with PENDING status by adapter
-          console.log("✅ SignIn: New OAuth user - will be created as PENDING");
+          console.log("✅ SignIn: New OAuth user");
           return true;
         }
 
@@ -213,31 +192,6 @@ export const authOptions: NextAuthOptions = {
         console.error("❌ SignIn Callback Error:", error);
         return false;
       }
-    },
-
-    async jwt({ token, user, account, trigger }) {
-      if (account && user) {
-        token.sub = user.id;
-        token.name = user.name;
-        token.email = user.email;
-        token.picture = user.image;
-        token.globalRole = (user as any).globalRole || "USER";
-        token.isVerified = (user as any).isVerified || false;
-        token.isActive = (user as any).isActive || false;
-        token.status = (user as any).status || "ACTIVE";
-      }
-
-      if (trigger === "update" && user) {
-        token.name = user.name;
-        token.email = user.email;
-        token.picture = user.image;
-        token.globalRole = (user as any).globalRole;
-        token.isVerified = (user as any).isVerified;
-        token.isActive = (user as any).isActive;
-        token.status = (user as any).status;
-      }
-
-      return token;
     },
 
     async session({ session, token }) {
@@ -253,28 +207,59 @@ export const authOptions: NextAuthOptions = {
         session.user.globalRole = (token.globalRole as string) || "USER";
         session.user.isVerified = (token.isVerified as boolean) || false;
         session.user.isActive = (token.isActive as boolean) || false;
-        session.user.status = (token.status as string) || "ACTIVE";
       }
 
       return session;
     },
 
+    async jwt({ token, user, account, trigger }) {
+      if (account && user) {
+        token.sub = user.id;
+        token.name = user.name;
+        token.email = user.email;
+        token.picture = user.image;
+        token.globalRole = user.globalRole;
+        token.isVerified = user.isVerified;
+        token.isActive = user.isActive;
+      }
+
+      if (trigger === "update" && user) {
+        token.name = user.name;
+        token.email = user.email;
+        token.picture = user.image;
+        token.globalRole = user.globalRole;
+        token.isVerified = user.isVerified;
+        token.isActive = user.isActive;
+      }
+
+      return token;
+    },
+
+    // CRITICAL FIX: Fixed redirect callback to prevent infinite loops
     async redirect({ url, baseUrl }) {
       console.log("🔄 Redirect callback:", { url, baseUrl });
 
+      // Allow relative URLs (starting with /)
       if (url.startsWith("/")) {
         const fullUrl = `${baseUrl}${url}`;
+        console.log("✅ Redirect: Using relative URL:", fullUrl);
         return fullUrl;
       }
 
+      // Allow full URLs that start with baseUrl
       if (url.startsWith(baseUrl)) {
+        console.log("✅ Redirect: Using full URL:", url);
         return url;
       }
 
-      // For OAuth users, redirect to complete setup
-      const setupUrl = `${baseUrl}/auth/complete-setup`;
-      console.log("✅ Redirect: OAuth user - redirecting to setup:", setupUrl);
-      return setupUrl;
+      // CRITICAL FIX: For OAuth logins, redirect to dashboard
+      // The dashboard has proper verification logic that will route users correctly
+      const dashboardUrl = `${baseUrl}/dashboard`;
+      console.log(
+        "✅ Redirect: OAuth callback - redirecting to dashboard for proper routing:",
+        dashboardUrl
+      );
+      return dashboardUrl;
     },
   },
 
@@ -285,7 +270,6 @@ export const authOptions: NextAuthOptions = {
           provider: account?.provider,
           isNewUser,
           email: user.email?.substring(0, 3) + "***",
-          status: (user as any).status,
         });
       }
     },

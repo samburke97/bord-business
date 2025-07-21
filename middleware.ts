@@ -1,4 +1,4 @@
-// middleware.ts - CORRECTED: No Database Queries in Edge Runtime
+// middleware.ts - CORRECTED: No Database Queries in Edge Runtime + PENDING User Support
 import { NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { NextRequest } from "next/server";
@@ -130,6 +130,7 @@ export async function middleware(req: NextRequest) {
       console.log(`🔐 Middleware: Token check for ${pathname}:`, {
         hasToken: !!token,
         userId: token?.sub,
+        status: token?.status,
       });
     }
 
@@ -160,10 +161,39 @@ export async function middleware(req: NextRequest) {
       globalRole: token.globalRole,
       isActive: token.isActive,
       isVerified: token.isVerified,
+      status: token.status, // NEW: Include status for PENDING user checks
     };
 
-    // Check if user account is active
-    if (userInfo.isActive === false) {
+    // ============================================================================
+    // CRITICAL FIX: Allow PENDING users to access activation endpoints
+    // ============================================================================
+
+    const allowedForPendingUsers = [
+      "/api/user/activate-profile",
+      "/api/user/profile-status",
+      "/api/auth/check-username",
+      "/auth/complete-setup",
+    ];
+
+    const isPendingUserAllowedRoute = allowedForPendingUsers.some((route) =>
+      pathname.startsWith(route)
+    );
+
+    // If user is PENDING and accessing allowed routes, let them through
+    if (userInfo.status === "PENDING" && isPendingUserAllowedRoute) {
+      if (shouldLog) {
+        console.log(
+          `✅ Middleware: Allowing PENDING user access to ${pathname}`
+        );
+      }
+      return response;
+    }
+
+    // Check if user account is active (but skip for PENDING users on allowed routes)
+    if (
+      userInfo.isActive === false &&
+      !(userInfo.status === "PENDING" && isPendingUserAllowedRoute)
+    ) {
       if (shouldLog) {
         console.log(
           `❌ Middleware: Account disabled for user ${userInfo.email}`
@@ -185,6 +215,33 @@ export async function middleware(req: NextRequest) {
       const errorUrl = new URL("/auth/error", req.url);
       errorUrl.searchParams.set("error", "AccountDisabled");
       return NextResponse.redirect(errorUrl);
+    }
+
+    // ============================================================================
+    // CRITICAL FIX: Block PENDING users from accessing other protected routes
+    // ============================================================================
+
+    if (userInfo.status === "PENDING" && !isPendingUserAllowedRoute) {
+      if (shouldLog) {
+        console.log(
+          `❌ Middleware: PENDING user blocked from ${pathname} - redirecting to complete setup`
+        );
+      }
+
+      // For API routes, return 403 JSON response
+      if (pathname.startsWith("/api/")) {
+        return NextResponse.json(
+          {
+            error: "Account setup required",
+            message: "Please complete your account setup",
+          },
+          { status: 403 }
+        );
+      }
+
+      // For page routes, redirect to complete setup
+      const setupUrl = new URL("/auth/complete-setup", req.url);
+      return NextResponse.redirect(setupUrl);
     }
 
     // ============================================================================

@@ -1,4 +1,4 @@
-// app/api/user/activate-profile/route.ts - Activate PENDING user
+// app/api/user/activate-profile/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
@@ -8,11 +8,10 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
 
-    if (!session?.user?.id || session.user.id === "temp") {
+    if (!session?.user?.id) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    // Verify user is in PENDING status
     if (session.user.status !== "PENDING") {
       return NextResponse.json(
         { message: "User is not in pending status" },
@@ -73,7 +72,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Update user with complete profile and ACTIVE status
+    // Update user to ACTIVE status
     const updatedUser = await prisma.user.update({
       where: { id: session.user.id },
       data: {
@@ -83,34 +82,21 @@ export async function POST(request: NextRequest) {
         username,
         phone: fullMobile,
         dateOfBirth: new Date(dateOfBirth),
-        status: "ACTIVE", // CRITICAL: Activate the user
-        isVerified: true, // OAuth users are verified
+        status: "ACTIVE",
+        isVerified: true,
         isActive: true,
       },
     });
 
-    console.log("✅ User activated successfully:", {
-      userId: updatedUser.id,
-      email: updatedUser.email,
-      username: updatedUser.username,
-      status: updatedUser.status,
-    });
+    console.log("✅ User activated:", updatedUser.status);
 
     return NextResponse.json({
       success: true,
       message: "Profile completed and account activated",
-      user: {
-        id: updatedUser.id,
-        name: updatedUser.name,
-        email: updatedUser.email,
-        username: updatedUser.username,
-        status: updatedUser.status,
-        isVerified: updatedUser.isVerified,
-        isActive: updatedUser.isActive,
-      },
+      shouldUpdateSession: true,
     });
   } catch (error) {
-    console.error("❌ Activate user profile error:", error);
+    console.error("❌ Activate user error:", error);
     return NextResponse.json(
       { message: "Internal server error" },
       { status: 500 }

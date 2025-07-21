@@ -47,7 +47,7 @@ export default function BusinessSetupForm({
   onSetupComplete,
   isOAuth = false,
 }: BusinessSetupFormProps) {
-  const { data: session } = useSession();
+  const { data: session, update } = useSession();
   const router = useRouter();
   const { executeRecaptcha } = useGoogleReCaptcha();
   const [isLargeScreen, setIsLargeScreen] = useState(false);
@@ -100,41 +100,17 @@ export default function BusinessSetupForm({
     };
   }, []);
 
+  // Keep only this useEffect for pre-populating OAuth data:
   useEffect(() => {
-    const checkUserStatus = async () => {
-      if (!session && !email) return;
-
-      try {
-        const response = await fetch("/api/user/profile-status", {
-          method: "GET",
-          credentials: "include",
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          const isOAuth = !data.hasPassword;
-          setIsOAuthUser(isOAuth);
-
-          if (session?.user) {
-            const nameParts = session.user.name?.split(" ") || [];
-            setFormData((prev) => ({
-              ...prev,
-              firstName: data.firstName || nameParts[0] || "",
-              lastName: data.lastName || nameParts.slice(1).join(" ") || "",
-              mobile: data.phone ? data.phone.replace(/^\+\d+\s/, "") : "",
-              dateOfBirth: data.dateOfBirth
-                ? new Date(data.dateOfBirth).toISOString().split("T")[0]
-                : "",
-            }));
-          }
-        }
-      } catch (error) {
-        console.error("❌ Error checking user status:", error);
-      }
-    };
-
-    checkUserStatus();
-  }, [session, email]);
+    if (isOAuth && session?.user) {
+      const nameParts = session.user.name?.split(" ") || [];
+      setFormData((prev) => ({
+        ...prev,
+        firstName: nameParts[0] || "",
+        lastName: nameParts.slice(1).join(" ") || "",
+      }));
+    }
+  }, [isOAuth, session]);
 
   const handleHeaderContinue = () => {
     handleSubmit();
@@ -294,7 +270,7 @@ export default function BusinessSetupForm({
       console.log("✅ reCAPTCHA token generated successfully");
 
       const endpoint = isOAuthUser
-        ? "/api/user/complete-oauth-profile"
+        ? "/api/user/activate-profile"
         : "/api/auth/create-business-account";
 
       const payload = isOAuthUser
@@ -333,6 +309,10 @@ export default function BusinessSetupForm({
       }
 
       if (isOAuthUser) {
+        if (data.shouldUpdateSession) {
+          console.log("🔄 Refreshing session from database...");
+          await update();
+        }
         onSetupComplete();
       } else {
         window.location.href = `/verify-email?email=${encodeURIComponent(email)}`;

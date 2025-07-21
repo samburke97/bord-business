@@ -223,7 +223,7 @@ model User {
 
   // Global role (for platform-wide permissions)
   globalRole UserRole @default(USER) @map("global_role")
-  status UserStatus @default(ACTIVE)
+  status UserStatus @default(PENDING)
 
   // Profile information
   bio         String?
