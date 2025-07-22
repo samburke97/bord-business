@@ -55,9 +55,6 @@ export default function BusinessCategoryStep({
     const loadCategories = async () => {
       try {
         setIsLoadingCategories(true);
-        console.log(
-          "🏷️ BusinessCategory: Loading categories from admin API..."
-        );
 
         const response = await fetch("/api/groups/categories", {
           credentials: "include",
@@ -65,16 +62,9 @@ export default function BusinessCategoryStep({
 
         if (response.ok) {
           const categoriesData = await response.json();
-          console.log(
-            "✅ BusinessCategory: Categories loaded:",
-            categoriesData
-          );
+
           setCategories(categoriesData);
         } else {
-          console.error(
-            "❌ BusinessCategory: Failed to load categories:",
-            response.status
-          );
           // Fallback to empty array - let user know categories couldn't load
           setCategories([]);
         }
@@ -95,7 +85,6 @@ export default function BusinessCategoryStep({
     const loadSports = async () => {
       try {
         setIsLoadingSports(true);
-        console.log("⚽ BusinessCategory: Loading sports...");
 
         const response = await fetch("/api/sports", {
           credentials: "include",
@@ -103,14 +92,9 @@ export default function BusinessCategoryStep({
 
         if (response.ok) {
           const sports = await response.json();
-          console.log("✅ BusinessCategory: Sports loaded:", sports.length);
           setAvailableSports(sports);
           setFilteredSports(sports);
         } else {
-          console.error(
-            "❌ BusinessCategory: Failed to load sports:",
-            response.status
-          );
           // Fallback to default sports
           const defaultSports = [
             { id: "1", name: "Football", status: "active" },
@@ -123,7 +107,6 @@ export default function BusinessCategoryStep({
           setFilteredSports(defaultSports);
         }
       } catch (error) {
-        console.error("❌ BusinessCategory: Error loading sports:", error);
         // Fallback to default sports
         const defaultSports = [
           { id: "1", name: "Football", status: "active" },
@@ -157,7 +140,6 @@ export default function BusinessCategoryStep({
   const handleCategoryChange = (value: string) => {
     setBusinessCategory(value);
     setCategoryError(false);
-    console.log("🏷️ BusinessCategory: Category selected:", value);
   };
 
   const handleSportsSearch = (value: string) => {
@@ -168,7 +150,6 @@ export default function BusinessCategoryStep({
     if (!selectedSports.find((s) => s.id === sport.id)) {
       const updatedSports = [...selectedSports, sport];
       setSelectedSports(updatedSports);
-      console.log("⚽ BusinessCategory: Sport added:", sport.name);
     }
   };
 
@@ -177,13 +158,11 @@ export default function BusinessCategoryStep({
       (sport) => sport.id !== sportId
     );
     setSelectedSports(updatedSports);
-    console.log("⚽ BusinessCategory: Sport removed:", sportId);
   };
 
   const handleContinue = () => {
     if (!businessCategory) {
       setCategoryError(true);
-      console.log("❌ BusinessCategory: No category selected");
       return;
     }
 
@@ -193,12 +172,6 @@ export default function BusinessCategoryStep({
     const selectedCategoryData = categories.find(
       (cat) => cat.id === businessCategory
     );
-
-    console.log("✅ BusinessCategory: Continuing with data:", {
-      businessCategory,
-      categoryName: selectedCategoryData?.name,
-      associatedSports: selectedSports,
-    });
 
     onContinue({
       businessCategory, // This will be the category ID from admin-defined categories

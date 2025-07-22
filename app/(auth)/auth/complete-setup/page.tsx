@@ -13,41 +13,25 @@ export default function CompleteSetupPage() {
 
   useEffect(() => {
     const checkUserStatus = async () => {
-      console.log("🔐 Complete Setup: Checking user status...", {
-        hasSession: !!session,
-        status,
-        userStatus: session?.user?.status,
-      });
-
       if (status === "loading") {
         return;
       }
 
       if (!session?.user) {
-        console.log("❌ Complete Setup: No session, redirecting to login");
         router.push("/login");
         return;
       }
 
       if (session.user.status === "ACTIVE") {
-        console.log(
-          "✅ Complete Setup: User already ACTIVE, redirecting to dashboard"
-        );
         router.push("/dashboard");
         return;
       }
 
       if (session.user.status === "PENDING") {
-        console.log("📝 Complete Setup: User is PENDING, showing setup form");
         setIsChecking(false);
         return;
       }
 
-      // Handle other statuses
-      console.log(
-        "❌ Complete Setup: Unexpected user status:",
-        session.user.status
-      );
       router.push("/login");
     };
 
@@ -55,8 +39,6 @@ export default function CompleteSetupPage() {
   }, [session, status, router]);
 
   const handleSetupComplete = async () => {
-    console.log("✅ Complete Setup: Profile setup completed");
-
     // Update the session to reflect new ACTIVE status
     await update();
 

@@ -14,14 +14,12 @@ export async function POST(request: NextRequest) {
     // CSRF Protection
     const csrfResult = await CSRFProtection.middleware()(request);
     if (csrfResult) {
-      console.warn("❌ Business API: CSRF validation failed");
       return csrfResult;
     }
 
     // Authentication check
     session = await getServerSession(authOptions);
     if (!session?.user?.id) {
-      console.warn("❌ Business API: Unauthorized request");
       await constantTimeDelay();
       return NextResponse.json(
         { error: "Unauthorized", message: "Authentication required" },
@@ -29,14 +27,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log("🏢 Business API: Request from authenticated user:", {
-      userId: session.user.id,
-      email: session.user.email,
-    });
-
     // Parse request body
     const body = await request.json();
-    console.log("📦 Business API: Received payload:", body);
 
     // CRITICAL FIX: Map frontend field names to backend expectations
     const {
@@ -112,7 +104,6 @@ export async function POST(request: NextRequest) {
     });
 
     if (!categoryValidation) {
-      console.error("❌ Business API: Invalid category ID:", categoryId);
       return NextResponse.json(
         {
           error: "Invalid category",
@@ -121,11 +112,6 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-
-    console.log(
-      "✅ Business API: Valid category found:",
-      categoryValidation.name
-    );
 
     // Generate unique slug
     const baseSlug = businessName
@@ -170,8 +156,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log("🏷️ Business API: Generated unique slug:", slug);
-
     // Create business with transaction
     const business = await prisma.$transaction(async (tx) => {
       // CRITICAL FIX: Use categoryId instead of businessType
@@ -207,11 +191,6 @@ export async function POST(request: NextRequest) {
 
       // Handle sports if provided
       if (sports && sports.length > 0) {
-        console.log(
-          "⚽ Business API: Adding sports relationships:",
-          sports.length
-        );
-
         const validSports = await tx.sport.findMany({
           where: {
             id: { in: sports.map((s: any) => s.id) },
@@ -228,8 +207,6 @@ export async function POST(request: NextRequest) {
             })),
             skipDuplicates: true,
           });
-
-          console.log("✅ Business API: Sports relationships created");
         }
       }
 
@@ -237,11 +214,6 @@ export async function POST(request: NextRequest) {
     });
 
     const processingTime = Date.now() - startTime;
-    console.log("✅ Business API: Business created successfully:", {
-      businessId: business.id,
-      businessName: business.name,
-      processingTime: `${processingTime}ms`,
-    });
 
     // Return success response
     return NextResponse.json(
@@ -271,15 +243,6 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     const processingTime = Date.now() - startTime;
-
-    // CRITICAL: Log technical details for developers but NEVER show to users
-    console.error("❌ Business API: Technical error occurred:", {
-      processingTime: `${processingTime}ms`,
-      errorType: error instanceof Error ? error.constructor.name : "Unknown",
-      errorMessage: error instanceof Error ? error.message : "Unknown error",
-      userId: session?.user?.id || "Unknown",
-      stack: error instanceof Error ? error.stack : undefined,
-    });
 
     // Handle specific errors with user-friendly messages
     if (error instanceof Error) {
@@ -381,7 +344,6 @@ export async function GET(request: NextRequest) {
       count: businesses.length,
     });
   } catch (error) {
-    console.error("❌ Business API: Error fetching businesses:", error);
     await constantTimeDelay();
     return NextResponse.json(
       {

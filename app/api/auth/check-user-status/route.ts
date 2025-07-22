@@ -32,7 +32,6 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // ✅ FIXED: Build the methods array properly - check for valid password hash
     const methods: string[] = [];
 
     // Add email method ONLY if user has credentials AND a valid password hash
@@ -45,15 +44,6 @@ export async function POST(request: NextRequest) {
       if (account.provider && !methods.includes(account.provider)) {
         methods.push(account.provider);
       }
-    });
-
-    console.log("🔍 User Status Check:", {
-      email: normalizedEmail,
-      exists: true,
-      hasCredentials: !!user.credentials,
-      hasPasswordHash: !!user.credentials?.passwordHash,
-      oauthProviders: user.accounts.map((acc) => acc.provider),
-      methods: methods,
     });
 
     return NextResponse.json({
@@ -72,7 +62,6 @@ export async function POST(request: NextRequest) {
       hasPasswordHash: !!user.credentials?.passwordHash,
     });
   } catch (error) {
-    console.error("❌ User status check error:", error);
     return NextResponse.json(
       { message: "Internal server error" },
       { status: 500 }

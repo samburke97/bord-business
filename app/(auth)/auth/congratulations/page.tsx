@@ -17,13 +17,11 @@ export default function CongratulationsPage() {
   };
 
   const handleContinue = () => {
-    console.log("🎉 Congratulations: Continue to business onboarding");
     setIsLoading(true);
     router.push("/business-onboarding");
   };
 
   const handleRemindLater = () => {
-    console.log("⏰ Congratulations: Remind later - go to dashboard");
     setIsLoading(true);
     router.push("/dashboard");
   };

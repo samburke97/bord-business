@@ -45,7 +45,6 @@ function ResetEmailSentContent() {
         }, 1000);
       }
     } catch (error) {
-      console.error("Failed to resend email:", error);
     } finally {
       setIsResending(false);
     }

@@ -95,7 +95,6 @@ async function verifyRecaptcha(token: string): Promise<{
     const data = await response.json();
 
     if (!data.success) {
-      console.error("❌ reCAPTCHA verification failed:", data["error-codes"]);
       return {
         success: false,
         error: "reCAPTCHA verification failed",
@@ -107,7 +106,6 @@ async function verifyRecaptcha(token: string): Promise<{
     if (data.score !== undefined) {
       const threshold = 0.5; // Adjust based on your needs
       if (data.score < threshold) {
-        console.warn(`⚠️ Low reCAPTCHA score: ${data.score}`);
         return {
           success: false,
           score: data.score,
@@ -116,17 +114,11 @@ async function verifyRecaptcha(token: string): Promise<{
       }
     }
 
-    console.log("✅ reCAPTCHA verification successful:", {
-      score: data.score,
-      hostname: data.hostname,
-    });
-
     return {
       success: true,
       score: data.score,
     };
   } catch (error) {
-    console.error("❌ reCAPTCHA verification error:", error);
     return {
       success: false,
       error: "reCAPTCHA verification failed",
@@ -148,7 +140,6 @@ export async function POST(request: NextRequest) {
     } = await request.json();
 
     // ADD RECAPTCHA VERIFICATION FIRST
-    console.log("🔒 Verifying reCAPTCHA...");
     const recaptchaResult = await verifyRecaptcha(recaptchaToken);
 
     if (!recaptchaResult.success) {
@@ -163,8 +154,6 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-
-    console.log("✅ reCAPTCHA verification passed");
 
     // Validation
     if (
@@ -251,7 +240,7 @@ export async function POST(request: NextRequest) {
 
       if (existingUser) {
         // Update existing unverified user
-        console.log("🔄 Updating existing user:", existingUser.id);
+
         user = await tx.user.update({
           where: { email: sanitizedEmail },
           data: userData,
@@ -262,7 +251,6 @@ export async function POST(request: NextRequest) {
 
         // Update or create credentials
         if (user.credentials) {
-          console.log("🔄 Updating existing credentials");
           await tx.userCredentials.update({
             where: { userId: user.id },
             data: {
@@ -272,7 +260,6 @@ export async function POST(request: NextRequest) {
             },
           });
         } else {
-          console.log("🆕 Creating new credentials for existing user");
           await tx.userCredentials.create({
             data: {
               userId: user.id,
@@ -285,13 +272,11 @@ export async function POST(request: NextRequest) {
         }
       } else {
         // Create new user
-        console.log("🆕 Creating new user");
         user = await tx.user.create({
           data: userData,
         });
 
         // Create user credentials with Argon2 hash
-        console.log("🆕 Creating new credentials for new user");
         await tx.userCredentials.create({
           data: {
             userId: user.id,
@@ -306,17 +291,8 @@ export async function POST(request: NextRequest) {
       return user;
     });
 
-    console.log("✅ Business account created successfully:", {
-      userId: result.id,
-      email: result.email,
-      name: result.name,
-      recaptchaScore: recaptchaResult.score, // Log the score for monitoring
-    });
-
     // Send verification email directly (don't make internal API call)
     try {
-      console.log("📧 Sending verification email directly...");
-
       // Clean up any old verification tokens for this email
       await prisma.verificationToken.deleteMany({
         where: {
@@ -402,25 +378,17 @@ export async function POST(request: NextRequest) {
         `,
       });
 
-      console.log("✅ Verification email sent successfully:", emailResult);
-
       // Check if email failed due to domain restrictions
       if (emailResult.error) {
-        console.warn("⚠️ Email sending restricted:", emailResult.error.message);
-
         // For development, continue anyway since user can still manually verify
         // In production, you'd want to handle this differently
         if (
           emailResult.error.name === "validation_error" &&
           emailResult.error.message.includes("testing emails")
         ) {
-          console.log(
-            "📧 Development mode: Email restricted to verified addresses only"
-          );
         }
       }
     } catch (emailError) {
-      console.error("❌ Email sending error:", emailError);
       // Don't fail the account creation if email fails
       // The user can still request a new verification code
     }
@@ -435,7 +403,6 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    console.error("❌ Account creation error:", error);
     return NextResponse.json(
       { message: "Internal server error" },
       { status: 500 }

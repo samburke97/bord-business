@@ -99,8 +99,6 @@ export default function PasswordScreen({
         searchParams.get("continue_business_setup") === "true";
 
       if (isNewUser) {
-        console.log("👤 New user: Setting password...");
-
         // For new users, save the password and continue to setup
         const response = await fetch("/api/auth/set-password", {
           method: "POST",
@@ -121,11 +119,8 @@ export default function PasswordScreen({
           return;
         }
 
-        console.log("✅ Password set successfully");
         onPasswordComplete();
       } else {
-        console.log("🔐 Existing user: Signing in...");
-
         // CRITICAL FIX: Use callbackUrl to ensure proper redirect
         const result = await signIn("credentials", {
           email,
@@ -137,26 +132,20 @@ export default function PasswordScreen({
         });
 
         if (result?.error) {
-          console.error("❌ Sign-in error:", result.error);
           setPasswordError("Invalid password. Please try again.");
           return;
         }
 
         if (result?.ok) {
-          console.log("✅ Sign-in successful, redirecting...");
-
           // CRITICAL FIX: Use home page routing instead of direct redirects
           if (continueBusinessSetup) {
-            console.log("🏗️ Redirecting to home page (business setup flow)...");
             window.location.href = "/"; // Let home page determine the right place
           } else {
-            console.log("🏠 Redirecting to home page...");
             window.location.href = "/"; // Let home page determine the right place
           }
         }
       }
     } catch (error) {
-      console.error("❌ Password error:", error);
       setPasswordError(
         error instanceof Error ? error.message : "Something went wrong"
       );

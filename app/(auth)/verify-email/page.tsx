@@ -19,8 +19,6 @@ function VerifyEmailContent() {
   }
 
   const handleVerificationComplete = () => {
-    console.log("✅ Email verification complete - showing congratulations");
-    // After successful verification, go to congratulations page
     router.push("/auth/congratulations");
   };
 

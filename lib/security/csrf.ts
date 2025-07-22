@@ -7,28 +7,18 @@ import { getToken } from "next-auth/jwt";
 export class CSRFProtection {
   private static readonly CSRF_HEADER = "x-csrf-token";
 
-  /**
-   * Generate a CSRF token for a session
-   */
   static generateToken(): string {
     return generateSecureToken(32);
   }
 
-  /**
-   * Validate CSRF token from request - FIXED FOR NEXTAUTH
-   */
   static async validateToken(request: NextRequest): Promise<boolean> {
     try {
       // Get token from header
       const headerToken = request.headers.get(this.CSRF_HEADER);
 
       if (!headerToken) {
-        console.log("❌ CSRF: No header token");
         return false;
       }
-
-      // For NextAuth, we need to validate the token differently
-      // The CSRF token from /api/auth/csrf is tied to the session
 
       // Get the NextAuth session token
       const sessionToken = await getToken({
@@ -37,33 +27,26 @@ export class CSRFProtection {
       });
 
       if (!sessionToken) {
-        console.log("❌ CSRF: No session token");
         return false;
       }
 
-      // Check if the header token matches the expected format
-      // NextAuth CSRF tokens are base64 encoded and tied to the session
       try {
         // Decode the CSRF token to see if it's valid
         const decoded = Buffer.from(headerToken, "base64").toString();
 
         // A valid NextAuth CSRF token should contain session information
         if (decoded && decoded.length > 10) {
-          console.log("✅ CSRF: Token appears valid");
           return true;
         }
       } catch (decodeError) {
         // If it's not base64, it might be a plain token - that's also valid
         if (headerToken.length >= 20) {
-          console.log("✅ CSRF: Plain token appears valid");
           return true;
         }
       }
 
-      console.log("❌ CSRF: Token validation failed");
       return false;
     } catch (error) {
-      console.error("❌ CSRF validation error:", error);
       return false;
     }
   }
@@ -109,25 +92,12 @@ export class CSRFProtection {
         return null; // No validation needed
       }
 
-      console.log(
-        `🔒 CSRF: Validating ${request.method} ${request.nextUrl.pathname}`
-      );
-
       // Validate CSRF token
       const isValid = await this.validateToken(request);
 
       if (!isValid) {
-        console.warn(
-          `❌ CSRF validation failed for ${request.method} ${request.nextUrl.pathname}`
-        );
-
         // Log debug info
         const headerToken = request.headers.get(this.CSRF_HEADER);
-        console.log("🔍 CSRF Debug:", {
-          hasHeaderToken: !!headerToken,
-          headerTokenLength: headerToken?.length || 0,
-          headerTokenPreview: headerToken?.substring(0, 10) + "...",
-        });
 
         return new Response(
           JSON.stringify({
@@ -143,9 +113,6 @@ export class CSRFProtection {
         );
       }
 
-      console.log(
-        `✅ CSRF validation passed for ${request.method} ${request.nextUrl.pathname}`
-      );
       return null; // Validation passed
     };
   }

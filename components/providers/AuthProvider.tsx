@@ -24,8 +24,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
         </GoogleReCaptchaProvider>
       ) : (
         <>
-          {process.env.NODE_ENV === "development" &&
-            console.warn("⚠️ NEXT_PUBLIC_RECAPTCHA_SITE_KEY not found")}
+          {process.env.NODE_ENV === "development"}
           {children}
         </>
       )}

@@ -1,8 +1,6 @@
 import prisma from "@/lib/prisma";
 
 export async function cleanupPendingUsers() {
-  console.log("🧹 Starting cleanup of abandoned PENDING users...");
-
   try {
     // Delete PENDING users older than 24 hours
     const cutoffTime = new Date(Date.now() - 24 * 60 * 60 * 1000);
@@ -16,10 +14,8 @@ export async function cleanupPendingUsers() {
       },
     });
 
-    console.log(`✅ Cleaned up ${result.count} abandoned PENDING users`);
     return result.count;
   } catch (error) {
-    console.error("❌ Error cleaning up PENDING users:", error);
     throw error;
   }
 }

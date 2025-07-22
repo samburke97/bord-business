@@ -73,7 +73,6 @@ export default function BusinessSetupForm({
   // Get reCAPTCHA token
   const getReCaptchaToken = async (action: string): Promise<string | null> => {
     if (!executeRecaptcha) {
-      console.log("Execute recaptcha not yet available");
       return null;
     }
 
@@ -254,7 +253,6 @@ export default function BusinessSetupForm({
 
     try {
       // Generate reCAPTCHA token for account creation
-      console.log("🔒 Generating reCAPTCHA token...");
       const recaptchaToken = await getReCaptchaToken(
         "business_account_creation"
       );
@@ -266,8 +264,6 @@ export default function BusinessSetupForm({
         setIsLoading(false);
         return;
       }
-
-      console.log("✅ reCAPTCHA token generated successfully");
 
       const endpoint = isOAuthUser
         ? "/api/user/activate-profile"
@@ -309,21 +305,37 @@ export default function BusinessSetupForm({
       }
 
       if (isOAuthUser) {
+        // CRITICAL FIX: Update the session after successful activation
         if (data.shouldUpdateSession) {
-          console.log("🔄 Refreshing session from database...");
-          await update();
+          try {
+            await update(); // This refreshes the JWT token with latest user data
+
+            // Small delay to ensure session is fully updated
+            await new Promise((resolve) => setTimeout(resolve, 100));
+          } catch (updateError) {
+            // Continue anyway - the middleware will handle stale tokens
+          }
         }
+
         onSetupComplete();
       } else {
         window.location.href = `/verify-email?email=${encodeURIComponent(email)}`;
       }
     } catch (error) {
-      console.error("❌ Business setup error:", error);
-
       if (error instanceof Error) {
         const errorMessage = error.message;
 
+        // Handle specific error cases with better UX
         if (
+          errorMessage.includes("USER_NOT_FOUND") ||
+          errorMessage.includes("Session expired")
+        ) {
+          setErrors({ username: "Session expired. Please sign in again." });
+          // Redirect to login after a short delay
+          setTimeout(() => {
+            window.location.href = "/login";
+          }, 2000);
+        } else if (
           errorMessage.includes("Username") ||
           errorMessage.includes("username")
         ) {

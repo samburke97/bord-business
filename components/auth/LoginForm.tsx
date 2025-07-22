@@ -29,7 +29,6 @@ export default function LoginForm({ title, description }: LoginFormProps) {
   // Get reCAPTCHA token
   const getReCaptchaToken = async (action: string): Promise<string | null> => {
     if (!executeRecaptcha) {
-      console.log("Execute recaptcha not yet available");
       return null;
     }
 

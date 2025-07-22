@@ -18,9 +18,6 @@ function EmailSetupContent() {
   }
 
   const handleSetupComplete = () => {
-    console.log(
-      "✅ Email Setup: Profile setup complete - redirecting to email verification"
-    );
     // After email user completes business setup, go to email verification
     router.push(`/verify-email?email=${encodeURIComponent(email)}`);
   };

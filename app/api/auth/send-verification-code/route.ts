@@ -147,8 +147,6 @@ export async function POST(request: NextRequest) {
         `,
       });
 
-      console.log("✅ Verification email sent successfully:", emailResult);
-
       // Check if email failed due to any issues
       if (emailResult.error) {
         console.error("❌ Email sending error:", emailResult.error);

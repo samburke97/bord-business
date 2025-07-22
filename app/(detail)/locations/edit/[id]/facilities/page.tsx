@@ -70,7 +70,6 @@ export default function FacilitiesPage({
           )
         );
       } catch (error) {
-        console.error("Error fetching data:", error);
         setError(
           error instanceof Error
             ? error.message

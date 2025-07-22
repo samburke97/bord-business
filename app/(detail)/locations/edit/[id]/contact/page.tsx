@@ -286,7 +286,6 @@ export default function ContactEditPage() {
         router.push(`/locations/${id}`);
       }, 1500);
     } catch (error) {
-      console.error("Error saving contact data:", error);
       setToast({
         visible: true,
         message: "Failed to save contact information",

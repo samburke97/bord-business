@@ -12,23 +12,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    console.log("🔄 Activating user - Session info:", {
-      userId: session.user.id,
-      email: session.user.email,
-      status: session.user.status,
-    });
-
     // CRITICAL FIX: Check if user exists first
     const existingUser = await prisma.user.findUnique({
       where: { id: session.user.id },
     });
 
     if (!existingUser) {
-      console.error("❌ User not found in database:", {
-        sessionUserId: session.user.id,
-        sessionEmail: session.user.email,
-      });
-
       return NextResponse.json(
         {
           message: "User record not found. Please sign in again.",
@@ -37,12 +26,6 @@ export async function POST(request: NextRequest) {
         { status: 404 }
       );
     }
-
-    console.log("✅ User found in database:", {
-      userId: existingUser.id,
-      email: existingUser.email,
-      status: existingUser.status,
-    });
 
     if (existingUser.status !== "PENDING") {
       return NextResponse.json(
@@ -112,20 +95,12 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    console.log("✅ User activated successfully:", {
-      userId: updatedUser.id,
-      status: updatedUser.status,
-      isActive: updatedUser.isActive,
-    });
-
     return NextResponse.json({
       success: true,
       message: "Profile completed and account activated",
       shouldUpdateSession: true,
     });
   } catch (error) {
-    console.error("❌ Activate user error:", error);
-
     // Better error handling for different Prisma errors
     if (error.code === "P2025") {
       return NextResponse.json(

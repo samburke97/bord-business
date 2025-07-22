@@ -97,9 +97,7 @@ export default function CreateLocationPage() {
               }
             }
           }
-        } catch (error) {
-          console.error("Error parsing address:", error);
-        }
+        } catch (error) {}
       }
     }
 
@@ -190,9 +188,7 @@ export default function CreateLocationPage() {
       let responseData;
       try {
         responseData = JSON.parse(responseText);
-      } catch (e) {
-        console.error("Failed to parse JSON response:", e);
-      }
+      } catch (e) {}
 
       if (!response.ok) {
         const errorMessage = responseData?.error || "Failed to create location";
@@ -205,7 +201,6 @@ export default function CreateLocationPage() {
       // Return the created location data so it's available for routing
       return responseData;
     } catch (error) {
-      console.error("Error creating location:", error);
       return null;
     }
   };

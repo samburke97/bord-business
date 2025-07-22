@@ -16,10 +16,8 @@ async function cleanupExpiredTokens(): Promise<number> {
       },
     });
 
-    console.log(`✅ Cleaned up ${result.count} expired verification tokens`);
     return result.count;
   } catch (error) {
-    console.error("❌ Error cleaning up expired tokens:", error);
     return 0;
   }
 }
@@ -45,13 +43,8 @@ async function cleanupUnverifiedUsers(): Promise<number> {
     });
 
     if (usersToDelete.length === 0) {
-      console.log("✅ No unverified users to clean up");
       return 0;
     }
-
-    console.log(
-      `🧹 Deleting ${usersToDelete.length} unverified users older than 7 days`
-    );
 
     // Delete in transaction
     const result = await prisma.$transaction(async (tx) => {
@@ -76,10 +69,8 @@ async function cleanupUnverifiedUsers(): Promise<number> {
       return deleteResult.count;
     });
 
-    console.log(`✅ Deleted ${result} unverified users and their tokens`);
     return result;
   } catch (error) {
-    console.error("❌ Error cleaning up unverified users:", error);
     return 0;
   }
 }
@@ -113,11 +104,9 @@ async function sendVerificationReminders(): Promise<number> {
     });
 
     if (usersNeedingReminder.length === 0) {
-      console.log("✅ No users need verification reminders");
       return 0;
     }
 
-    console.log(`📧 Sending reminders to ${usersNeedingReminder.length} users`);
     let remindersSent = 0;
 
     for (const user of usersNeedingReminder) {
@@ -234,27 +223,20 @@ async function sendVerificationReminders(): Promise<number> {
         });
 
         remindersSent++;
-        console.log(`✅ Reminder sent to ${user.email}`);
 
         // Small delay to avoid rate limits
         await new Promise((resolve) => setTimeout(resolve, 100));
-      } catch (error) {
-        console.error(`❌ Failed to send reminder to ${user.email}:`, error);
-      }
+      } catch (error) {}
     }
 
-    console.log(`✅ Sent ${remindersSent} verification reminders`);
     return remindersSent;
   } catch (error) {
-    console.error("❌ Error in verification reminder system:", error);
     return 0;
   }
 }
 
 // Main automated cleanup function
 export async function runAutomatedCleanup(): Promise<void> {
-  console.log("🤖 Starting automated verification cleanup...");
-
   const startTime = Date.now();
 
   try {
@@ -266,14 +248,5 @@ export async function runAutomatedCleanup(): Promise<void> {
     ]);
 
     const duration = Date.now() - startTime;
-
-    console.log(`✅ Automated cleanup completed in ${duration}ms:`, {
-      expiredTokens,
-      remindersSent,
-      deletedUsers,
-      timestamp: new Date().toISOString(),
-    });
-  } catch (error) {
-    console.error("❌ Critical error in automated cleanup:", error);
-  }
+  } catch (error) {}
 }

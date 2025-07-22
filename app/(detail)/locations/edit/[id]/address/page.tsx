@@ -217,7 +217,6 @@ export default function EditLocationAddressPage() {
         router.push(`/locations/${id}`);
       }, 1500);
     } catch (error) {
-      console.error("Error updating location address:", error);
       setToast({
         visible: true,
         message:

@@ -87,12 +87,6 @@ export async function POST(request: NextRequest) {
       }),
     ]);
 
-    console.log("✅ Email verified successfully:", {
-      email,
-      wasAlreadyVerified,
-      hasCompletedSignup: true,
-    });
-
     return NextResponse.json(
       {
         message: "Email verified successfully",

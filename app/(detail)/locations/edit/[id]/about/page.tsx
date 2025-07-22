@@ -60,7 +60,6 @@ export default function EditAboutPage() {
           logo: aboutData.logoUrl || null,
         });
       } catch (err) {
-        console.error("Error fetching data:", err);
         setError((err as Error).message);
       } finally {
         setLoading(false);
@@ -160,7 +159,6 @@ export default function EditAboutPage() {
         router.push(`/locations/${id}`);
       }, 1500);
     } catch (err) {
-      console.error("Error updating about information:", err);
       setToast({
         visible: true,
         message: (err as Error).message || "Failed to update about information",

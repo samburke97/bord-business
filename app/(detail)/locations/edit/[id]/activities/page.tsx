@@ -57,7 +57,6 @@ export default function ActivitiesPage({ params }: ActivitiesPageProps) {
 
         if (!response.ok) {
           const errorText = await response.text();
-          console.error("API error response:", errorText);
           throw new Error(`Failed to fetch activities: ${errorText}`);
         }
 
@@ -65,7 +64,6 @@ export default function ActivitiesPage({ params }: ActivitiesPageProps) {
         setActivities(data);
         setFilteredActivities(data);
       } catch (error) {
-        console.error("Error fetching activities:", error);
       } finally {
         setIsLoading(false);
       }

@@ -113,7 +113,6 @@ export default function EmailVerification({
           onVerificationComplete();
         } else {
           // Session creation failed, but email is verified so still proceed
-          console.warn("Session creation failed, but email is verified");
           onVerificationComplete();
         }
       } else {
@@ -162,7 +161,6 @@ export default function EmailVerification({
       inputRefs.current[0]?.focus();
 
       // Show success feedback
-      console.log("Verification code resent successfully");
     } catch (error) {
       console.error("Resend error:", error);
       setError(

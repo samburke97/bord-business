@@ -64,7 +64,6 @@ function ForgotPasswordContent() {
         `/auth/forgot-password/sent?email=${encodeURIComponent(email)}`
       );
     } catch (error) {
-      console.error("Forgot password error:", error);
       setEmailError(
         error instanceof Error
           ? error.message

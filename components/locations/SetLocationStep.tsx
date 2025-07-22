@@ -59,23 +59,14 @@ export default function SetLocationStep({
       return;
     }
 
-    console.log("🔍 Starting search for:", query);
-    console.log("🗝️ Token exists:", !!MAPBOX_TOKEN);
-    console.log("🌐 URL:", MAPBOX_GEOCODING_URL);
-
     setIsLoading(true);
     try {
       const url = `${MAPBOX_GEOCODING_URL}/${encodeURIComponent(
         query
       )}.json?access_token=${MAPBOX_TOKEN}&country=au&types=address&limit=5`;
 
-      console.log("📡 Full URL:", url);
-
       // Limit search to Australia with country code 'au'
       const response = await fetch(url);
-
-      console.log("📬 Response status:", response.status);
-      console.log("📬 Response ok:", response.ok);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -84,7 +75,6 @@ export default function SetLocationStep({
       }
 
       const data = await response.json();
-      console.log("✅ Success! Data:", data);
 
       setSearchResults(data.features || []);
       setIsDropdownOpen(true);

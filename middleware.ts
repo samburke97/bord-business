@@ -1,4 +1,4 @@
-// middleware.ts - CORRECTED: Added OAuth routes and business status endpoint
+// middleware.ts - FIXED: Handle stale token data for status changes
 import { NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { NextRequest } from "next/server";
@@ -9,7 +9,6 @@ export async function middleware(req: NextRequest) {
 
   // Reduce logging in production
   if (process.env.NODE_ENV === "development") {
-    console.log(`🔒 Middleware: Processing ${req.method} ${pathname}`);
   }
 
   // PRIORITY 1 FIX: Enhanced security headers with CSP and HSTS
@@ -107,7 +106,6 @@ export async function middleware(req: NextRequest) {
   if (isAlwaysAllowed) {
     // CRITICAL: Always allow OAuth callback processing
     if (process.env.NODE_ENV === "development") {
-      console.log(`✅ Middleware: Allowing route ${pathname}`);
     }
     return response;
   }
@@ -127,20 +125,8 @@ export async function middleware(req: NextRequest) {
       process.env.NODE_ENV === "development" &&
       !pathname.includes("/api/user/profile-status");
 
-    if (shouldLog) {
-      console.log(`🔐 Middleware: Token check for ${pathname}:`, {
-        hasToken: !!token,
-        userId: token?.sub,
-        status: token?.status,
-      });
-    }
-
     // No token = not authenticated
     if (!token) {
-      if (shouldLog) {
-        console.log(`❌ Middleware: No valid token found for ${pathname}`);
-      }
-
       // For API routes, return 401 JSON response
       if (pathname.startsWith("/api/")) {
         return NextResponse.json(
@@ -177,6 +163,7 @@ export async function middleware(req: NextRequest) {
       "/auth/complete-setup",
       "/oauth/setup", // CRITICAL ADD: Allow OAuth setup page
       "/oauth/", // CRITICAL ADD: All OAuth routes
+      "/business-onboarding", // CRITICAL ADD: Allow newly activated users (with stale tokens) to access business onboarding
     ];
 
     const isPendingUserAllowedRoute = allowedForPendingUsers.some((route) =>
@@ -185,25 +172,41 @@ export async function middleware(req: NextRequest) {
 
     // If user is PENDING and accessing allowed routes, let them through
     if (userInfo.status === "PENDING" && isPendingUserAllowedRoute) {
-      if (shouldLog) {
-        console.log(
-          `✅ Middleware: Allowing PENDING user access to ${pathname}`
-        );
-      }
+      return response;
+    }
+
+    // ============================================================================
+    // CRITICAL FIX: Handle stale token data after status changes
+    // ============================================================================
+
+    // If token shows user as inactive BUT status is ACTIVE, the token is stale
+    // This happens right after profile activation when JWT hasn't been refreshed yet
+    if (userInfo.status === "ACTIVE" && userInfo.isActive === false) {
+      // Allow access - the token will be refreshed on next request
+      return response;
+    }
+
+    // SPECIAL CASE: Allow PENDING users to access business-onboarding
+    // This handles the case where user just activated but token hasn't refreshed
+    if (userInfo.status === "PENDING" && pathname === "/business-onboarding") {
+      return response;
+    }
+
+    // SPECIAL CASE: Allow access to business-onboarding for users who might have just activated
+    // Even if they show as PENDING, they might have stale token data
+    if (
+      pathname === "/business-onboarding" &&
+      (userInfo.status === "PENDING" || userInfo.status === "ACTIVE")
+    ) {
       return response;
     }
 
     // Check if user account is active (but skip for PENDING users on allowed routes)
     if (
       userInfo.isActive === false &&
-      !(userInfo.status === "PENDING" && isPendingUserAllowedRoute)
+      !(userInfo.status === "PENDING" && isPendingUserAllowedRoute) &&
+      userInfo.status !== "ACTIVE" // Don't block ACTIVE users even if isActive is false (stale token)
     ) {
-      if (shouldLog) {
-        console.log(
-          `❌ Middleware: Account disabled for user ${userInfo.email}`
-        );
-      }
-
       // For API routes, return 403 JSON response
       if (pathname.startsWith("/api/")) {
         return NextResponse.json(
@@ -226,12 +229,6 @@ export async function middleware(req: NextRequest) {
     // ============================================================================
 
     if (userInfo.status === "PENDING" && !isPendingUserAllowedRoute) {
-      if (shouldLog) {
-        console.log(
-          `❌ Middleware: PENDING user blocked from ${pathname} - redirecting to complete setup`
-        );
-      }
-
       // For API routes, return 403 JSON response
       if (pathname.startsWith("/api/")) {
         return NextResponse.json(
@@ -287,14 +284,9 @@ export async function middleware(req: NextRequest) {
       }
     }
 
-    // User passed all checks
-    if (shouldLog) {
-      console.log(`✅ Middleware: Access granted to ${pathname}`);
-    }
     return response;
   } catch (error) {
     // PRIORITY 1: Sanitized error logging - no sensitive information
-    console.error("❌ Middleware: Authentication error occurred");
 
     // For API routes, return 500 JSON response
     if (pathname.startsWith("/api/")) {

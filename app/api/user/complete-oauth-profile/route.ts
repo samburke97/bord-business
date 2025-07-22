@@ -15,14 +15,6 @@ export async function POST(request: NextRequest) {
     const { firstName, lastName, username, dateOfBirth, fullMobile } =
       await request.json();
 
-    console.log("🔄 Completing OAuth user profile:", {
-      userId: session.user.id,
-      email: session.user.email,
-      firstName,
-      lastName,
-      username,
-    });
-
     // Validate required fields
     if (!firstName || !lastName || !username || !dateOfBirth || !fullMobile) {
       return NextResponse.json(
@@ -89,13 +81,6 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    console.log("✅ OAuth user profile completed successfully:", {
-      userId: updatedUser.id,
-      name: updatedUser.name,
-      username: updatedUser.username,
-      isVerified: updatedUser.isVerified,
-    });
-
     return NextResponse.json({
       success: true,
       message: "Profile completed successfully",
@@ -108,7 +93,6 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("❌ Complete OAuth profile error:", error);
     return NextResponse.json(
       { message: "Internal server error" },
       { status: 500 }

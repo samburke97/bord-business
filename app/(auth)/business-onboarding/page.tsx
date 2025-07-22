@@ -63,13 +63,6 @@ function BusinessOnboardingContent() {
     const updatedFormData = { ...formData, ...data };
     setFormData(updatedFormData);
 
-    // Log the data being saved for debugging
-    console.log(
-      `📝 Business Onboarding: Saving step ${currentStep} data:`,
-      data
-    );
-    console.log(`💾 Business Onboarding: Updated form data:`, updatedFormData);
-
     if (currentStep < steps.length - 1) {
       setCurrentStep((prev) => prev + 1);
     } else {
@@ -80,10 +73,6 @@ function BusinessOnboardingContent() {
 
   const handleBack = () => {
     if (currentStep > 0) {
-      console.log(
-        `⬅️ Business Onboarding: Going back from step ${currentStep} to ${currentStep - 1}`
-      );
-      console.log(`💾 Business Onboarding: Current saved data:`, formData);
       setCurrentStep((prev) => prev - 1);
     } else {
       // If we're at step 0, close and go to dashboard
@@ -92,7 +81,6 @@ function BusinessOnboardingContent() {
   };
 
   const handleClose = () => {
-    console.log("❌ Business Onboarding: Closing and returning to dashboard");
     router.push("/dashboard");
   };
 
@@ -101,8 +89,6 @@ function BusinessOnboardingContent() {
     try {
       setIsCreating(true);
       setError(null);
-
-      console.log("🏢 Business Onboarding: Creating business with data:", data);
 
       // Validate required fields before sending
       if (
@@ -113,60 +99,33 @@ function BusinessOnboardingContent() {
         !data.state ||
         !data.postcode
       ) {
-        console.error("❌ Business Onboarding: Missing required fields:", {
-          businessName: !!data.businessName,
-          businessCategory: !!data.businessCategory,
-          streetAddress: !!data.streetAddress,
-          city: !!data.city,
-          state: !!data.state,
-          postcode: !!data.postcode,
-        });
         setError("Please complete all required fields");
         return;
       }
 
       // Get CSRF token from NextAuth API
-      console.log("🔒 Getting CSRF token from NextAuth...");
       const csrfResponse = await fetch("/api/auth/csrf", {
         credentials: "same-origin",
       });
 
       if (!csrfResponse.ok) {
-        console.error("❌ Failed to get CSRF token:", csrfResponse.status);
-        setError(
-          "Security setup failed. Please refresh the page and try again."
-        );
         return;
       }
 
       const csrfData = await csrfResponse.json();
       const csrfToken = csrfData.csrfToken;
 
-      console.log("🔑 CSRF Response:", {
-        status: csrfResponse.status,
-        hasToken: !!csrfToken,
-        tokenLength: csrfToken?.length || 0,
-        tokenPreview: csrfToken?.substring(0, 20) + "...",
-      });
-
       if (!csrfToken) {
-        console.error("❌ No CSRF token in response:", csrfData);
-        setError(
-          "Security token missing. Please refresh the page and try again."
-        );
         return;
       }
 
       // Debug: Log all cookies
-      console.log("🍪 All cookies:", document.cookie);
 
       // Debug: Check specific NextAuth cookies
       const cookies = document.cookie.split(";").map((c) => c.trim());
       const nextAuthCookies = cookies.filter((c) => c.includes("next-auth"));
-      console.log("🔐 NextAuth cookies:", nextAuthCookies);
 
       // Call the USER business creation API with enhanced headers
-      console.log("📡 Making API call with CSRF token...");
       const response = await fetch("/api/user/business", {
         method: "POST",
         headers: {
@@ -191,14 +150,7 @@ function BusinessOnboardingContent() {
         }),
       });
 
-      console.log("📡 API Response received:", {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok,
-      });
-
       const responseData = await response.json();
-      console.log("📦 Response data:", responseData);
 
       if (!response.ok) {
         // Handle specific error cases with user-friendly messages
@@ -214,11 +166,6 @@ function BusinessOnboardingContent() {
             responseData.error?.includes("CSRF") ||
             responseData.message?.includes("CSRF")
           ) {
-            console.error("❌ CSRF Error Details:", {
-              sentToken: csrfToken?.substring(0, 20) + "...",
-              error: responseData.error,
-              message: responseData.message,
-            });
             setError(
               "Security validation failed. Please refresh the page and try again."
             );
@@ -236,20 +183,13 @@ function BusinessOnboardingContent() {
         }
 
         // For other errors, show a generic message instead of the raw API error
-        console.error("❌ API Error:", responseData);
-        setError(
-          "Unable to create business. Please try again or contact support if the problem persists."
-        );
+
         return;
       }
-
-      console.log("✅ Business Onboarding: Business created successfully!");
 
       // Show congratulations step
       setCurrentStep(steps.length);
     } catch (error) {
-      console.error("❌ Business Onboarding: Error creating business:", error);
-
       // Show user-friendly error message instead of technical details
       if (error instanceof TypeError && error.message.includes("fetch")) {
         setError("Network error. Please check your connection and try again.");
@@ -276,7 +216,6 @@ function BusinessOnboardingContent() {
 
   // Handle final redirect to dashboard after business creation
   const handleFinalContinue = () => {
-    console.log("✅ Business Onboarding: Complete - redirecting to dashboard");
     router.push("/dashboard");
   };
 

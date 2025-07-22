@@ -37,19 +37,7 @@ export default function AuthFlowManager({
 
   useEffect(() => {
     const initializeFlow = async () => {
-      console.log("🚀 AuthFlow: Starting initialization...", {
-        hasSession: !!session,
-        status,
-        authMethod,
-        pathname: window.location.pathname,
-        email: email ? email.substring(0, 3) + "***" : "none",
-        sessionEmail: session?.user?.email
-          ? session.user.email.substring(0, 3) + "***"
-          : "none",
-      });
-
       if (status === "loading") {
-        console.log("⏳ AuthFlow: Session still loading...");
         return;
       }
 
@@ -58,7 +46,6 @@ export default function AuthFlowManager({
 
       // If we're explicitly on /auth/setup, show setup form regardless of method
       if (pathname === "/auth/setup") {
-        console.log("📝 AuthFlow: On /auth/setup page - showing setup form");
         if (authMethod === "oauth" && session?.user) {
           // OAuth users on setup page
           setCurrentStep("setup");
@@ -81,7 +68,6 @@ export default function AuthFlowManager({
 
       // If we're explicitly on verification pages, show verification
       if (pathname === "/auth/verify" || pathname === "/verify-email") {
-        console.log("📧 AuthFlow: On verification page - showing verification");
         setCurrentStep("verification");
         setUserInfo({
           isNewUser: true,
@@ -93,7 +79,6 @@ export default function AuthFlowManager({
 
       // If we're on password page, show password screen
       if (pathname === "/auth/password") {
-        console.log("🔑 AuthFlow: On password page - showing password screen");
         const type = searchParams.get("type");
         const name = searchParams.get("name");
         setCurrentStep("password");
@@ -109,9 +94,6 @@ export default function AuthFlowManager({
 
       // OAuth method - go to profile setup
       if (authMethod === "oauth") {
-        console.log(
-          "🔐 AuthFlow: OAuth method detected - going directly to profile setup"
-        );
         setCurrentStep("setup");
         setUserInfo({
           isNewUser: false,
@@ -124,10 +106,6 @@ export default function AuthFlowManager({
 
       // Email method - determine next step based on context
       if (authMethod === "email") {
-        console.log(
-          "📧 AuthFlow: Email method detected - determining correct step"
-        );
-
         // For email method, we need to determine if this is a new signup
         // or returning to continue a flow. Default to setup for new users.
         setCurrentStep("setup");
@@ -142,10 +120,6 @@ export default function AuthFlowManager({
       // FALLBACK: Old logic for cases without method parameter
       // OAUTH USER: Has session - this means they used OAuth sign-in
       if (session?.user) {
-        console.log(
-          "🔐 AuthFlow: OAuth user detected, checking profile status..."
-        );
-
         try {
           const response = await fetch("/api/user/profile-status", {
             credentials: "include",
@@ -153,7 +127,6 @@ export default function AuthFlowManager({
 
           if (response.ok) {
             const profileData = await response.json();
-            console.log("📋 AuthFlow: Profile status:", profileData);
 
             if (
               profileData.isProfileComplete &&
@@ -163,10 +136,6 @@ export default function AuthFlowManager({
               profileData.phone &&
               profileData.dateOfBirth
             ) {
-              console.log(
-                "✅ AuthFlow: Profile is fully complete, checking business status"
-              );
-
               const businessResponse = await fetch(
                 "/api/user/business-status",
                 {
@@ -178,36 +147,18 @@ export default function AuthFlowManager({
                 const businessData = await businessResponse.json();
 
                 if (businessData.needsSetup) {
-                  console.log(
-                    "🏢 AuthFlow: Business setup needed - redirecting to business onboarding"
-                  );
                   router.push("/business-onboarding");
                   return;
                 } else {
-                  console.log(
-                    "✅ AuthFlow: User fully set up - redirecting to dashboard"
-                  );
                   router.push("/dashboard");
                   return;
                 }
               }
             } else {
-              console.log("📝 AuthFlow: Profile incomplete, missing fields:", {
-                firstName: !profileData.firstName,
-                lastName: !profileData.lastName,
-                username: !profileData.username,
-                phone: !profileData.phone,
-                dateOfBirth: !profileData.dateOfBirth,
-              });
             }
           }
-        } catch (error) {
-          console.error("❌ AuthFlow: Error checking profile status:", error);
-        }
+        } catch (error) {}
 
-        console.log(
-          "📝 AuthFlow: OAuth user needs profile setup - showing setup form"
-        );
         setCurrentStep("setup");
         setUserInfo({
           isNewUser: false,
@@ -220,9 +171,6 @@ export default function AuthFlowManager({
 
       // EMAIL SIGNUP: No session, but has email parameter
       if (!session && email) {
-        console.log(
-          "📧 AuthFlow: Email signup flow - defaulting to setup (not verification)"
-        );
         // Changed: Default to setup instead of verification for new email users
         setCurrentStep("setup");
         setUserInfo({
@@ -234,7 +182,6 @@ export default function AuthFlowManager({
       }
 
       // FALLBACK: No session and no email - redirect to login
-      console.log("❌ AuthFlow: No session or email, redirecting to login");
       router.push("/login");
     };
 
@@ -243,8 +190,6 @@ export default function AuthFlowManager({
 
   const handleVerificationComplete = useCallback(
     (data: { isExistingUser: boolean }) => {
-      console.log("✅ AuthFlow: Email verification complete, user data:", data);
-
       setUserInfo({
         isNewUser: !data.isExistingUser,
         userName: userInfo.userName,
@@ -256,43 +201,28 @@ export default function AuthFlowManager({
   );
 
   const handlePasswordComplete = useCallback(() => {
-    console.log(
-      "✅ AuthFlow: Password complete, user is new:",
-      userInfo.isNewUser
-    );
-
     if (userInfo.isNewUser) {
       setCurrentStep("setup");
     } else {
-      console.log("ℹ️ AuthFlow: Existing user login handled by PasswordScreen");
     }
   }, [userInfo.isNewUser]);
 
   const handleSetupComplete = useCallback(() => {
-    console.log(
-      "✅ AuthFlow: Profile setup complete - checking if verification needed"
-    );
-
     // For email users, go to verification after setup
     if (authMethod === "email" || (!session?.user && email)) {
-      console.log("📧 AuthFlow: Email user - redirecting to verification");
       router.push(`/verify-email?email=${encodeURIComponent(email)}`);
     } else {
       // For OAuth users, go to business onboarding
-      console.log(
-        "🔐 AuthFlow: OAuth user - redirecting to business onboarding"
-      );
+
       router.push("/business-onboarding");
     }
   }, [router, authMethod, session, email]);
 
   const handleContinueToDashboard = useCallback(() => {
-    console.log("🏠 AuthFlow: Continuing to dashboard");
     router.push("/dashboard");
   }, [router]);
 
   const handleRemindLater = useCallback(() => {
-    console.log("⏰ AuthFlow: Remind later selected");
     router.push("/dashboard");
   }, [router]);
 

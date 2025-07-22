@@ -16,7 +16,6 @@ export async function verifyRecaptcha(token: string): Promise<{
   const secretKey = process.env.RECAPTCHA_SECRET_KEY;
 
   if (!secretKey) {
-    console.error("❌ RECAPTCHA_SECRET_KEY not configured");
     return { success: false, error: "reCAPTCHA not configured" };
   }
 
@@ -39,7 +38,6 @@ export async function verifyRecaptcha(token: string): Promise<{
     const data: RecaptchaResponse = await response.json();
 
     if (!data.success) {
-      console.error("❌ reCAPTCHA verification failed:", data["error-codes"]);
       return {
         success: false,
         error: "reCAPTCHA verification failed",
@@ -51,7 +49,6 @@ export async function verifyRecaptcha(token: string): Promise<{
     if (data.score !== undefined) {
       const threshold = 0.5; // Adjust based on your needs
       if (data.score < threshold) {
-        console.warn(`⚠️ Low reCAPTCHA score: ${data.score}`);
         return {
           success: false,
           score: data.score,
@@ -60,18 +57,11 @@ export async function verifyRecaptcha(token: string): Promise<{
       }
     }
 
-    console.log("✅ reCAPTCHA verification successful:", {
-      score: data.score,
-      action: data.action,
-      hostname: data.hostname,
-    });
-
     return {
       success: true,
       score: data.score,
     };
   } catch (error) {
-    console.error("❌ reCAPTCHA verification error:", error);
     return {
       success: false,
       error: "reCAPTCHA verification failed",

@@ -13,11 +13,6 @@ export default function AuthSetupRedirectPage() {
     const email = searchParams.get("email");
     const method = searchParams.get("method");
 
-    console.log("🔄 Auth Setup Redirect: Redirecting to correct flow", {
-      email: email ? email.substring(0, 3) + "***" : "none",
-      method,
-    });
-
     // Redirect to the appropriate setup page based on method
     if (method === "oauth") {
       router.replace("/oauth/setup");

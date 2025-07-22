@@ -19,8 +19,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { email } = body;
 
-    console.log("🔐 Forgot Password: Request received for email:", email);
-
     // Input validation
     if (!email) {
       await constantTimeDelay();
@@ -47,8 +45,6 @@ export async function POST(request: NextRequest) {
       "unknown";
     const userAgent = request.headers.get("user-agent") || "unknown";
 
-    console.log("🔍 Forgot Password: Looking up user for:", sanitizedEmail);
-
     try {
       // Check if user exists (timing-safe approach)
       const user = await prisma.user.findUnique({
@@ -58,18 +54,9 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      console.log("👤 Forgot Password: User lookup result:", {
-        userFound: !!user,
-        hasCredentials: !!user?.credentials,
-        isVerified: user?.isVerified,
-        isActive: user?.isActive,
-      });
-
       // ALWAYS return success to prevent email enumeration attacks
       // But only send email if user actually exists and has credentials
       if (user && user.credentials) {
-        console.log("✅ Forgot Password: User valid, processing reset...");
-
         await prisma.$transaction(async (tx) => {
           // Clean up any old password reset tokens for this user
           await tx.passwordResetToken.deleteMany({
@@ -93,11 +80,6 @@ export async function POST(request: NextRequest) {
 
           // Allow max 3 reset attempts per hour
           if (recentTokens.length >= 3) {
-            console.log(
-              "⚠️ Forgot Password: Rate limit exceeded for:",
-              sanitizedEmail
-            );
-
             // Log suspicious activity but still return success
             await tx.securityEvent.create({
               data: {
@@ -116,10 +98,6 @@ export async function POST(request: NextRequest) {
           const hashedToken = hashToken(resetToken); // FIXED: Now using sync version
           const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour expiry
 
-          console.log(
-            "🎫 Forgot Password: Generated token, storing in database..."
-          );
-
           // Store reset token in database
           await tx.passwordResetToken.create({
             data: {
@@ -130,10 +108,6 @@ export async function POST(request: NextRequest) {
               userAgent: userAgent,
             },
           });
-
-          console.log(
-            "📝 Forgot Password: Token stored, logging security event..."
-          );
 
           // Log security event
           await tx.securityEvent.create({
@@ -148,8 +122,6 @@ export async function POST(request: NextRequest) {
 
           // Create reset URL
           const resetUrl = `${process.env.NEXTAUTH_URL}/auth/reset-password?token=${resetToken}&email=${encodeURIComponent(sanitizedEmail)}`;
-
-          console.log("📧 Forgot Password: Sending email via Resend...");
 
           // Send password reset email
           try {
@@ -234,17 +206,7 @@ Need help? Contact: support@bord.co
 Request ID: ${resetToken.substring(0, 8)}
               `.trim(),
             });
-
-            console.log(
-              "✅ Forgot Password: Email sent successfully via Resend:",
-              emailResult
-            );
           } catch (emailError) {
-            console.error(
-              "❌ Forgot Password: Failed to send reset email:",
-              emailError
-            );
-
             // Log email failure but don't expose to user
             await tx.securityEvent.create({
               data: {
@@ -265,21 +227,11 @@ Request ID: ${resetToken.substring(0, 8)}
                 },
               },
             });
-
-            // Don't throw error - we want to return success to prevent enumeration
-            console.log(
-              "⚠️ Forgot Password: Email failed but continuing for security"
-            );
           }
         });
       } else {
         // User doesn't exist but still consume time to prevent enumeration
         await constantTimeDelay(200, 400);
-
-        console.log(
-          "⚠️ Forgot Password: User not found or no credentials for:",
-          sanitizedEmail
-        );
       }
 
       // Ensure minimum response time for all cases
@@ -287,8 +239,6 @@ Request ID: ${resetToken.substring(0, 8)}
       if (elapsedTime < 300) {
         await new Promise((resolve) => setTimeout(resolve, 300 - elapsedTime));
       }
-
-      console.log("✅ Forgot Password: Returning success response");
 
       // Always return success response to prevent email enumeration
       return NextResponse.json(
@@ -300,7 +250,6 @@ Request ID: ${resetToken.substring(0, 8)}
         { status: 200 }
       );
     } catch (dbError) {
-      console.error("❌ Forgot Password: Database error:", dbError);
       await constantTimeDelay(200, 400);
 
       return NextResponse.json(
@@ -312,8 +261,6 @@ Request ID: ${resetToken.substring(0, 8)}
       );
     }
   } catch (error) {
-    console.error("❌ Forgot Password: Unexpected error:", error);
-
     // Ensure minimum response time
     const elapsedTime = Date.now() - startTime;
     if (elapsedTime < 300) {

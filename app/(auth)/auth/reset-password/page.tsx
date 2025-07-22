@@ -106,7 +106,6 @@ function ResetPasswordContent() {
         `/auth/reset-password/success?email=${encodeURIComponent(email)}`
       );
     } catch (error) {
-      console.error("Reset password error:", error);
       setNewPasswordError(
         error instanceof Error
           ? error.message

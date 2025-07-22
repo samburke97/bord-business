@@ -13,29 +13,15 @@ export default function OAuthProfileSetup() {
 
   useEffect(() => {
     const initializeOAuthFlow = async () => {
-      console.log("🔐 OAuth Setup: Starting initialization...", {
-        hasSession: !!session,
-        status,
-        userEmail: session?.user?.email
-          ? session.user.email.substring(0, 3) + "***"
-          : "none",
-      });
-
       if (status === "loading") {
-        console.log("⏳ OAuth Setup: Session still loading...");
         return;
       }
 
       // If no session, redirect to login
       if (!session?.user) {
-        console.log("❌ OAuth Setup: No session found, redirecting to login");
         router.push("/login");
         return;
       }
-
-      console.log(
-        "🔐 OAuth Setup: Valid session found, checking profile status..."
-      );
 
       try {
         const response = await fetch("/api/user/profile-status", {
@@ -44,7 +30,6 @@ export default function OAuthProfileSetup() {
 
         if (response.ok) {
           const profileData = await response.json();
-          console.log("📋 OAuth Setup: Profile status:", profileData);
 
           // Check if profile is complete with ALL required fields
           if (
@@ -55,10 +40,6 @@ export default function OAuthProfileSetup() {
             profileData.phone &&
             profileData.dateOfBirth
           ) {
-            console.log(
-              "✅ OAuth Setup: Profile is complete, checking business status"
-            );
-
             const businessResponse = await fetch("/api/user/business-status", {
               credentials: "include",
             });
@@ -67,28 +48,17 @@ export default function OAuthProfileSetup() {
               const businessData = await businessResponse.json();
 
               if (businessData.needsSetup) {
-                console.log(
-                  "🏢 OAuth Setup: Business setup needed - redirecting to business onboarding"
-                );
                 router.push("/business-onboarding");
                 return;
               } else {
-                console.log(
-                  "✅ OAuth Setup: User fully set up - redirecting to dashboard"
-                );
                 router.push("/dashboard");
                 return;
               }
             }
           } else {
-            console.log(
-              "📝 OAuth Setup: Profile incomplete, showing profile setup form"
-            );
           }
         }
-      } catch (error) {
-        console.error("❌ OAuth Setup: Error checking profile status:", error);
-      }
+      } catch (error) {}
 
       // Profile is incomplete - show the setup form
       setIsInitializing(false);
@@ -98,9 +68,6 @@ export default function OAuthProfileSetup() {
   }, [session, status, router]);
 
   const handleSetupComplete = useCallback(() => {
-    console.log(
-      "✅ OAuth Setup: Profile setup complete - redirecting to business onboarding"
-    );
     router.push("/business-onboarding");
   }, [router]);
 

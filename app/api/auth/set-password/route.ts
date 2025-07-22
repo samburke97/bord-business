@@ -16,8 +16,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { email, password } = body;
 
-    console.log("🔐 Set Password: Request received for email:", email);
-
     // Input validation
     if (!email || !password) {
       await constantTimeDelay();
@@ -40,10 +38,6 @@ export async function POST(request: NextRequest) {
     // Validate password strength
     const validation = validateSecurePassword(password);
     if (!validation.valid) {
-      console.log(
-        "❌ Set Password: Password validation failed:",
-        validation.errors
-      );
       await constantTimeDelay();
       return NextResponse.json(
         {
@@ -54,8 +48,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log("✅ Set Password: Password validation passed");
-
     // Get client info for logging
     const clientIP =
       request.headers.get("x-forwarded-for") ||
@@ -65,8 +57,6 @@ export async function POST(request: NextRequest) {
 
     // ALWAYS hash the password first to prevent timing attacks
     const passwordHash = await hashPassword(password);
-
-    console.log("🔍 Set Password: Looking up user...");
 
     try {
       const result = await prisma.$transaction(async (tx) => {
@@ -85,15 +75,8 @@ export async function POST(request: NextRequest) {
           },
         });
 
-        console.log("👤 Set Password: User lookup result:", {
-          userFound: !!user,
-          hasCredentials: !!user?.credentials,
-          isVerified: user?.isVerified,
-        });
-
         if (!user) {
           // Create new user if they don't exist
-          console.log("🆕 Set Password: Creating new user...");
 
           user = await tx.user.create({
             data: {
@@ -113,10 +96,6 @@ export async function POST(request: NextRequest) {
         }
 
         if (user.credentials) {
-          console.log(
-            "⚠️ Set Password: User already has credentials, updating..."
-          );
-
           // User already has credentials - update them
           await tx.userCredentials.update({
             where: { id: user.credentials.id },
@@ -133,8 +112,6 @@ export async function POST(request: NextRequest) {
             },
           });
         } else {
-          console.log("🆕 Set Password: Creating new credentials...");
-
           // Create new credentials
           await tx.userCredentials.create({
             data: {
@@ -161,8 +138,6 @@ export async function POST(request: NextRequest) {
             },
           });
         }
-
-        console.log("✅ Set Password: Password set successfully");
 
         return { success: true, userId: user.id };
       });

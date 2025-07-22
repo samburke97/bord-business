@@ -164,9 +164,6 @@ export default function LocationDetailsStep({
         );
 
         if (!response.ok) {
-          console.warn(
-            "Could not check for duplicate names. Will proceed anyway."
-          );
           return false;
         }
 

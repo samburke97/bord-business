@@ -16,8 +16,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { token, email, newPassword } = body;
 
-    console.log("🔐 Reset Password: Request received for email:", email);
-
     // Input validation
     if (!token || !email || !newPassword) {
       await constantTimeDelay();
@@ -30,10 +28,6 @@ export async function POST(request: NextRequest) {
     // Validate password strength
     const validation = validateSecurePassword(newPassword);
     if (!validation.valid) {
-      console.log(
-        "❌ Reset Password: Password validation failed:",
-        validation.errors
-      );
       await constantTimeDelay();
       return NextResponse.json(
         {
@@ -44,15 +38,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log("✅ Reset Password: Password validation passed");
-
     // ALWAYS hash the password first to prevent timing attacks
     const newPasswordHash = await hashPassword(newPassword);
 
     // Hash the provided token for secure comparison
     const hashedToken = hashToken(token); // FIXED: Now using sync version from password.ts
-
-    console.log("🔍 Reset Password: Looking up reset token...");
 
     try {
       // Use transaction for atomic operations
@@ -67,11 +57,6 @@ export async function POST(request: NextRequest) {
           },
         });
 
-        console.log("🎫 Reset Password: Token lookup result:", {
-          tokenFound: !!resetToken,
-          isExpired: resetToken ? resetToken.expires < new Date() : null,
-        });
-
         // Always consume consistent time even if token not found
         if (!resetToken) {
           await constantTimeDelay(150, 250);
@@ -83,8 +68,6 @@ export async function POST(request: NextRequest) {
           await constantTimeDelay(150, 250);
           throw new Error("Invalid reset token");
         }
-
-        console.log("✅ Reset Password: Token validated successfully");
 
         // Find the user with credentials
         const user = await tx.user.findUnique({
@@ -106,10 +89,6 @@ export async function POST(request: NextRequest) {
           throw new Error("User not found");
         }
 
-        console.log(
-          "👤 Reset Password: User found, checking password history..."
-        );
-
         // Check password history (prevent reuse of recent passwords)
         if (user.credentials.passwordHistory) {
           for (const oldPassword of user.credentials.passwordHistory) {
@@ -125,8 +104,6 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        console.log("✅ Reset Password: Password history check passed");
-
         // Check if new password is same as current
         const isSameAsCurrent = await verifyPassword(
           newPassword,
@@ -137,8 +114,6 @@ export async function POST(request: NextRequest) {
             "New password cannot be the same as your current password."
           );
         }
-
-        console.log("📝 Reset Password: Updating password...");
 
         // Add current password to history before updating
         await tx.passwordHistory.create({
@@ -161,8 +136,6 @@ export async function POST(request: NextRequest) {
           },
         });
 
-        console.log("🗑️ Reset Password: Cleaning up tokens...");
-
         // Delete all password reset tokens for this user
         await tx.passwordResetToken.deleteMany({
           where: {
@@ -184,8 +157,6 @@ export async function POST(request: NextRequest) {
           },
         });
 
-        console.log("✅ Reset Password: Password reset completed successfully");
-
         return { success: true, userId: user.id };
       });
 
@@ -203,8 +174,6 @@ export async function POST(request: NextRequest) {
         { status: 200 }
       );
     } catch (transactionError) {
-      console.error("❌ Reset Password: Transaction error:", transactionError);
-
       await constantTimeDelay(150, 250);
 
       return NextResponse.json(
@@ -218,8 +187,6 @@ export async function POST(request: NextRequest) {
       );
     }
   } catch (error) {
-    console.error("❌ Reset Password: Unexpected error:", error);
-
     // Ensure minimum response time
     const elapsedTime = Date.now() - startTime;
     if (elapsedTime < 200) {

@@ -22,20 +22,9 @@ function PasswordContent() {
   const isNewUser = type === "setup";
 
   const handlePasswordComplete = () => {
-    console.log("✅ Password complete, user is existing:", !isNewUser);
-
     if (isNewUser) {
-      // This shouldn't happen in the new flow, but fallback to email setup
-      console.log(
-        "🔄 New user in password screen - redirecting to email setup"
-      );
       router.push(`/email/setup?email=${encodeURIComponent(email)}`);
     } else {
-      // Existing user - check where they should go next
-      console.log("✅ Existing user login complete - checking status");
-
-      // For existing users, we should check their completion status
-      // and route them appropriately (dashboard, business setup, etc.)
       router.push("/");
     }
   };
