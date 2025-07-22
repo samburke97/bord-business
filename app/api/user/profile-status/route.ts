@@ -1,4 +1,4 @@
-// app/api/user/profile-status/route.ts - MISSING ENDPOINT
+// app/api/user/profile-status/route.ts - ENHANCED DEBUG VERSION
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
@@ -7,6 +7,13 @@ import prisma from "@/lib/prisma";
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
+
+    console.log("🔍 Profile Status API: Session check:", {
+      hasSession: !!session,
+      hasUser: !!session?.user,
+      userId: session?.user?.id || "none",
+      userEmail: session?.user?.email || "none",
+    });
 
     if (!session?.user?.id) {
       console.log("❌ Profile Status API: No valid session");
@@ -18,17 +25,47 @@ export async function GET(request: NextRequest) {
       email: session.user.email,
     });
 
-    // Get user with credentials info
+    // ✅ ENHANCED DEBUG: Check if user exists with detailed logging
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
       include: {
         credentials: true,
-        accounts: true,
+        accounts: {
+          select: {
+            provider: true,
+            providerAccountId: true,
+            type: true,
+          },
+        },
       },
     });
 
+    console.log("🔍 Profile Status API: Database query result:", {
+      userFound: !!user,
+      userId: session.user.id,
+      userInDb: user
+        ? {
+            id: user.id,
+            email: user.email,
+            status: user.status,
+            isVerified: user.isVerified,
+            isActive: user.isActive,
+            hasFirstName: !!user.firstName,
+            hasLastName: !!user.lastName,
+            hasUsername: !!user.username,
+            hasPhone: !!user.phone,
+            hasDateOfBirth: !!user.dateOfBirth,
+            accountsCount: user.accounts?.length || 0,
+            accountProviders: user.accounts?.map((acc) => acc.provider) || [],
+          }
+        : null,
+    });
+
     if (!user) {
-      console.log("❌ Profile Status API: User not found");
+      console.error("❌ Profile Status API: User not found in database", {
+        sessionUserId: session.user.id,
+        sessionEmail: session.user.email,
+      });
       return NextResponse.json({ message: "User not found" }, { status: 404 });
     }
 
@@ -45,6 +82,7 @@ export async function GET(request: NextRequest) {
       dateOfBirth: user.dateOfBirth || null,
       isVerified: user.isVerified || false,
       isActive: user.isActive || false,
+      status: user.status || null,
     };
 
     // Determine if profile is complete
@@ -61,6 +99,9 @@ export async function GET(request: NextRequest) {
       email: user.email,
       hasPassword,
       isProfileComplete,
+      status: user.status,
+      isVerified: user.isVerified,
+      isActive: user.isActive,
       missingFields: {
         firstName: !profileStatus.firstName,
         lastName: !profileStatus.lastName,

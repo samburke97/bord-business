@@ -1,4 +1,4 @@
-// lib/auth.ts - FIXED: Email users never PENDING, only OAuth users
+// lib/auth.ts - FIXED: Move OAuth user creation to signIn callback to avoid race condition
 import { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import FacebookProvider from "next-auth/providers/facebook";
@@ -127,6 +127,7 @@ export const authOptions: NextAuthOptions = {
             return false;
           }
 
+          // ✅ CRITICAL FIX: Create user synchronously in signIn callback
           const existingUser = await prisma.user.findUnique({
             where: { email: user.email },
             include: {
@@ -136,6 +137,20 @@ export const authOptions: NextAuthOptions = {
           });
 
           if (existingUser) {
+            // ✅ ENHANCED DEBUG: Log all account details
+            console.log("🔍 SignIn: Existing user found, checking accounts:", {
+              userId: existingUser.id,
+              email: existingUser.email,
+              accountCount: existingUser.accounts.length,
+              accounts: existingUser.accounts.map((acc) => ({
+                provider: acc.provider,
+                providerAccountId: acc.providerAccountId,
+                type: acc.type,
+              })),
+              attemptingProvider: account.provider,
+              hasCredentials: !!existingUser.credentials,
+            });
+
             const hasThisProvider = existingUser.accounts.some(
               (acc) => acc.provider === account.provider
             );
@@ -145,6 +160,19 @@ export const authOptions: NextAuthOptions = {
               return true;
             }
 
+            // ✅ CRITICAL FIX: If no Account record exists but user was created via OAuth,
+            // allow the sign-in to proceed (NextAuth will create the Account record)
+            if (
+              existingUser.accounts.length === 0 &&
+              !existingUser.credentials
+            ) {
+              console.log(
+                "🔧 SignIn: OAuth user has no Account records - allowing NextAuth to create one"
+              );
+              return true;
+            }
+
+            // Only block if user has OTHER authentication methods
             const hasCredentials = !!existingUser.credentials;
             const hasGoogle = existingUser.accounts.some(
               (acc) => acc.provider === "google"
@@ -158,10 +186,47 @@ export const authOptions: NextAuthOptions = {
             if (hasGoogle) availableMethods.push("google");
             if (hasFacebook) availableMethods.push("facebook");
 
+            console.log("❌ SignIn: Account conflict detected:", {
+              attemptedProvider: account.provider,
+              availableMethods,
+              userHasCredentials: hasCredentials,
+              userAccountProviders: existingUser.accounts.map(
+                (acc) => acc.provider
+              ),
+            });
+
             return `/auth/error?error=AccountExistsWithDifferentMethod&email=${encodeURIComponent(user.email)}&available=${availableMethods.join(",")}&attempted=${account.provider}`;
           }
 
-          console.log("✅ SignIn: New OAuth user");
+          // ✅ CRITICAL FIX: Create new OAuth user SYNCHRONOUSLY here
+          console.log(
+            "🆕 Creating new OAuth user with PENDING status in signIn callback"
+          );
+
+          const newUser = await prisma.user.create({
+            data: {
+              email: user.email,
+              name: user.name || user.email,
+              image: user.image,
+              globalRole: "USER",
+              isVerified: false, // Will be set to true when profile is completed
+              isActive: false, // Will be set to true when profile is completed
+              status: "PENDING", // ✅ Only OAuth users get PENDING status
+            },
+          });
+
+          console.log(
+            "✅ New OAuth user created in signIn callback:",
+            newUser.id
+          );
+
+          // Update the user object with the new user's data for the JWT
+          user.id = newUser.id;
+          user.globalRole = newUser.globalRole;
+          user.isVerified = newUser.isVerified;
+          user.isActive = newUser.isActive;
+          user.status = newUser.status;
+
           return true;
         }
 
@@ -273,45 +338,8 @@ export const authOptions: NextAuthOptions = {
     },
   },
 
+  // ✅ REMOVED: No longer need signIn event since user creation happens in callback
   events: {
-    async signIn({ user, account, profile, isNewUser }) {
-      console.log("📝 SignIn Event:", {
-        provider: account?.provider,
-        isNewUser,
-        email: user.email?.substring(0, 3) + "***",
-      });
-
-      if (
-        account &&
-        (account.provider === "google" || account.provider === "facebook")
-      ) {
-        try {
-          const existingUser = await prisma.user.findUnique({
-            where: { email: user.email! },
-          });
-
-          if (!existingUser) {
-            // Create new OAuth user with PENDING status
-            console.log("🆕 Creating new OAuth user with PENDING status");
-
-            const newUser = await prisma.user.create({
-              data: {
-                email: user.email!,
-                name: user.name || user.email!,
-                image: user.image,
-                globalRole: "USER",
-                isVerified: false, // Will be set to true when profile is completed
-                isActive: false, // Will be set to true when profile is completed
-                status: "PENDING", // ✅ Only OAuth users get PENDING status
-              },
-            });
-
-            console.log("✅ New OAuth user created:", newUser.id);
-          }
-        } catch (error) {
-          console.error("❌ SignIn Event Error:", error);
-        }
-      }
-    },
+    // Other events can stay here, but OAuth user creation is now in signIn callback
   },
 };

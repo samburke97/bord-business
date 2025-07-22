@@ -1,4 +1,4 @@
-// app/(auth)/oauth/setup/page.tsx - Clean OAuth Setup Page
+// app/(auth)/auth/oauth/setup/page.tsx - FIXED: Better status detection
 "use client";
 
 import { useSession } from "next-auth/react";
@@ -19,6 +19,9 @@ export default function OAuthSetupPage() {
         userEmail: session?.user?.email
           ? session.user.email.substring(0, 3) + "***"
           : "none",
+        userStatus: session?.user?.status,
+        isVerified: session?.user?.isVerified,
+        isActive: session?.user?.isActive,
       });
 
       if (status === "loading") {
@@ -33,65 +36,129 @@ export default function OAuthSetupPage() {
         return;
       }
 
-      console.log(
-        "🔐 OAuth Setup: Valid session found, checking profile status..."
-      );
+      // ✅ CRITICAL FIX: If user is already ACTIVE, skip everything and go to dashboard
+      if (
+        session.user.status === "ACTIVE" &&
+        session.user.isVerified &&
+        session.user.isActive
+      ) {
+        console.log(
+          "✅ OAuth Setup: User is already ACTIVE - checking business status directly"
+        );
 
-      try {
-        const response = await fetch("/api/user/profile-status", {
-          credentials: "include",
-        });
+        try {
+          const businessResponse = await fetch("/api/user/business-status", {
+            credentials: "include",
+          });
 
-        if (response.ok) {
-          const profileData = await response.json();
-          console.log("📋 OAuth Setup: Profile status:", profileData);
-
-          // Check if profile is complete with ALL required fields
-          if (
-            profileData.isProfileComplete &&
-            profileData.firstName &&
-            profileData.lastName &&
-            profileData.username &&
-            profileData.phone &&
-            profileData.dateOfBirth
-          ) {
+          if (businessResponse.ok) {
+            const businessData = await businessResponse.json();
             console.log(
-              "✅ OAuth Setup: Profile is complete, checking business status"
+              "📊 OAuth Setup: Business status for ACTIVE user:",
+              businessData
             );
 
-            const businessResponse = await fetch("/api/user/business-status", {
-              credentials: "include",
-            });
-
-            if (businessResponse.ok) {
-              const businessData = await businessResponse.json();
-
-              if (businessData.needsSetup) {
-                console.log(
-                  "🏢 OAuth Setup: Business setup needed - redirecting to business onboarding"
-                );
-                router.push("/business-onboarding");
-                return;
-              } else {
-                console.log(
-                  "✅ OAuth Setup: User fully set up - redirecting to dashboard"
-                );
-                router.push("/dashboard");
-                return;
-              }
+            if (businessData.needsSetup) {
+              console.log(
+                "🏢 OAuth Setup: ACTIVE user needs business setup - redirecting to business onboarding"
+              );
+              router.push("/business-onboarding");
+              return;
+            } else {
+              console.log(
+                "✅ OAuth Setup: ACTIVE user fully set up - redirecting to dashboard"
+              );
+              router.push("/dashboard");
+              return;
             }
           } else {
-            console.log(
-              "📝 OAuth Setup: Profile incomplete, showing profile setup form"
+            console.error(
+              "❌ OAuth Setup: Failed to fetch business status:",
+              businessResponse.status
             );
+            // Fallback to business onboarding
+            router.push("/business-onboarding");
+            return;
           }
+        } catch (error) {
+          console.error(
+            "❌ OAuth Setup: Error checking business status for ACTIVE user:",
+            error
+          );
+          // Fallback to business onboarding
+          router.push("/business-onboarding");
+          return;
         }
-      } catch (error) {
-        console.error("❌ OAuth Setup: Error checking profile status:", error);
       }
 
-      // Profile is incomplete - show the setup form
-      setIsInitializing(false);
+      // If user is PENDING, check profile completion
+      if (session.user.status === "PENDING") {
+        console.log(
+          "🔐 OAuth Setup: User is PENDING - checking profile completion..."
+        );
+
+        try {
+          const response = await fetch("/api/user/profile-status", {
+            credentials: "include",
+          });
+
+          if (response.ok) {
+            const profileData = await response.json();
+            console.log(
+              "📋 OAuth Setup: Profile status for PENDING user:",
+              profileData
+            );
+
+            // Check if profile is complete with ALL required fields
+            if (
+              profileData.isProfileComplete &&
+              profileData.firstName &&
+              profileData.lastName &&
+              profileData.username &&
+              profileData.phone &&
+              profileData.dateOfBirth
+            ) {
+              console.log(
+                "✅ OAuth Setup: PENDING user profile is complete - should not happen, redirecting to activation"
+              );
+              // This shouldn't happen - if profile is complete, user should be ACTIVE
+              // But handle it gracefully
+              router.push("/business-onboarding");
+              return;
+            } else {
+              console.log(
+                "📝 OAuth Setup: PENDING user profile incomplete, showing setup form"
+              );
+              setIsInitializing(false);
+              return;
+            }
+          } else {
+            console.error(
+              "❌ OAuth Setup: Failed to fetch profile status:",
+              response.status
+            );
+            // Show setup form as fallback
+            setIsInitializing(false);
+            return;
+          }
+        } catch (error) {
+          console.error(
+            "❌ OAuth Setup: Error checking profile status:",
+            error
+          );
+          // Show setup form as fallback
+          setIsInitializing(false);
+          return;
+        }
+      }
+
+      // Handle unexpected user status
+      console.log(
+        "❌ OAuth Setup: Unexpected user status:",
+        session.user.status
+      );
+      console.log("🔄 OAuth Setup: Redirecting to login for safety");
+      router.push("/login");
     };
 
     initializeOAuthFlow();
@@ -162,7 +229,7 @@ export default function OAuthSetupPage() {
     );
   }
 
-  // Render the profile setup form
+  // Render the profile setup form (only for PENDING users with incomplete profiles)
   return (
     <BusinessSetupForm
       email={session?.user?.email || ""}
