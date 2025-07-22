@@ -12,7 +12,39 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    if (session.user.status !== "PENDING") {
+    console.log("🔄 Activating user - Session info:", {
+      userId: session.user.id,
+      email: session.user.email,
+      status: session.user.status,
+    });
+
+    // CRITICAL FIX: Check if user exists first
+    const existingUser = await prisma.user.findUnique({
+      where: { id: session.user.id },
+    });
+
+    if (!existingUser) {
+      console.error("❌ User not found in database:", {
+        sessionUserId: session.user.id,
+        sessionEmail: session.user.email,
+      });
+
+      return NextResponse.json(
+        {
+          message: "User record not found. Please sign in again.",
+          code: "USER_NOT_FOUND",
+        },
+        { status: 404 }
+      );
+    }
+
+    console.log("✅ User found in database:", {
+      userId: existingUser.id,
+      email: existingUser.email,
+      status: existingUser.status,
+    });
+
+    if (existingUser.status !== "PENDING") {
       return NextResponse.json(
         { message: "User is not in pending status" },
         { status: 400 }
@@ -21,14 +53,6 @@ export async function POST(request: NextRequest) {
 
     const { firstName, lastName, username, dateOfBirth, fullMobile } =
       await request.json();
-
-    console.log("🔄 Activating PENDING user:", {
-      userId: session.user.id,
-      email: session.user.email,
-      firstName,
-      lastName,
-      username,
-    });
 
     // Validate required fields
     if (!firstName || !lastName || !username || !dateOfBirth || !fullMobile) {
@@ -88,7 +112,11 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    console.log("✅ User activated:", updatedUser.status);
+    console.log("✅ User activated successfully:", {
+      userId: updatedUser.id,
+      status: updatedUser.status,
+      isActive: updatedUser.isActive,
+    });
 
     return NextResponse.json({
       success: true,
@@ -97,6 +125,18 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("❌ Activate user error:", error);
+
+    // Better error handling for different Prisma errors
+    if (error.code === "P2025") {
+      return NextResponse.json(
+        {
+          message: "User record not found. Please sign in again.",
+          code: "USER_NOT_FOUND",
+        },
+        { status: 404 }
+      );
+    }
+
     return NextResponse.json(
       { message: "Internal server error" },
       { status: 500 }
