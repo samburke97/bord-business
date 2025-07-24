@@ -22,7 +22,6 @@ interface BusinessSetupFormProps {
 interface FormData {
   firstName: string;
   lastName: string;
-  username: string;
   dateOfBirth: string;
   countryCode: string;
   mobile: string;
@@ -33,7 +32,6 @@ interface FormData {
 interface FormErrors {
   firstName?: string;
   lastName?: string;
-  username?: string;
   dateOfBirth?: string;
   mobile?: string;
   password?: string;
@@ -54,7 +52,7 @@ export default function BusinessSetupForm({
   const [formData, setFormData] = useState<FormData>({
     firstName: "",
     lastName: "",
-    username: "",
+
     dateOfBirth: "",
     countryCode: "",
     mobile: "",
@@ -63,7 +61,6 @@ export default function BusinessSetupForm({
   });
   const [errors, setErrors] = useState<FormErrors>({});
   const [isLoading, setIsLoading] = useState(false);
-  const [isCheckingUsername, setIsCheckingUsername] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
@@ -143,17 +140,6 @@ export default function BusinessSetupForm({
       newErrors.lastName = "Please enter your last name";
     }
 
-    if (!formData.username.trim()) {
-      newErrors.username = "Username is required";
-    } else if (formData.username.length < 3) {
-      newErrors.username = "Username must be at least 3 characters";
-    } else if (formData.username.length > 30) {
-      newErrors.username = "Username must be less than 30 characters";
-    } else if (!/^[a-zA-Z0-9._-]+$/.test(formData.username)) {
-      newErrors.username =
-        "Username can only contain letters, numbers, periods, underscores, and hyphens";
-    }
-
     if (!formData.dateOfBirth) {
       newErrors.dateOfBirth = "Date of birth is required";
     } else {
@@ -203,46 +189,6 @@ export default function BusinessSetupForm({
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleUsernameBlur = async () => {
-    if (!formData.username.trim() || formData.username.length < 3) {
-      return;
-    }
-
-    setIsCheckingUsername(true);
-    try {
-      // Generate reCAPTCHA token for username check
-      const recaptchaToken = await getReCaptchaToken("username_check");
-
-      const response = await fetch("/api/auth/check-username", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          username: formData.username,
-          recaptchaToken,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setErrors((prev) => ({ ...prev, username: data.message }));
-      } else if (!data.available) {
-        setErrors((prev) => ({
-          ...prev,
-          username: "Username is already taken",
-        }));
-      } else {
-        setErrors((prev) => ({ ...prev, username: undefined }));
-      }
-    } catch (error) {
-      console.error("Username check error:", error);
-    } finally {
-      setIsCheckingUsername(false);
-    }
-  };
-
   const handleSubmit = async () => {
     if (!validateForm()) {
       return;
@@ -273,7 +219,6 @@ export default function BusinessSetupForm({
         ? {
             firstName: formData.firstName.trim(),
             lastName: formData.lastName.trim(),
-            username: formData.username.trim(),
             dateOfBirth: formData.dateOfBirth,
             fullMobile: `${formData.countryCode} ${formData.mobile.trim()}`,
             recaptchaToken,
@@ -282,7 +227,6 @@ export default function BusinessSetupForm({
             email,
             firstName: formData.firstName.trim(),
             lastName: formData.lastName.trim(),
-            username: formData.username.trim(),
             dateOfBirth: formData.dateOfBirth,
             fullMobile: `${formData.countryCode} ${formData.mobile.trim()}`,
             password: formData.password,
@@ -330,16 +274,10 @@ export default function BusinessSetupForm({
           errorMessage.includes("USER_NOT_FOUND") ||
           errorMessage.includes("Session expired")
         ) {
-          setErrors({ username: "Session expired. Please sign in again." });
           // Redirect to login after a short delay
           setTimeout(() => {
             window.location.href = "/login";
           }, 2000);
-        } else if (
-          errorMessage.includes("Username") ||
-          errorMessage.includes("username")
-        ) {
-          setErrors({ username: errorMessage });
         } else if (
           errorMessage.includes("Email") ||
           errorMessage.includes("email")
@@ -380,7 +318,6 @@ export default function BusinessSetupForm({
     const basicFields =
       formData.firstName.trim() &&
       formData.lastName.trim() &&
-      formData.username.trim() &&
       formData.dateOfBirth &&
       formData.mobile.trim();
 
@@ -462,88 +399,6 @@ export default function BusinessSetupForm({
               error={errors.lastName}
               required
             />
-
-            <div className={styles.usernameField}>
-              <TextInput
-                id="username"
-                label="Public Username"
-                value={formData.username}
-                onChange={(e) => handleInputChange("username", e.target.value)}
-                onBlur={handleUsernameBlur}
-                placeholder="Create your username"
-                error={errors.username}
-                required
-                disabled={isCheckingUsername}
-                rightIcon={
-                  <div className={styles.usernameRightSection}>
-                    <span className={styles.usernameCounter}>
-                      {formData.username.length}/25
-                    </span>
-                    {isCheckingUsername && (
-                      <div className={styles.usernameSpinner}>
-                        <svg
-                          width="16"
-                          height="16"
-                          viewBox="0 0 16 16"
-                          className={styles.spinner}
-                        >
-                          <circle
-                            cx="8"
-                            cy="8"
-                            r="6"
-                            fill="none"
-                            stroke="var(--for-medium, #7e807f)"
-                            strokeWidth="2"
-                            strokeDasharray="30"
-                            strokeDashoffset="30"
-                          />
-                        </svg>
-                      </div>
-                    )}
-                    {!isCheckingUsername &&
-                      formData.username.length >= 3 &&
-                      !errors.username && (
-                        <div className={styles.usernameAvailable}>
-                          <svg
-                            width="16"
-                            height="16"
-                            viewBox="0 0 16 16"
-                            fill="none"
-                          >
-                            <path
-                              d="M3 8l3 3 7-7"
-                              stroke="var(--primary-300, #7ceb92)"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                        </div>
-                      )}
-                    {!isCheckingUsername &&
-                      errors.username &&
-                      errors.username.includes("taken") && (
-                        <div className={styles.usernameTaken}>
-                          <svg
-                            width="16"
-                            height="16"
-                            viewBox="0 0 16 16"
-                            fill="none"
-                          >
-                            <path
-                              d="M4 4l8 8M12 4l-8 8"
-                              stroke="var(--red-wine-300, #900c40)"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                        </div>
-                      )}
-                  </div>
-                }
-              />
-            </div>
 
             <TextInput
               id="dateOfBirth"
@@ -766,7 +621,7 @@ export default function BusinessSetupForm({
           <Button
             variant="primary-green"
             onClick={handleSubmit}
-            disabled={isLoading || !hasBasicFields || isCheckingUsername}
+            disabled={isLoading || !hasBasicFields}
             fullWidth
           >
             {isLoading

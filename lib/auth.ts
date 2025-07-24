@@ -1,4 +1,4 @@
-// lib/auth.ts - CLEAN WORKING VERSION
+// lib/auth.ts - FIXED: Enforce single authentication method per email
 import { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import FacebookProvider from "next-auth/providers/facebook";
@@ -107,8 +107,8 @@ export const authOptions: NextAuthOptions = {
             return false;
           }
 
-          // Find user by email
-          const foundUser = await prisma.user.findUnique({
+          // CRITICAL FIX: Check if user already exists with different authentication method
+          const existingUser = await prisma.user.findUnique({
             where: { email: user.email },
             include: {
               accounts: true,
@@ -116,75 +116,81 @@ export const authOptions: NextAuthOptions = {
             },
           });
 
-          if (foundUser) {
-            const hasThisProvider = foundUser.accounts.some(
+          if (existingUser) {
+            // User already exists - check if they're trying to use a different method
+            const hasCurrentProvider = existingUser.accounts.some(
               (acc) => acc.provider === account.provider
             );
 
-            if (hasThisProvider) {
-              // Update user object with existing user data
-              user.id = foundUser.id;
-              user.globalRole = foundUser.globalRole;
-              user.isVerified = foundUser.isVerified;
-              user.isActive = foundUser.isActive;
-              user.status = foundUser.status;
+            if (hasCurrentProvider) {
+              // User already has this OAuth provider - allow signin
+              user.id = existingUser.id;
+              user.globalRole = existingUser.globalRole;
+              user.isVerified = existingUser.isVerified;
+              user.isActive = existingUser.isActive;
+              user.status = existingUser.status;
               return true;
             }
 
-            // If no Account record exists but user was created via OAuth, allow sign-in
-            if (foundUser.accounts.length === 0 && !foundUser.credentials) {
-              // Update user object with existing user data
-              user.id = foundUser.id;
-              user.globalRole = foundUser.globalRole;
-              user.isVerified = foundUser.isVerified;
-              user.isActive = foundUser.isActive;
-              user.status = foundUser.status;
-              return true;
+            // CRITICAL: Check if user has different authentication methods
+            const hasEmailCredentials =
+              !!existingUser.credentials?.passwordHash;
+            const hasOtherOAuthProviders = existingUser.accounts.some(
+              (acc) => acc.provider !== account.provider
+            );
+
+            if (hasEmailCredentials || hasOtherOAuthProviders) {
+              // User exists with different method - BLOCK and redirect to error
+              const existingMethods = [];
+              if (hasEmailCredentials) existingMethods.push("email");
+              existingUser.accounts.forEach((acc) => {
+                if (!existingMethods.includes(acc.provider)) {
+                  existingMethods.push(acc.provider);
+                }
+              });
+
+              // Redirect to error page with existing methods info
+              const errorUrl = `/auth/error?error=AccountExistsWithDifferentMethod&email=${encodeURIComponent(
+                user.email
+              )}&available=${existingMethods.join(",")}&attempted=${account.provider}`;
+
+              throw new Error(`REDIRECT:${errorUrl}`);
             }
-
-            // Block if user has other authentication methods
-            const hasCredentials = !!foundUser.credentials;
-            const hasGoogle = foundUser.accounts.some(
-              (acc) => acc.provider === "google"
-            );
-            const hasFacebook = foundUser.accounts.some(
-              (acc) => acc.provider === "facebook"
-            );
-
-            let availableMethods = [];
-            if (hasCredentials) availableMethods.push("email");
-            if (hasGoogle) availableMethods.push("google");
-            if (hasFacebook) availableMethods.push("facebook");
-
-            return `/auth/error?error=AccountExistsWithDifferentMethod&email=${encodeURIComponent(user.email)}&available=${availableMethods.join(",")}&attempted=${account.provider}`;
           }
 
-          // Create new OAuth user
+          // User doesn't exist or no conflicting methods - create new OAuth user
+          if (!existingUser) {
+            const newUser = await prisma.user.create({
+              data: {
+                email: user.email,
+                name: user.name || user.email,
+                image: user.image,
+                globalRole: "USER",
+                isVerified: false, // Will be set to true when profile is completed
+                isActive: false, // Will be set to true when profile is completed
+                status: "PENDING", // Only OAuth users get PENDING status
+              },
+            });
 
-          const newUser = await prisma.user.create({
-            data: {
-              email: user.email,
-              name: user.name || user.email,
-              image: user.image,
-              globalRole: "USER",
-              isVerified: false,
-              isActive: false,
-              status: "PENDING",
-            },
-          });
-
-          // Update user object with new user data
-          user.id = newUser.id;
-          user.globalRole = newUser.globalRole;
-          user.isVerified = newUser.isVerified;
-          user.isActive = newUser.isActive;
-          user.status = newUser.status;
+            // Update the user object with the new user's data for the JWT
+            user.id = newUser.id;
+            user.globalRole = newUser.globalRole;
+            user.isVerified = newUser.isVerified;
+            user.isActive = newUser.isActive;
+            user.status = newUser.status;
+          }
 
           return true;
         }
 
         return true;
       } catch (error) {
+        // Check if this is a redirect error
+        if (error instanceof Error && error.message.startsWith("REDIRECT:")) {
+          // Extract the URL and return false to trigger NextAuth error handling
+          return false;
+        }
+
         return false;
       }
     },
@@ -206,6 +212,8 @@ export const authOptions: NextAuthOptions = {
         if (token.status) {
           session.user.status = token.status as string;
         } else {
+          // Email users (who have credentials/passwords) should never be PENDING
+          // Only OAuth users without completed profiles are PENDING
           session.user.status = session.user.isVerified ? "ACTIVE" : "PENDING";
         }
       }
@@ -226,6 +234,7 @@ export const authOptions: NextAuthOptions = {
       }
 
       if (trigger === "update") {
+        // When session is updated, refresh user data from database
         if (token.sub) {
           const freshUser = await prisma.user.findUnique({
             where: { id: token.sub },
@@ -257,25 +266,28 @@ export const authOptions: NextAuthOptions = {
     },
 
     async redirect({ url, baseUrl }) {
+      // Handle OAuth error redirects
+      if (url.includes("/auth/error")) {
+        return url.startsWith(baseUrl) ? url : `${baseUrl}${url}`;
+      }
+
+      // Handle OAuth success redirects
       if (url.includes("oauth/setup") || url.includes("auth/complete-setup")) {
-        return url;
+        return url.startsWith(baseUrl) ? url : `${baseUrl}${url}`;
       }
 
-      if (url.includes("auth/error")) {
-        return url;
-      }
-
+      // For relative URLs, return as-is
       if (url.startsWith("/")) {
         return `${baseUrl}${url}`;
       }
 
+      // For absolute URLs on same domain, return as-is
       if (url.startsWith(baseUrl)) {
         return url;
       }
 
+      // Default fallback to base URL
       return baseUrl;
     },
   },
-
-  events: {},
 };

@@ -201,7 +201,6 @@ model User {
   name          String?
   firstName     String?   @map("first_name")
   lastName      String?   @map("last_name")
-  username      String?   @unique
   email         String?   @unique
   emailVerified DateTime?
   image         String?
@@ -242,7 +241,6 @@ model User {
   favorites UserFavorite[]
 
   @@index([email])
-  @@index([username])
   @@index([globalRole])
   @@index([isActive])
   @@map("users")

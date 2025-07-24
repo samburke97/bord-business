@@ -32,6 +32,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // ✅ FIXED: Build the methods array properly - check for valid password hash
     const methods: string[] = [];
 
     // Add email method ONLY if user has credentials AND a valid password hash

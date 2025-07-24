@@ -1,4 +1,4 @@
-// app/api/auth/create-business-account/route.ts - UPDATED WITH RECAPTCHA
+// app/api/auth/create-business-account/route.ts - FIXED: Check for OAuth conflicts
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import prisma from "@/lib/prisma";
@@ -69,26 +69,15 @@ async function verifyRecaptcha(token: string): Promise<{
   score?: number;
   error?: string;
 }> {
-  const secretKey = process.env.RECAPTCHA_SECRET_KEY;
-
-  if (!secretKey) {
-    console.error("❌ RECAPTCHA_SECRET_KEY not configured");
-    return { success: false, error: "reCAPTCHA not configured" };
-  }
-
-  if (!token) {
-    return { success: false, error: "reCAPTCHA token is required" };
-  }
-
   try {
     const response = await fetch(
-      "https://www.google.com/recaptcha/api/siteverify",
+      `https://www.google.com/recaptcha/api/siteverify`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
         },
-        body: `secret=${secretKey}&response=${token}`,
+        body: `secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${token}`,
       }
     );
 
@@ -97,21 +86,8 @@ async function verifyRecaptcha(token: string): Promise<{
     if (!data.success) {
       return {
         success: false,
-        error: "reCAPTCHA verification failed",
+        error: data["error-codes"]?.join(", ") || "Verification failed",
       };
-    }
-
-    // For reCAPTCHA v3, check the score (0.0 - 1.0)
-    // Lower scores indicate bot-like behavior
-    if (data.score !== undefined) {
-      const threshold = 0.5; // Adjust based on your needs
-      if (data.score < threshold) {
-        return {
-          success: false,
-          score: data.score,
-          error: "Suspicious activity detected",
-        };
-      }
     }
 
     return {
@@ -132,23 +108,18 @@ export async function POST(request: NextRequest) {
       email,
       firstName,
       lastName,
-      username,
       dateOfBirth,
       fullMobile,
       password,
-      recaptchaToken, // ADD THIS LINE
+      recaptchaToken,
     } = await request.json();
 
-    // ADD RECAPTCHA VERIFICATION FIRST
+    // reCAPTCHA verification
     const recaptchaResult = await verifyRecaptcha(recaptchaToken);
-
     if (!recaptchaResult.success) {
-      console.error("❌ reCAPTCHA verification failed:", recaptchaResult.error);
       return NextResponse.json(
         {
-          message:
-            recaptchaResult.error ||
-            "Security verification failed. Please try again.",
+          message: "Security verification failed. Please try again.",
           code: "RECAPTCHA_FAILED",
         },
         { status: 400 }
@@ -160,7 +131,6 @@ export async function POST(request: NextRequest) {
       !email ||
       !firstName ||
       !lastName ||
-      !username ||
       !dateOfBirth ||
       !fullMobile ||
       !password
@@ -192,139 +162,149 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if username is available
-    const existingUsername = await prisma.user.findFirst({
-      where: { username },
-    });
-
-    if (existingUsername) {
-      return NextResponse.json(
-        { message: "Username is already taken" },
-        { status: 400 }
-      );
-    }
-
-    // Check if user already exists with this email
+    // ENTERPRISE RULE: Check if user already exists with OAuth accounts
     const existingUser = await prisma.user.findUnique({
       where: { email: sanitizedEmail },
+      include: {
+        accounts: true,
+        credentials: true,
+      },
     });
 
-    if (existingUser && existingUser.isVerified) {
-      return NextResponse.json(
-        { message: "An account with this email already exists" },
-        { status: 400 }
-      );
+    if (existingUser) {
+      // BLOCK: User exists with OAuth providers
+      if (existingUser.accounts.length > 0) {
+        const oauthProviders = existingUser.accounts.map((acc) => acc.provider);
+        return NextResponse.json(
+          {
+            message: "Account already exists with different sign-in method",
+            error: "ACCOUNT_EXISTS_OAUTH",
+            availableMethods: oauthProviders,
+          },
+          { status: 409 }
+        );
+      }
+
+      // BLOCK: User exists with verified email/password
+      if (existingUser.isVerified && existingUser.credentials?.passwordHash) {
+        return NextResponse.json(
+          {
+            message: "Account already exists with email and password",
+            error: "ACCOUNT_EXISTS_EMAIL",
+          },
+          { status: 409 }
+        );
+      }
+
+      // Allow: User exists but unverified - update their info
+      if (!existingUser.isVerified) {
+        const passwordHash = await hashPassword(password);
+
+        const updatedUser = await prisma.$transaction(async (tx) => {
+          if (existingUser.credentials) {
+            await tx.userCredentials.update({
+              where: { userId: existingUser.id },
+              data: { passwordHash },
+            });
+          } else {
+            await tx.userCredentials.create({
+              data: {
+                userId: existingUser.id,
+                email: sanitizedEmail,
+                passwordHash,
+              },
+            });
+          }
+
+          return await tx.user.update({
+            where: { id: existingUser.id },
+            data: {
+              firstName,
+              lastName,
+              name: `${firstName} ${lastName}`,
+              phone: fullMobile,
+              dateOfBirth: new Date(dateOfBirth),
+              globalRole: "USER",
+              status: "ACTIVE",
+              isActive: true,
+              isVerified: false,
+            },
+          });
+        });
+
+        // Send verification email and return success
+        await sendVerificationEmail(
+          sanitizedEmail,
+          firstName,
+          verificationCode
+        );
+
+        return NextResponse.json(
+          {
+            message: "Account updated successfully",
+            userId: updatedUser.id,
+            success: true,
+            emailSent: true,
+          },
+          { status: 201 }
+        );
+      }
     }
 
     // Hash password using Argon2
     const passwordHash = await hashPassword(password);
 
-    // Create user data
-    const userData = {
-      email: sanitizedEmail,
-      name: `${firstName} ${lastName}`,
-      firstName,
-      lastName,
-      username,
-      phone: fullMobile,
-      dateOfBirth: new Date(dateOfBirth),
-      isVerified: false,
-      isActive: true,
-      globalRole: "USER" as const,
-      status: "ACTIVE",
-    };
-
-    // Use transaction to create user and credentials
+    // Create new user with transaction
     const result = await prisma.$transaction(async (tx) => {
-      let user;
+      // Create user
+      const newUser = await tx.user.create({
+        data: {
+          email: sanitizedEmail,
+          firstName,
+          lastName,
+          name: `${firstName} ${lastName}`,
+          phone: fullMobile,
+          dateOfBirth: new Date(dateOfBirth),
+          globalRole: "USER",
+          status: "ACTIVE",
+          isActive: true,
+          isVerified: false, // Will be verified via email
+        },
+      });
 
-      if (existingUser) {
-        // Update existing unverified user
+      // Create user credentials
+      await tx.userCredentials.create({
+        data: {
+          userId: newUser.id,
+          email: sanitizedEmail,
+          passwordHash,
+        },
+      });
 
-        user = await tx.user.update({
-          where: { email: sanitizedEmail },
-          data: userData,
-          include: {
-            credentials: true,
-          },
-        });
-
-        // Update or create credentials
-        if (user.credentials) {
-          await tx.userCredentials.update({
-            where: { userId: user.id },
-            data: {
-              passwordHash,
-              passwordChangedAt: new Date(),
-              failedAttempts: 0,
-            },
-          });
-        } else {
-          await tx.userCredentials.create({
-            data: {
-              userId: user.id,
-              email: sanitizedEmail,
-              passwordHash,
-              passwordChangedAt: new Date(),
-              failedAttempts: 0,
-            },
-          });
-        }
-      } else {
-        // Create new user
-        user = await tx.user.create({
-          data: userData,
-        });
-
-        // Create user credentials with Argon2 hash
-        await tx.userCredentials.create({
-          data: {
-            userId: user.id,
-            email: sanitizedEmail,
-            passwordHash,
-            passwordChangedAt: new Date(),
-            failedAttempts: 0,
-          },
-        });
-      }
-
-      return user;
+      return newUser;
     });
 
-    // Send verification email directly (don't make internal API call)
+    // Generate verification code
+    const verificationCode = Math.floor(1000 + Math.random() * 9000).toString();
+    const hashedCode = crypto
+      .createHash("sha256")
+      .update(verificationCode)
+      .digest("hex");
+    const expires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    // Store verification token
+    await prisma.verificationToken.create({
+      data: {
+        identifier: sanitizedEmail,
+        token: hashedCode,
+        expires,
+      },
+    });
+
+    // Send verification email
     try {
-      // Clean up any old verification tokens for this email
-      await prisma.verificationToken.deleteMany({
-        where: {
-          identifier: sanitizedEmail,
-          expires: {
-            lt: new Date(),
-          },
-        },
-      });
-
-      // Generate secure 4-digit verification code
-      const verificationCode = Math.floor(
-        1000 + Math.random() * 9000
-      ).toString();
-      const hashedCode = crypto
-        .createHash("sha256")
-        .update(verificationCode)
-        .digest("hex");
-      const expires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes expiry
-
-      // Store verification token in database
-      await prisma.verificationToken.create({
-        data: {
-          identifier: sanitizedEmail,
-          token: hashedCode,
-          expires,
-        },
-      });
-
-      // Send verification email using Resend directly
-      const emailResult = await resend.emails.send({
-        from: process.env.FROM_EMAIL || "onboarding@bordsports.com",
+      await resend.emails.send({
+        from: "Bord Business <noreply@mail.bordsports.com>",
         to: sanitizedEmail,
         subject: "Welcome to Bord Business - Verify Your Email",
         html: `
@@ -333,61 +313,35 @@ export async function POST(request: NextRequest) {
             <head>
               <meta charset="utf-8">
               <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              <title>Welcome to Bord Business</title>
             </head>
-            <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff;">
-              <div style="text-align: center; margin-bottom: 30px; padding: 20px; background: linear-gradient(135deg, #7ceb92 0%, #59d472 100%); border-radius: 12px;">
-                <h1 style="color: #000; margin: 0; font-size: 28px; font-weight: 600;">Welcome to Bord Business!</h1>
-                <p style="color: #000; margin: 5px 0 0 0; opacity: 0.8; font-size: 16px;">Let's verify your email address</p>
-              </div>
-              
-              <div style="background: #f8f9fa; border-radius: 12px; padding: 30px; margin-bottom: 30px;">
-                <h2 style="color: #333; margin: 0 0 20px 0; font-size: 24px; text-align: center;">Your Verification Code</h2>
+            <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
+              <div style="background: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <h1 style="color: #333; text-align: center; margin-bottom: 30px;">Welcome to Bord Business!</h1>
                 
-                <p style="margin-bottom: 30px; font-size: 16px; color: #666; text-align: center;">
-                  Enter this 4-digit code to verify your email and continue setting up your business account:
+                <p style="color: #666; line-height: 1.6; margin-bottom: 30px;">
+                  Hi ${firstName},<br><br>
+                  Welcome to Bord Business! We're excited to have you on board. To complete your account setup, please verify your email address using the code below:
                 </p>
                 
-                <div style="text-align: center; margin: 30px 0;">
-                  <div style="background: #ffffff; border: 3px solid #7ceb92; border-radius: 12px; padding: 25px; font-size: 36px; font-weight: 700; letter-spacing: 12px; color: #333; display: inline-block; box-shadow: 0 4px 12px rgba(124, 235, 146, 0.3);">
-                    ${verificationCode}
-                  </div>
+                <div style="background: #f8f8f8; padding: 20px; text-align: center; border-radius: 8px; margin: 30px 0;">
+                  <p style="color: #333; margin: 0; font-size: 14px;">Your verification code is:</p>
+                  <h2 style="color: #10b981; font-size: 32px; margin: 10px 0; letter-spacing: 4px; font-weight: bold;">${verificationCode}</h2>
+                  <p style="color: #666; margin: 0; font-size: 12px;">This code expires in 10 minutes</p>
                 </div>
                 
-                <div style="background: #e3f2fd; border-left: 4px solid #2196f3; padding: 15px; border-radius: 4px; margin-top: 30px;">
-                  <p style="margin: 0; font-size: 14px; color: #1976d2;">
-                    <strong>Security Notice:</strong> This code will expire in 10 minutes. Never share this code with anyone.
-                  </p>
-                </div>
-              </div>
-              
-              <div style="background: #f5f5f5; border-radius: 8px; padding: 20px; text-align: center;">
-                <p style="color: #666; font-size: 14px; margin: 0;">
-                  If you didn't create a Bord Business account, please ignore this email or contact our support team.
+                <p style="color: #666; line-height: 1.6; margin-bottom: 30px;">
+                  Enter this code on the verification page to activate your account and start managing your business on Bord.
+                </p>
+                
+                <p style="color: #999; font-size: 12px; text-align: center; margin: 0;">
+                  © ${new Date().getFullYear()} Bord Sports Ltd. All rights reserved.<br>
+                  This is an automated message, please do not reply.
                 </p>
               </div>
-              
-              <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-              
-              <p style="color: #999; font-size: 12px; text-align: center; margin: 0;">
-                © ${new Date().getFullYear()} Bord Sports Ltd. All rights reserved.<br>
-                This is an automated message, please do not reply.
-              </p>
             </body>
           </html>
         `,
       });
-
-      // Check if email failed due to domain restrictions
-      if (emailResult.error) {
-        // For development, continue anyway since user can still manually verify
-        // In production, you'd want to handle this differently
-        if (
-          emailResult.error.name === "validation_error" &&
-          emailResult.error.message.includes("testing emails")
-        ) {
-        }
-      }
     } catch (emailError) {
       // Don't fail the account creation if email fails
       // The user can still request a new verification code

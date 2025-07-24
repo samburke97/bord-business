@@ -38,24 +38,9 @@ export async function POST(request: NextRequest) {
       await request.json();
 
     // Validate required fields
-    if (!firstName || !lastName || !username || !dateOfBirth || !fullMobile) {
+    if (!firstName || !lastName || !dateOfBirth || !fullMobile) {
       return NextResponse.json(
         { message: "All fields are required" },
-        { status: 400 }
-      );
-    }
-
-    // Validate username uniqueness
-    const existingUsername = await prisma.user.findFirst({
-      where: {
-        username,
-        NOT: { id: session.user.id },
-      },
-    });
-
-    if (existingUsername) {
-      return NextResponse.json(
-        { message: "Username is already taken" },
         { status: 400 }
       );
     }
@@ -86,7 +71,6 @@ export async function POST(request: NextRequest) {
         firstName,
         lastName,
         name: `${firstName} ${lastName}`,
-        username,
         phone: fullMobile,
         dateOfBirth: new Date(dateOfBirth),
         status: "ACTIVE",
