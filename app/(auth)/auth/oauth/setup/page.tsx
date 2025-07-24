@@ -102,7 +102,7 @@ export default function OAuthSetupPage() {
 
   // ✅ FIXED: Add congratulations step before business onboarding
   const handleSetupComplete = () => {
-    router.push("/auth/congratulations?next=business-onboarding");
+    router.push("/auth/congratulations");
   };
 
   // Show loading while initializing
