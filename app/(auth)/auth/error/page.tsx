@@ -21,6 +21,7 @@ function AuthErrorContent() {
     switch (error) {
       case "AccountExistsWithDifferentMethod":
       case "AccountExistsWithDifferentProvider":
+      case "AccessDenied":
         return {
           title: "Account Already Exists",
           description: `An account with this email address already exists. Please sign in using your existing account.`,
@@ -36,56 +37,13 @@ function AuthErrorContent() {
                 cx="32"
                 cy="32"
                 r="30"
-                stroke="#000"
+                stroke="#ef4444"
                 strokeWidth="2"
                 fill="none"
               />
               <path
                 d="M32 20v16M32 44h.01"
-                stroke="#000"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          ),
-          actions: (
-            <div className={styles.buttonContainer}>
-              <Button
-                variant="primary-green"
-                onClick={() => (window.location.href = "/login")}
-                fullWidth
-              >
-                Back to Sign In
-              </Button>
-            </div>
-          ),
-        };
-
-      case "OAuthAccountNotLinked":
-        return {
-          title: "Account Not Linked",
-          description:
-            "This account is not linked to your existing account. Please sign in with your original method.",
-          icon: (
-            <svg
-              width="64"
-              height="64"
-              viewBox="0 0 64 64"
-              fill="none"
-              className={styles.errorSvg}
-            >
-              <circle
-                cx="32"
-                cy="32"
-                r="30"
-                stroke="#000"
-                strokeWidth="2"
-                fill="none"
-              />
-              <path
-                d="M20 32h24M32 20l12 12-12 12"
-                stroke="#000"
+                stroke="#ef4444"
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -121,13 +79,13 @@ function AuthErrorContent() {
                 cx="32"
                 cy="32"
                 r="30"
-                stroke="#000"
+                stroke="#6b7280"
                 strokeWidth="2"
                 fill="none"
               />
               <path
                 d="M20 20l24 24M44 20L20 44"
-                stroke="#000"
+                stroke="#6b7280"
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"

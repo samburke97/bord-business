@@ -1,4 +1,4 @@
-// lib/auth.ts - FIXED: Enforce single authentication method per email
+// lib/auth.ts - FIXED: Manual Account creation without adapter conflicts
 import { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import FacebookProvider from "next-auth/providers/facebook";
@@ -12,6 +12,8 @@ import {
 } from "@/lib/security/password";
 
 export const authOptions: NextAuthOptions = {
+  // ✅ NO ADAPTER: We handle Account creation manually to avoid conflicts
+
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
@@ -154,24 +156,59 @@ export const authOptions: NextAuthOptions = {
                 user.email
               )}&available=${existingMethods.join(",")}&attempted=${account.provider}`;
 
-              throw new Error(`REDIRECT:${errorUrl}`);
+              // Instead of throwing an error, we need to handle this differently
+              // Store the error info and let NextAuth handle the redirect
+              console.log(
+                "🚨 Blocking OAuth signin - redirecting to:",
+                errorUrl
+              );
+
+              // Use NextAuth's built-in error handling
+              throw new Error(`OAuthAccountNotLinked`);
             }
 
-            // ✅ FIXED: User exists but has no auth methods - link this OAuth to existing user
-            // Update user data in the user object for JWT, but keep existing user record
+            // ✅ FIXED: User exists but has no auth methods - create account for existing user
+            try {
+              await prisma.account.create({
+                data: {
+                  userId: existingUser.id,
+                  type: account.type,
+                  provider: account.provider,
+                  providerAccountId: account.providerAccountId,
+                  refresh_token: account.refresh_token,
+                  access_token: account.access_token,
+                  expires_at: account.expires_at,
+                  token_type: account.token_type,
+                  scope: account.scope,
+                  id_token: account.id_token,
+                  session_state: account.session_state,
+                },
+              });
+
+              console.log("✅ Linked OAuth account to existing user:", {
+                userId: existingUser.id,
+                email: existingUser.email,
+                provider: account.provider,
+              });
+            } catch (accountError) {
+              console.error(
+                "Failed to create account for existing user:",
+                accountError
+              );
+              return false;
+            }
+
+            // Update user data in the user object for JWT
             user.id = existingUser.id;
             user.globalRole = existingUser.globalRole;
             user.isVerified = existingUser.isVerified;
             user.isActive = existingUser.isActive;
             user.status = existingUser.status;
 
-            // Return true - NextAuth will automatically create the Account record linking this OAuth
             return true;
           }
 
-          // ✅ FIXED: User doesn't exist - create user but don't interfere with Account creation
-          // NextAuth will call this callback BEFORE creating the Account record
-          // So we create the User record here, then NextAuth creates the Account record
+          // ✅ FIXED: User doesn't exist - create user AND account manually
           try {
             const newUser = await prisma.user.create({
               data: {
@@ -185,6 +222,23 @@ export const authOptions: NextAuthOptions = {
               },
             });
 
+            // ✅ CRITICAL: Also create the Account record manually
+            await prisma.account.create({
+              data: {
+                userId: newUser.id,
+                type: account.type,
+                provider: account.provider,
+                providerAccountId: account.providerAccountId,
+                refresh_token: account.refresh_token,
+                access_token: account.access_token,
+                expires_at: account.expires_at,
+                token_type: account.token_type,
+                scope: account.scope,
+                id_token: account.id_token,
+                session_state: account.session_state,
+              },
+            });
+
             // Update the user object with the new user's data for JWT
             user.id = newUser.id;
             user.globalRole = newUser.globalRole;
@@ -192,13 +246,13 @@ export const authOptions: NextAuthOptions = {
             user.isActive = newUser.isActive;
             user.status = newUser.status;
 
-            console.log("✅ Created new OAuth user:", {
-              id: newUser.id,
+            console.log("✅ Created new OAuth user with account:", {
+              userId: newUser.id,
               email: newUser.email,
               provider: account.provider,
+              accountCreated: true,
             });
 
-            // ✅ CRITICAL: Return true and let NextAuth create the Account record automatically
             return true;
           } catch (createError) {
             // Handle case where user creation fails (e.g., email already exists due to race condition)
@@ -206,9 +260,34 @@ export const authOptions: NextAuthOptions = {
               // Unique constraint violation - user was created between our check and create
               const justCreatedUser = await prisma.user.findUnique({
                 where: { email: user.email },
+                include: { accounts: true },
               });
 
               if (justCreatedUser) {
+                // Check if account already exists for this provider
+                const existingAccount = justCreatedUser.accounts.find(
+                  (acc) => acc.provider === account.provider
+                );
+
+                if (!existingAccount) {
+                  // Create the missing account
+                  await prisma.account.create({
+                    data: {
+                      userId: justCreatedUser.id,
+                      type: account.type,
+                      provider: account.provider,
+                      providerAccountId: account.providerAccountId,
+                      refresh_token: account.refresh_token,
+                      access_token: account.access_token,
+                      expires_at: account.expires_at,
+                      token_type: account.token_type,
+                      scope: account.scope,
+                      id_token: account.id_token,
+                      session_state: account.session_state,
+                    },
+                  });
+                }
+
                 user.id = justCreatedUser.id;
                 user.globalRole = justCreatedUser.globalRole;
                 user.isVerified = justCreatedUser.isVerified;
@@ -218,7 +297,10 @@ export const authOptions: NextAuthOptions = {
               }
             }
 
-            console.error("Failed to create OAuth user:", createError);
+            console.error(
+              "Failed to create OAuth user and account:",
+              createError
+            );
             return false;
           }
         }
@@ -317,6 +399,17 @@ export const authOptions: NextAuthOptions = {
       // Handle OAuth success redirects
       if (url.includes("oauth/setup") || url.includes("auth/complete-setup")) {
         return url.startsWith(baseUrl) ? url : `${baseUrl}${url}`;
+      }
+
+      // ✅ CUSTOM: Handle our specific error case
+      // When OAuth is blocked due to existing different method, redirect to our custom error
+      if (
+        url.includes("error=OAuthAccountNotLinked") ||
+        url.includes("error=AccessDenied")
+      ) {
+        // We need to get the user info somehow - let's check if we stored it
+        // For now, redirect to a generic error that will be handled by the error page
+        return `${baseUrl}/auth/error?error=AccountExistsWithDifferentMethod&attempted=oauth`;
       }
 
       // For relative URLs, return as-is
