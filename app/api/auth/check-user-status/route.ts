@@ -1,4 +1,4 @@
-// app/api/auth/check-user-status/route.ts - COMPLETE: Properly detect OAuth vs Email users
+// app/api/auth/check-user-status/route.ts - FIXED: Properly detect OAuth vs Email users
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
@@ -47,6 +47,19 @@ export async function POST(request: NextRequest) {
       }
     });
 
+    // 🔍 DEBUG: Log what we found
+    console.log("Check user status debug:", {
+      email: user.email,
+      hasCredentials: !!user.credentials,
+      hasPasswordHash: !!user.credentials?.passwordHash,
+      accountsCount: user.accounts.length,
+      accounts: user.accounts.map((acc) => ({
+        provider: acc.provider,
+        type: acc.type,
+      })),
+      methods,
+    });
+
     return NextResponse.json({
       exists: true,
       name: user.name,
@@ -63,6 +76,7 @@ export async function POST(request: NextRequest) {
       hasPasswordHash: !!user.credentials?.passwordHash,
     });
   } catch (error) {
+    console.error("Check user status error:", error);
     return NextResponse.json(
       { message: "Internal server error" },
       { status: 500 }

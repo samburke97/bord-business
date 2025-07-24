@@ -1,4 +1,4 @@
-// app/(auth)/auth/oauth/setup/page.tsx - FIXED: Better status detection
+// app/(auth)/auth/oauth/setup/page.tsx - FIXED: Add congratulations step
 "use client";
 
 import { useSession } from "next-auth/react";
@@ -100,8 +100,9 @@ export default function OAuthSetupPage() {
     initializeOAuthFlow();
   }, [session, status, router]);
 
+  // ✅ FIXED: Add congratulations step before business onboarding
   const handleSetupComplete = () => {
-    router.push("/business-onboarding");
+    router.push("/auth/congratulations?next=business-onboarding");
   };
 
   // Show loading while initializing

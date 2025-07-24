@@ -138,11 +138,30 @@ export default function LoginForm({ title, description }: LoginFormProps) {
 
       const userData = await response.json();
 
+      // 🔍 DEBUG: Log what the API returns
+      console.log("User data from check-user-status:", {
+        exists: userData.exists,
+        methods: userData.methods,
+        hasCredentials: userData.hasCredentials,
+        hasPasswordHash: userData.hasPasswordHash,
+        providers: userData.providers,
+      });
+
       if (userData.exists) {
         const methods = userData.methods || [];
 
+        // 🔍 DEBUG: Log the decision logic
+        console.log("Decision logic:", {
+          methods,
+          includesEmail: methods.includes("email"),
+          methodsLength: methods.length,
+          shouldRedirectToError:
+            !methods.includes("email") && methods.length > 0,
+        });
+
         // If user exists but DOES NOT have email credentials and has other methods, redirect to error page
         if (!methods.includes("email") && methods.length > 0) {
+          console.log("🚨 Redirecting to error page");
           router.push(
             `/auth/error?error=AccountExistsWithDifferentMethod&email=${encodeURIComponent(
               email
@@ -151,6 +170,7 @@ export default function LoginForm({ title, description }: LoginFormProps) {
           return;
         }
 
+        console.log("✅ Proceeding to password page");
         // User has email credentials - continue to password screen
         router.push(
           `/auth/password?email=${encodeURIComponent(email)}&type=login&name=${encodeURIComponent(
@@ -158,6 +178,7 @@ export default function LoginForm({ title, description }: LoginFormProps) {
           )}`
         );
       } else {
+        console.log("🆕 User doesn't exist, going to email setup");
         // ✅ FIXED: Route new email users to dedicated email flow
         router.push(`/auth/email/setup?email=${encodeURIComponent(email)}`);
       }

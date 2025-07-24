@@ -107,7 +107,7 @@ export const authOptions: NextAuthOptions = {
             return false;
           }
 
-          // CRITICAL FIX: Check if user already exists with different authentication method
+          // Check if user already exists with different authentication method
           const existingUser = await prisma.user.findUnique({
             where: { email: user.email },
             include: {
@@ -132,7 +132,7 @@ export const authOptions: NextAuthOptions = {
               return true;
             }
 
-            // CRITICAL: Check if user has different authentication methods
+            // Check if user has different authentication methods
             const hasEmailCredentials =
               !!existingUser.credentials?.passwordHash;
             const hasOtherOAuthProviders = existingUser.accounts.some(
@@ -156,41 +156,84 @@ export const authOptions: NextAuthOptions = {
 
               throw new Error(`REDIRECT:${errorUrl}`);
             }
+
+            // ✅ FIXED: User exists but has no auth methods - link this OAuth to existing user
+            // Update user data in the user object for JWT, but keep existing user record
+            user.id = existingUser.id;
+            user.globalRole = existingUser.globalRole;
+            user.isVerified = existingUser.isVerified;
+            user.isActive = existingUser.isActive;
+            user.status = existingUser.status;
+
+            // Return true - NextAuth will automatically create the Account record linking this OAuth
+            return true;
           }
 
-          // User doesn't exist or no conflicting methods - create new OAuth user
-          if (!existingUser) {
+          // ✅ FIXED: User doesn't exist - create user but don't interfere with Account creation
+          // NextAuth will call this callback BEFORE creating the Account record
+          // So we create the User record here, then NextAuth creates the Account record
+          try {
             const newUser = await prisma.user.create({
               data: {
                 email: user.email,
                 name: user.name || user.email,
                 image: user.image,
                 globalRole: "USER",
-                isVerified: false, // Will be set to true when profile is completed
-                isActive: false, // Will be set to true when profile is completed
-                status: "PENDING", // Only OAuth users get PENDING status
+                isVerified: false,
+                isActive: false,
+                status: "PENDING",
               },
             });
 
-            // Update the user object with the new user's data for the JWT
+            // Update the user object with the new user's data for JWT
             user.id = newUser.id;
             user.globalRole = newUser.globalRole;
             user.isVerified = newUser.isVerified;
             user.isActive = newUser.isActive;
             user.status = newUser.status;
-          }
 
-          return true;
+            console.log("✅ Created new OAuth user:", {
+              id: newUser.id,
+              email: newUser.email,
+              provider: account.provider,
+            });
+
+            // ✅ CRITICAL: Return true and let NextAuth create the Account record automatically
+            return true;
+          } catch (createError) {
+            // Handle case where user creation fails (e.g., email already exists due to race condition)
+            if (createError.code === "P2002") {
+              // Unique constraint violation - user was created between our check and create
+              const justCreatedUser = await prisma.user.findUnique({
+                where: { email: user.email },
+              });
+
+              if (justCreatedUser) {
+                user.id = justCreatedUser.id;
+                user.globalRole = justCreatedUser.globalRole;
+                user.isVerified = justCreatedUser.isVerified;
+                user.isActive = justCreatedUser.isActive;
+                user.status = justCreatedUser.status;
+                return true;
+              }
+            }
+
+            console.error("Failed to create OAuth user:", createError);
+            return false;
+          }
         }
 
         return true;
       } catch (error) {
         // Check if this is a redirect error
         if (error instanceof Error && error.message.startsWith("REDIRECT:")) {
-          // Extract the URL and return false to trigger NextAuth error handling
+          console.log(
+            "🚨 Blocking OAuth signin due to existing different auth method"
+          );
           return false;
         }
 
+        console.error("SignIn callback error:", error);
         return false;
       }
     },
