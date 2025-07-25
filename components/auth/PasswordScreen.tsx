@@ -128,7 +128,7 @@ export default function PasswordScreen({
           password,
           redirect: false, // Important: don't let NextAuth handle redirect
           callbackUrl: continueBusinessSetup
-            ? "/business-onboarding"
+            ? "/business/onboarding"
             : "/dashboard",
         });
 

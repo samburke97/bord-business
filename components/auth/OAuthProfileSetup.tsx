@@ -48,7 +48,7 @@ export default function OAuthProfileSetup() {
               const businessData = await businessResponse.json();
 
               if (businessData.needsSetup) {
-                router.push("/business-onboarding");
+                router.push("/business/onboarding");
                 return;
               } else {
                 router.push("/dashboard");
@@ -68,7 +68,7 @@ export default function OAuthProfileSetup() {
   }, [session, status, router]);
 
   const handleSetupComplete = useCallback(() => {
-    router.push("/business-onboarding");
+    router.push("/business/onboarding");
   }, [router]);
 
   // Show loading while initializing

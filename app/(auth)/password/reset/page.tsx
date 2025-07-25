@@ -1,4 +1,3 @@
-// app/(auth)/auth/reset-password/page.tsx
 "use client";
 
 import { useState, Suspense } from "react";
@@ -103,9 +102,7 @@ function ResetPasswordContent() {
       }
 
       // Navigate to success page
-      router.push(
-        `/password/reset/success?email=${encodeURIComponent(email)}`
-      );
+      router.push(`/password/reset/success?email=${encodeURIComponent(email)}`);
     } catch (error) {
       setNewPasswordError(
         error instanceof Error

@@ -1,4 +1,3 @@
-// app/(auth)/auth/error/page.tsx
 "use client";
 
 import { useSearchParams } from "next/navigation";

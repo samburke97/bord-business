@@ -1,4 +1,3 @@
-// app/(auth)/auth/email/setup/page.tsx - FIXED: Send verification code automatically
 "use client";
 
 import { useSearchParams } from "next/navigation";

@@ -11,7 +11,7 @@ export default function DashboardPage() {
 
   const handleStartNow = () => {
     // Navigate to business onboarding or business creation
-    router.push("/business-onboarding");
+    router.push("/business/onboarding");
   };
 
   const handleLearnMore = () => {

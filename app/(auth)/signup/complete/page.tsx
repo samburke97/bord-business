@@ -1,4 +1,4 @@
-// app/(auth)/auth/complete-setup/page.tsx - Clean setup completion
+// app/(auth)/oauth/setup/page.tsx - Clean setup completion
 "use client";
 
 import { useEffect, useState } from "react";
@@ -43,7 +43,7 @@ export default function CompleteSetupPage() {
     await update();
 
     // Redirect to business onboarding
-    router.push("/business-onboarding");
+    router.push("/business/onboarding");
   };
 
   if (isChecking || status === "loading") {

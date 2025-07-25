@@ -43,8 +43,8 @@ export default function AuthFlowManager({
       // PRIORITY 1: Check URL path first to determine intended step
       const pathname = window.location.pathname;
 
-      // If we're explicitly on /auth/setup, show setup form regardless of method
-      if (pathname === "/auth/setup") {
+      // If we're explicitly on /oauth/setup, show setup form regardless of method
+      if (pathname === "/oauth/setup") {
         if (authMethod === "oauth" && session?.user) {
           // OAuth users on setup page
           setCurrentStep("setup");

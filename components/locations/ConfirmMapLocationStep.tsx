@@ -129,7 +129,7 @@ export default function ConfirmMapLocationStep({
   // Expose the continue handler for the header button
   useEffect(() => {
     // Detect if we're in business onboarding vs location management
-    const isBusinessOnboarding = pathname?.includes("/business-onboarding");
+    const isBusinessOnboarding = pathname?.includes("/business/onboarding");
 
     if (isBusinessOnboarding) {
       // For business onboarding, use the standard step handler

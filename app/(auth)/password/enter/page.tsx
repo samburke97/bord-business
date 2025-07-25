@@ -1,4 +1,3 @@
-// app/(auth)/auth/password/page.tsx - Handles existing email users
 "use client";
 
 import { useSearchParams } from "next/navigation";

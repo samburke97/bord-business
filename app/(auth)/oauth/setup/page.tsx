@@ -1,4 +1,3 @@
-// app/(auth)/auth/oauth/setup/page.tsx - FIXED: Remove auto-routing to business onboarding
 "use client";
 
 import { useSession } from "next-auth/react";
@@ -37,7 +36,7 @@ export default function OAuthSetupPage() {
             const businessData = await businessResponse.json();
 
             if (businessData.needsSetup) {
-              router.push("/business-onboarding");
+              router.push("/business/onboarding");
               return;
             } else {
               router.push("/dashboard");
@@ -45,12 +44,12 @@ export default function OAuthSetupPage() {
             }
           } else {
             // Fallback to business onboarding
-            router.push("/business-onboarding");
+            router.push("/business/onboarding");
             return;
           }
         } catch (error) {
           // Fallback to business onboarding
-          router.push("/business-onboarding");
+          router.push("/business/onboarding");
           return;
         }
       }
@@ -74,7 +73,7 @@ export default function OAuthSetupPage() {
               profileData.phone &&
               profileData.dateOfBirth
             ) {
-              router.push("/business-onboarding");
+              router.push("/business/onboarding");
               return;
             } else {
               setIsInitializing(false);
@@ -97,7 +96,6 @@ export default function OAuthSetupPage() {
     initializeOAuthFlow();
   }, [session, status, router]);
 
-  // ✅ FIXED: Remove auto-routing - just go to congratulations without next parameter
   const handleSetupComplete = () => {
     router.push("/signup/success");
   };
@@ -160,12 +158,11 @@ export default function OAuthSetupPage() {
     );
   }
 
-  // Render the profile setup form (only for PENDING users with incomplete profiles)
   return (
     <BusinessSetupForm
       email={session?.user?.email || ""}
       onSetupComplete={handleSetupComplete}
-      isOAuth={true} // Explicitly true for OAuth users
+      isOAuth={true}
     />
   );
 }

@@ -1,4 +1,3 @@
-// app/(auth)/auth/forgot-password/page.tsx
 "use client";
 
 import { useState, Suspense } from "react";
@@ -60,9 +59,7 @@ function ForgotPasswordContent() {
       }
 
       // Navigate to success page
-      router.push(
-        `/password/forgot/sent?email=${encodeURIComponent(email)}`
-      );
+      router.push(`/password/forgot/sent?email=${encodeURIComponent(email)}`);
     } catch (error) {
       setEmailError(
         error instanceof Error

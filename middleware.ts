@@ -167,13 +167,13 @@ export async function middleware(req: NextRequest) {
       "/api/auth/check-username",
 
       // NEW: Updated routes
-      "/signup/complete", // Updated from /oauth/setup
+      "/signup/complete", // For email users completing setup
       "/oauth/setup", // CRITICAL ADD: Allow OAuth setup page
       "/oauth/", // CRITICAL ADD: All OAuth routes
       "/signup/", // All signup routes
       "/oauth/setup", // CRITICAL ADD: Allow OAuth setup page
       "/oauth/", // CRITICAL ADD: All OAuth routes
-      "/business/onboarding", // Updated from /business-onboarding
+      "/business/onboarding", // Updated from /business/onboarding
       "/business/", // All business routes
       "/", // Allow root page access for proper routing
     ];
@@ -197,16 +197,15 @@ export async function middleware(req: NextRequest) {
       return response;
     }
 
-    // SPECIAL CASE: Allow PENDING users to access business-onboarding
     // This handles the case where user just activated but token hasn't refreshed
-    if (userInfo.status === "PENDING" && pathname === "/business-onboarding") {
+    if (userInfo.status === "PENDING" && pathname === "/business/onboarding") {
       return response;
     }
 
     // SPECIAL CASE: Allow access to business-onboarding for users who might have just activated
     // Even if they show as PENDING, they might have stale token data
     if (
-      pathname === "/business-onboarding" &&
+      pathname === "/business/onboarding" &&
       (userInfo.status === "PENDING" || userInfo.status === "ACTIVE")
     ) {
       return response;
@@ -254,6 +253,34 @@ export async function middleware(req: NextRequest) {
       // For page routes, redirect to complete setup
       const setupUrl = new URL("/oauth/setup", req.url);
       return NextResponse.redirect(setupUrl);
+    }
+
+    // ============================================================================
+    // ============================================================================
+    // DASHBOARD PROTECTION - Require completed business setup
+    // ============================================================================
+
+    // Dashboard requires users to have completed their business setup
+    if (pathname === "/dashboard") {
+      // PENDING users cannot access dashboard - they need to complete setup first
+      if (userInfo.status === "PENDING") {
+        const setupUrl = new URL("/oauth/setup", req.url);
+        return NextResponse.redirect(setupUrl);
+      }
+    }
+
+    // ============================================================================
+    // ============================================================================
+    // DASHBOARD PROTECTION - Require completed business setup
+    // ============================================================================
+
+    // Dashboard requires users to have completed their business setup
+    if (pathname === "/dashboard") {
+      // PENDING users cannot access dashboard - they need to complete setup first
+      if (userInfo.status === "PENDING") {
+        const setupUrl = new URL("/oauth/setup", req.url);
+        return NextResponse.redirect(setupUrl);
+      }
     }
 
     // ============================================================================
