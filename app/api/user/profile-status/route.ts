@@ -56,7 +56,6 @@ export async function GET(request: NextRequest) {
           hasPassword: !!userByEmail.credentials,
           firstName: userByEmail.firstName || null,
           lastName: userByEmail.lastName || null,
-          username: userByEmail.username || null,
           phone: userByEmail.phone || null,
           dateOfBirth: userByEmail.dateOfBirth || null,
           isVerified: userByEmail.isVerified || false,
@@ -67,7 +66,7 @@ export async function GET(request: NextRequest) {
         const isProfileComplete = !!(
           profileStatus.firstName &&
           profileStatus.lastName &&
-          profileStatus.username &&
+          
           profileStatus.phone &&
           profileStatus.dateOfBirth
         );
@@ -94,7 +93,6 @@ export async function GET(request: NextRequest) {
       hasPassword,
       firstName: user.firstName || null,
       lastName: user.lastName || null,
-      username: user.username || null,
       phone: user.phone || null,
       dateOfBirth: user.dateOfBirth || null,
       isVerified: user.isVerified || false,
@@ -106,7 +104,7 @@ export async function GET(request: NextRequest) {
     const isProfileComplete = !!(
       profileStatus.firstName &&
       profileStatus.lastName &&
-      profileStatus.username &&
+      
       profileStatus.phone &&
       profileStatus.dateOfBirth
     );

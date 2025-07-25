@@ -39,7 +39,6 @@ export default async function Home() {
     const isProfileComplete = !!(
       user.firstName &&
       user.lastName &&
-      user.username &&
       user.phone &&
       user.dateOfBirth
     );

@@ -37,7 +37,7 @@ interface FormErrors {
   password?: string;
   confirmPassword?: string;
   recaptcha?: string;
-  terms?: string; // Add terms error field
+  terms?: string;
 }
 
 export default function BusinessSetupForm({

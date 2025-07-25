@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { firstName, lastName, username, dateOfBirth, fullMobile } =
+    const { firstName, lastName, dateOfBirth, fullMobile } =
       await request.json();
 
     // Validate required fields

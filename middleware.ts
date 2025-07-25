@@ -1,4 +1,4 @@
-// middleware.ts - FIXED: Handle stale token data for status changes
+// middleware.ts - Fixed: Handle stale token data for status changes
 import { NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { NextRequest } from "next/server";
@@ -171,10 +171,7 @@ export async function middleware(req: NextRequest) {
       "/oauth/setup", // CRITICAL ADD: Allow OAuth setup page
       "/oauth/", // CRITICAL ADD: All OAuth routes
       "/signup/", // All signup routes
-      "/oauth/setup", // CRITICAL ADD: Allow OAuth setup page
-      "/oauth/", // CRITICAL ADD: All OAuth routes
-      "/business/onboarding", // Updated from /business/onboarding
-      "/business/", // All business routes
+      "/business/", // All business routes - ONLY for ACTIVE users
       "/", // Allow root page access for proper routing
     ];
     const isPendingUserAllowedRoute = allowedForPendingUsers.some((route) =>
@@ -194,20 +191,6 @@ export async function middleware(req: NextRequest) {
     // This happens right after profile activation when JWT hasn't been refreshed yet
     if (userInfo.status === "ACTIVE" && userInfo.isActive === false) {
       // Allow access - the token will be refreshed on next request
-      return response;
-    }
-
-    // This handles the case where user just activated but token hasn't refreshed
-    if (userInfo.status === "PENDING" && pathname === "/business/onboarding") {
-      return response;
-    }
-
-    // SPECIAL CASE: Allow access to business-onboarding for users who might have just activated
-    // Even if they show as PENDING, they might have stale token data
-    if (
-      pathname === "/business/onboarding" &&
-      (userInfo.status === "PENDING" || userInfo.status === "ACTIVE")
-    ) {
       return response;
     }
 
@@ -255,21 +238,6 @@ export async function middleware(req: NextRequest) {
       return NextResponse.redirect(setupUrl);
     }
 
-    // ============================================================================
-    // ============================================================================
-    // DASHBOARD PROTECTION - Require completed business setup
-    // ============================================================================
-
-    // Dashboard requires users to have completed their business setup
-    if (pathname === "/dashboard") {
-      // PENDING users cannot access dashboard - they need to complete setup first
-      if (userInfo.status === "PENDING") {
-        const setupUrl = new URL("/oauth/setup", req.url);
-        return NextResponse.redirect(setupUrl);
-      }
-    }
-
-    // ============================================================================
     // ============================================================================
     // DASHBOARD PROTECTION - Require completed business setup
     // ============================================================================

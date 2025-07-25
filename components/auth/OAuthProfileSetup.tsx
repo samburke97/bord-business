@@ -36,7 +36,7 @@ export default function OAuthProfileSetup() {
             profileData.isProfileComplete &&
             profileData.firstName &&
             profileData.lastName &&
-            profileData.username &&
+            
             profileData.phone &&
             profileData.dateOfBirth
           ) {
