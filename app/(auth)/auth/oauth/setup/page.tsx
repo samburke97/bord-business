@@ -1,4 +1,4 @@
-// app/(auth)/auth/oauth/setup/page.tsx - FIXED: Add congratulations step
+// app/(auth)/auth/oauth/setup/page.tsx - FIXED: Remove auto-routing to business onboarding
 "use client";
 
 import { useSession } from "next-auth/react";
@@ -23,11 +23,13 @@ export default function OAuthSetupPage() {
         return;
       }
 
-      //  CRITICAL FIX: If user is already ACTIVE, skip everything and go to dashboard
+      // CRITICAL FIX: If user is already ACTIVE, only redirect if we're still initializing
+      // This prevents automatic redirects when user has moved to congratulations page
       if (
         session.user.status === "ACTIVE" &&
         session.user.isVerified &&
-        session.user.isActive
+        session.user.isActive &&
+        isInitializing
       ) {
         try {
           const businessResponse = await fetch("/api/user/business-status", {
@@ -100,7 +102,7 @@ export default function OAuthSetupPage() {
     initializeOAuthFlow();
   }, [session, status, router]);
 
-  // ✅ FIXED: Add congratulations step before business onboarding
+  // ✅ FIXED: Remove auto-routing - just go to congratulations without next parameter
   const handleSetupComplete = () => {
     router.push("/auth/congratulations");
   };

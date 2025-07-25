@@ -1,4 +1,4 @@
-// app/api/auth/create-business-account/route.ts - FIXED: Check for OAuth conflicts
+// app/api/auth/create-business-account/route.ts - FIXED: Proper email handling
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import prisma from "@/lib/prisma";
@@ -196,73 +196,55 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Allow: User exists but unverified - update their info
-      if (!existingUser.isVerified) {
-        const passwordHash = await hashPassword(password);
-
-        const updatedUser = await prisma.$transaction(async (tx) => {
-          if (existingUser.credentials) {
-            await tx.userCredentials.update({
-              where: { userId: existingUser.id },
-              data: { passwordHash },
-            });
-          } else {
-            await tx.userCredentials.create({
-              data: {
-                userId: existingUser.id,
-                email: sanitizedEmail,
-                passwordHash,
-              },
-            });
-          }
-
-          return await tx.user.update({
-            where: { id: existingUser.id },
-            data: {
-              firstName,
-              lastName,
-              name: `${firstName} ${lastName}`,
-              phone: fullMobile,
-              dateOfBirth: new Date(dateOfBirth),
-              globalRole: "USER",
-              status: "ACTIVE",
-              isActive: true,
-              isVerified: false,
-            },
-          });
-        });
-
-        // Send verification email and return success
-        await sendVerificationEmail(
-          sanitizedEmail,
-          firstName,
-          verificationCode
-        );
-
-        return NextResponse.json(
-          {
-            message: "Account updated successfully",
-            userId: updatedUser.id,
-            success: true,
-            emailSent: true,
-          },
-          { status: 201 }
-        );
-      }
+      // ALLOW: User exists but unverified or incomplete
+      // This handles the case where user started signup but didn't complete verification
     }
 
-    // Hash password using Argon2
+    // Hash password with enterprise-grade security
     const passwordHash = await hashPassword(password);
 
-    // Create new user with transaction
+    // Create user and credentials in transaction
     const result = await prisma.$transaction(async (tx) => {
-      // Create user
+      // If user exists but incomplete, update them
+      if (existingUser && !existingUser.isVerified) {
+        const updatedUser = await tx.user.update({
+          where: { id: existingUser.id },
+          data: {
+            firstName: firstName.trim(),
+            lastName: lastName.trim(),
+            name: `${firstName.trim()} ${lastName.trim()}`,
+            phone: fullMobile,
+            dateOfBirth: new Date(dateOfBirth),
+            globalRole: "USER",
+            status: "ACTIVE",
+            isActive: true,
+            isVerified: false, // Will be verified via email
+          },
+        });
+
+        // Update or create credentials
+        await tx.userCredentials.upsert({
+          where: { userId: existingUser.id },
+          update: {
+            passwordHash,
+          },
+          create: {
+            userId: existingUser.id,
+            email: sanitizedEmail,
+            passwordHash,
+          },
+        });
+
+        return updatedUser;
+      }
+
+      // Create new user
       const newUser = await tx.user.create({
         data: {
           email: sanitizedEmail,
-          firstName,
-          lastName,
-          name: `${firstName} ${lastName}`,
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          name: `${firstName.trim()} ${lastName.trim()}`,
           phone: fullMobile,
           dateOfBirth: new Date(dateOfBirth),
           globalRole: "USER",
@@ -301,10 +283,10 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Send verification email
+    // Send verification email - FIXED with proper error handling
     try {
-      await resend.emails.send({
-        from: "Bord Business <noreply@mail.bordsports.com>",
+      const emailResult = await resend.emails.send({
+        from: process.env.FROM_EMAIL || "noreply@bordsports.com", // ← Use same format as working API
         to: sanitizedEmail,
         subject: "Welcome to Bord Business - Verify Your Email",
         html: `
@@ -342,21 +324,67 @@ export async function POST(request: NextRequest) {
           </html>
         `,
       });
-    } catch (emailError) {
-      // Don't fail the account creation if email fails
-      // The user can still request a new verification code
-    }
 
-    return NextResponse.json(
-      {
-        message: "Account created successfully",
-        userId: result.id,
-        success: true,
-        emailSent: true,
-      },
-      { status: 201 }
-    );
+      // Check if email failed due to any issues
+      if (emailResult.error) {
+        console.error("❌ Email sending error:", emailResult.error);
+
+        // Clean up the token if email failed to send
+        await prisma.verificationToken.deleteMany({
+          where: {
+            identifier: sanitizedEmail,
+            token: hashedCode,
+          },
+        });
+
+        return NextResponse.json(
+          {
+            message:
+              "Account created but failed to send verification email. Please try again.",
+            userId: result.id,
+            emailSent: false,
+          },
+          { status: 201 }
+        );
+      }
+
+      console.log(
+        "✅ Verification email sent successfully to:",
+        sanitizedEmail
+      );
+
+      return NextResponse.json(
+        {
+          message: "Account created successfully",
+          userId: result.id,
+          success: true,
+          emailSent: true,
+        },
+        { status: 201 }
+      );
+    } catch (emailError) {
+      console.error("❌ Email sending error:", emailError);
+
+      // Clean up the token if email failed to send
+      await prisma.verificationToken.deleteMany({
+        where: {
+          identifier: sanitizedEmail,
+          token: hashedCode,
+        },
+      });
+
+      return NextResponse.json(
+        {
+          message:
+            "Account created but failed to send verification email. Please use the resend option.",
+          userId: result.id,
+          emailSent: false,
+        },
+        { status: 201 }
+      );
+    }
   } catch (error) {
+    console.error("❌ Create business account error:", error);
     return NextResponse.json(
       { message: "Internal server error" },
       { status: 500 }

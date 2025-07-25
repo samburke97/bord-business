@@ -1,4 +1,4 @@
-// app/(auth)/email/setup/page.tsx - Dedicated Email User Business Setup
+// app/(auth)/auth/email/setup/page.tsx - FIXED: Send verification code automatically
 "use client";
 
 import { useSearchParams } from "next/navigation";
@@ -17,9 +17,32 @@ function EmailSetupContent() {
     return null;
   }
 
-  const handleSetupComplete = () => {
-    // After email user completes business setup, go to email verification
-    router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+  // FIXED: Send verification code automatically before redirecting
+  const handleSetupComplete = async () => {
+    try {
+      // Send verification code automatically
+      const response = await fetch("/api/auth/send-verification-code", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      if (response.ok) {
+        // Code sent successfully, redirect to verification
+        router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+      } else {
+        // Failed to send code, show error or retry
+        console.error("Failed to send verification code");
+        // Still redirect, user can hit resend
+        router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+      }
+    } catch (error) {
+      console.error("Error sending verification code:", error);
+      // Still redirect, user can hit resend
+      router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+    }
   };
 
   return (

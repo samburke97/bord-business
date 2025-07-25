@@ -1,145 +1,99 @@
-/* app/(auth)/auth/congratulations/page.module.css */
 .container {
   min-height: 100vh;
   display: flex;
-  flex-direction: column;
-  background-color: #ffffff;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-standard, #fff);
+  padding: 2rem 1rem;
 }
 
 .content {
-  flex: 1;
+  width: 100%;
+  max-width: 500px;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2rem 1rem;
-  min-height: 100vh;
 }
 
-.formContainer {
-  width: 100%;
-  max-width: 400px;
+.celebrationSection {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 32px; /* 32px gap as specified */
   text-align: center;
+  gap: 2rem;
+  width: 100%;
 }
 
 .iconContainer {
   display: flex;
   align-items: center;
   justify-content: center;
+  margin-bottom: 0.5rem;
 }
 
-.checkmarkIcon {
-  width: 80px;
-  height: 80px;
-  border: 3px solid #1f2937;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #1f2937;
-  background-color: #ffffff;
+.successIcon {
+  flex-shrink: 0;
 }
 
-.textSection {
+.messageSection {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  width: 100%;
+  gap: 1rem;
+  max-width: 400px;
 }
 
 .title {
-  font-size: 32px;
+  font-size: 2rem;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--for-darkest, #171717);
   margin: 0;
   line-height: 1.2;
 }
 
 .description {
-  font-size: 16px;
-  color: #6b7280;
+  font-size: 1rem;
+  color: var(--for-medium, #7e807f);
   margin: 0;
   line-height: 1.5;
-  max-width: 100%;
 }
 
 .buttonContainer {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
   width: 100%;
-}
-
-/* Loading states */
-.loadingContainer {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  background-color: #f9fafb;
-}
-
-.loadingContent {
+  max-width: 300px;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 16px;
-}
-
-.spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid #e5e7eb;
-  border-top: 4px solid #10b981;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-.loadingText {
-  color: #6b7280;
-  margin: 0;
-  font-size: 14px;
+  gap: 0.75rem;
 }
 
 /* Mobile responsiveness */
-@media (max-width: 480px) {
-  .content {
+@media (max-width: 640px) {
+  .container {
     padding: 1rem;
   }
 
-  .formContainer {
-    max-width: 100%;
-  }
-
   .title {
-    font-size: 28px;
+    font-size: 1.75rem;
   }
 
   .description {
-    font-size: 14px;
+    font-size: 0.875rem;
   }
 
-  .checkmarkIcon {
-    width: 60px;
-    height: 60px;
+  .buttonContainer {
+    max-width: 100%;
   }
 }
 
-/* Tablet and up */
-@media (min-width: 768px) {
-  .content {
-    padding: 3rem 2rem;
+@media (max-width: 480px) {
+  .celebrationSection {
+    gap: 1.5rem;
+  }
+
+  .iconContainer {
+    margin-bottom: 0;
+  }
+
+  .title {
+    font-size: 1.5rem;
   }
 }

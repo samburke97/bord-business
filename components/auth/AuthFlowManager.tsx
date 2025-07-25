@@ -1,4 +1,3 @@
-// components/auth/AuthFlowManager.tsx - FIXED: Respects URL path for correct flow
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -107,7 +106,8 @@ export default function AuthFlowManager({
       // Email method - determine next step based on context
       if (authMethod === "email") {
         // For email method, we need to determine if this is a new signup
-        // or returning to continue a flow. Default to setup for new users.
+        // or returning to continue a flow.
+        // Default to setup for new users.
         setCurrentStep("setup");
         setUserInfo({
           isNewUser: true,
@@ -120,45 +120,6 @@ export default function AuthFlowManager({
       // FALLBACK: Old logic for cases without method parameter
       // OAUTH USER: Has session - this means they used OAuth sign-in
       if (session?.user) {
-        try {
-          const response = await fetch("/api/user/profile-status", {
-            credentials: "include",
-          });
-
-          if (response.ok) {
-            const profileData = await response.json();
-
-            if (
-              profileData.isProfileComplete &&
-              profileData.firstName &&
-              profileData.lastName &&
-              profileData.username &&
-              profileData.phone &&
-              profileData.dateOfBirth
-            ) {
-              const businessResponse = await fetch(
-                "/api/user/business-status",
-                {
-                  credentials: "include",
-                }
-              );
-
-              if (businessResponse.ok) {
-                const businessData = await businessResponse.json();
-
-                if (businessData.needsSetup) {
-                  router.push("/business-onboarding");
-                  return;
-                } else {
-                  router.push("/dashboard");
-                  return;
-                }
-              }
-            } else {
-            }
-          }
-        } catch (error) {}
-
         setCurrentStep("setup");
         setUserInfo({
           isNewUser: false,
@@ -204,30 +165,56 @@ export default function AuthFlowManager({
     if (userInfo.isNewUser) {
       setCurrentStep("setup");
     } else {
+      // Existing user - redirect to dashboard or business setup
+      router.push("/dashboard");
     }
-  }, [userInfo.isNewUser]);
+  }, [userInfo.isNewUser, router]);
 
-  const handleSetupComplete = useCallback(() => {
-    // For email users, go to verification after setup
+  const handleSetupComplete = useCallback(async () => {
+    // For email users, send verification code then redirect to verification
     if (authMethod === "email" || (!session?.user && email)) {
-      router.push(`/verify-email?email=${encodeURIComponent(email)}`);
-    } else {
-      // For OAuth users, go to business onboarding
+      try {
+        // Send verification code automatically
+        const response = await fetch("/api/auth/send-verification-code", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ email }),
+        });
 
-      router.push("/business-onboarding");
+        if (response.ok) {
+          // Code sent successfully, redirect to verification
+          router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+        } else {
+          // Failed to send code, show error or retry
+          console.error("Failed to send verification code");
+          // You might want to show an error message to the user here
+          // For now, still redirect but user will need to hit resend
+          router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+        }
+      } catch (error) {
+        console.error("Error sending verification code:", error);
+        // Still redirect, user can hit resend
+        router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+      }
+    } else {
+      // For OAuth users, show congratulations step
+      setCurrentStep("complete");
     }
   }, [router, authMethod, session, email]);
 
-  const handleContinueToDashboard = useCallback(() => {
+  // FIXED: Updated callback names to match master component
+  const handleCongratulationsContinue = useCallback(() => {
+    router.push("/business-onboarding");
+  }, [router]);
+
+  const handleCongratulationsRemindLater = useCallback(() => {
     router.push("/dashboard");
   }, [router]);
 
-  const handleRemindLater = useCallback(() => {
-    router.push("/dashboard");
-  }, [router]);
-
-  // Show loading until we know exactly which step to show
-  if (isInitializing || status === "loading" || currentStep === null) {
+  // Show loading while initializing
+  if (isInitializing || status === "loading") {
     return (
       <div
         style={{
@@ -265,7 +252,7 @@ export default function AuthFlowManager({
                 margin: "0 0 8px 0",
               }}
             >
-              Setting up your flow...
+              Setting up your account...
             </h2>
             <p
               style={{
@@ -274,9 +261,7 @@ export default function AuthFlowManager({
                 fontSize: "14px",
               }}
             >
-              {status === "loading"
-                ? "Checking your authentication..."
-                : "Determining the best path for you..."}
+              Please wait while we prepare your profile...
             </p>
           </div>
         </div>
@@ -284,7 +269,7 @@ export default function AuthFlowManager({
     );
   }
 
-  // Render the correct form based on currentStep
+  // Render current step
   switch (currentStep) {
     case "verification":
       return (
@@ -298,8 +283,8 @@ export default function AuthFlowManager({
       return (
         <PasswordScreen
           email={email}
-          userName={userInfo.userName}
           isNewUser={userInfo.isNewUser}
+          userName={userInfo.userName}
           onPasswordComplete={handlePasswordComplete}
         />
       );
@@ -308,16 +293,20 @@ export default function AuthFlowManager({
       return (
         <BusinessSetupForm
           email={email}
-          onSetupComplete={handleSetupComplete}
           isOAuth={!!session?.user}
+          onSetupComplete={handleSetupComplete}
         />
       );
 
     case "complete":
       return (
         <Congratulations
-          onContinueToDashboard={handleContinueToDashboard}
-          onRemindLater={handleRemindLater}
+          title="Congratulations!"
+          description="Let's complete your player account setup or you can come back to it later."
+          primaryButtonText="Continue"
+          secondaryButtonText="Remind me Later"
+          onContinue={handleCongratulationsContinue}
+          onRemindLater={handleCongratulationsRemindLater}
         />
       );
 

@@ -1,15 +1,23 @@
-// components/auth/Congratulations.tsx
+// components/auth/Congratulations.tsx - Master component with props
 "use client";
 
 import Button from "@/components/ui/Button";
 import styles from "./Congratulations.module.css";
 
 interface CongratulationsProps {
+  title?: string;
+  description?: string;
+  primaryButtonText?: string;
+  secondaryButtonText?: string;
   onContinue: () => void;
   onRemindLater: () => void;
 }
 
 export default function Congratulations({
+  title = "Congratulations",
+  description = "Let's Complete your player account setup or you can come back to it later.",
+  primaryButtonText = "Continue",
+  secondaryButtonText = "Remind me Later",
   onContinue,
   onRemindLater,
 }: CongratulationsProps) {
@@ -46,20 +54,17 @@ export default function Congratulations({
         </div>
 
         <div className={styles.textContent}>
-          <h1 className={styles.title}>Congratulations</h1>
-          <p className={styles.description}>
-            Let's Complete your player account setup or you can come back to it
-            later.
-          </p>
+          <h1 className={styles.title}>{title}</h1>
+          <p className={styles.description}>{description}</p>
         </div>
 
         <div className={styles.buttonContainer}>
           <Button variant="primary-green" onClick={onContinue} fullWidth>
-            Continue
+            {primaryButtonText}
           </Button>
 
           <Button variant="secondary" onClick={onRemindLater} fullWidth>
-            Remind me Later
+            {secondaryButtonText}
           </Button>
         </div>
       </div>

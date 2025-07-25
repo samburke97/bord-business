@@ -74,7 +74,8 @@ export async function middleware(req: NextRequest) {
     "/api/auth/csrf",
     "/api/auth/providers",
     "/api/auth/check-user-status", // CRITICAL: Allow user status check for login flow
-    "/auth/", // ALL auth pages (including /auth/setup, /auth/password, etc.)
+    "/auth/",
+    "/auth/congratulations", // ALL auth pages (including /auth/setup, /auth/password, etc.)
     "/oauth/", // CRITICAL ADD: All OAuth setup pages
     "/verify-email",
     "/_next",
