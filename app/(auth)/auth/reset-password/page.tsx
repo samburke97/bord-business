@@ -1,9 +1,10 @@
+// app/(auth)/auth/reset-password/page.tsx
 "use client";
 
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
-import ActionHeader from "@/components/layouts/headers/ActionHeader";
+import AuthLayout from "@/components/layouts/AuthLayout";
 import TitleDescription from "@/components/ui/TitleDescription";
 import TextInput from "@/components/ui/TextInput";
 import Button from "@/components/ui/Button";
@@ -116,22 +117,6 @@ function ResetPasswordContent() {
     }
   };
 
-  const handleNewPasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setNewPassword(e.target.value);
-    if (newPasswordError) {
-      setNewPasswordError(null);
-    }
-  };
-
-  const handleConfirmPasswordChange = (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    setConfirmPassword(e.target.value);
-    if (confirmPasswordError) {
-      setConfirmPasswordError(null);
-    }
-  };
-
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
   };
@@ -152,79 +137,103 @@ function ResetPasswordContent() {
     />
   );
 
+  const handleNewPasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewPassword(e.target.value);
+    setNewPasswordError(null);
+  };
+
+  const handleConfirmPasswordChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    setConfirmPassword(e.target.value);
+    setConfirmPasswordError(null);
+  };
+
+  // Check if token is missing
+  if (!token) {
+    return (
+      <AuthLayout showBackButton={true} onBackClick={handleBack}>
+        <div className={styles.formWrapper}>
+          <TitleDescription
+            title="Invalid Reset Link"
+            description="This password reset link is invalid or has expired. Please request a new password reset."
+          />
+
+          <Button
+            variant="primary-green"
+            onClick={() => router.push("/auth/forgot-password")}
+            fullWidth
+          >
+            Request New Reset Link
+          </Button>
+        </div>
+      </AuthLayout>
+    );
+  }
+
   return (
-    <div className={styles.container}>
-      <div className={styles.content}>
-        <div className={styles.leftSection}>
-          <ActionHeader
-            type="back"
-            secondaryAction={handleBack}
-            constrained={false}
-          />
+    <AuthLayout showBackButton={true} onBackClick={handleBack}>
+      <div className={styles.formWrapper}>
+        <TitleDescription
+          title="Reset Your Password"
+          description="Enter your new password below."
+        />
 
-          <div className={styles.formContainer}>
-            <div className={styles.formWrapper}>
-              <TitleDescription
-                title="Change Password"
-                description={`You can now change your password for ${email || "[email address]"}`}
-              />
-
-              <div className={styles.formFields}>
-                <TextInput
-                  id="newPassword"
-                  label="New Password"
-                  type={showPassword ? "text" : "password"}
-                  value={newPassword}
-                  onChange={handleNewPasswordChange}
-                  placeholder="Enter your password"
-                  error={newPasswordError}
-                  required
-                  rightIcon={
-                    <button
-                      type="button"
-                      onClick={togglePasswordVisibility}
-                      className={styles.passwordToggle}
-                    >
-                      {passwordIcon}
-                    </button>
-                  }
-                />
-
-                <TextInput
-                  id="confirmPassword"
-                  label="Repeat Password"
-                  type={showPassword ? "text" : "password"}
-                  value={confirmPassword}
-                  onChange={handleConfirmPasswordChange}
-                  placeholder="Enter your password"
-                  error={confirmPasswordError}
-                  required
-                />
-              </div>
-
-              <Button
-                variant="primary-green"
-                onClick={handleUpdatePassword}
-                disabled={isLoading || !newPassword || !confirmPassword}
-                fullWidth
+        <div className={styles.formFields}>
+          <TextInput
+            id="newPassword"
+            label="New Password"
+            type={showPassword ? "text" : "password"}
+            value={newPassword}
+            onChange={handleNewPasswordChange}
+            placeholder="Enter your new password"
+            error={newPasswordError}
+            required
+            autoFocus
+            rightIcon={
+              <button
+                type="button"
+                onClick={togglePasswordVisibility}
+                className={styles.passwordToggle}
+                aria-label={showPassword ? "Hide password" : "Show password"}
               >
-                {isLoading ? "Updating..." : "Update Password"}
-              </Button>
-            </div>
-          </div>
-        </div>
+                {passwordIcon}
+              </button>
+            }
+          />
 
-        <div className={styles.imageContainer}>
-          <Image
-            src="/images/login/auth-bg.png"
-            alt="Sports facility background"
-            fill
-            style={{ objectFit: "cover" }}
-            priority
+          <TextInput
+            id="confirmPassword"
+            label="Confirm Password"
+            type={showPassword ? "text" : "password"}
+            value={confirmPassword}
+            onChange={handleConfirmPasswordChange}
+            placeholder="Confirm your new password"
+            error={confirmPasswordError}
+            required
+            rightIcon={
+              <button
+                type="button"
+                onClick={togglePasswordVisibility}
+                className={styles.passwordToggle}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {passwordIcon}
+              </button>
+            }
           />
         </div>
+
+        <Button
+          variant="primary-green"
+          onClick={handleUpdatePassword}
+          disabled={isLoading || !newPassword || !confirmPassword}
+          fullWidth
+        >
+          {isLoading ? "Updating..." : "Update Password"}
+        </Button>
       </div>
-    </div>
+    </AuthLayout>
   );
 }
 

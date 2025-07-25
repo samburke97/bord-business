@@ -1,31 +1,3 @@
-/* page.module.css */
-.container {
-  min-height: 100vh;
-  background-color: var(--bg-standard);
-}
-
-.content {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  min-height: 100vh;
-}
-
-.leftSection {
-  display: flex;
-  flex-direction: column;
-  background-color: var(--bg-standard);
-}
-
-.formContainer {
-  display: flex;
-  flex-direction: column;
-  padding: 40px;
-  max-width: 600px;
-  margin: 0 auto;
-  width: 100%;
-  flex: 1;
-}
-
 .formWrapper {
   width: 100%;
   display: flex;
@@ -66,41 +38,10 @@
   height: 64px;
 }
 
-.imageContainer {
-  position: relative;
-  background-color: var(--grey-200);
-  overflow: hidden;
-  height: 100vh;
-}
-
 .loadingContainer {
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 100vh;
   background-color: var(--bg-standard);
-}
-
-/* Mobile responsive */
-@media (max-width: 1024px) {
-  .content {
-    grid-template-columns: 1fr;
-    min-height: calc(100vh - 64px);
-  }
-
-  .formContainer {
-    min-height: calc(100vh - 64px);
-    padding-top: 40px;
-  }
-
-  .imageContainer {
-    display: none;
-  }
-}
-
-@media (max-width: 480px) {
-  .formContainer {
-    padding: 16px;
-    padding-top: 40px;
-  }
 }

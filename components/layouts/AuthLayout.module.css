@@ -1,5 +1,3 @@
-/* components/layouts/AuthSplitLayout.module.css - Unified split-screen layout styles */
-
 .container {
   min-height: 100vh;
   background-color: var(--bg-standard);
@@ -21,12 +19,11 @@
   display: flex;
   flex-direction: column;
   padding: 40px;
-  padding-top: 80px; /* Space for ActionHeader */
+  padding-top: 80px;
   max-width: 600px;
   margin: 0 auto;
   width: 100%;
   flex: 1;
-  justify-content: center;
 }
 
 .rightSection {
@@ -45,13 +42,6 @@
   justify-content: center;
 }
 
-.heroImage {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center;
-}
-
 /* Mobile responsive */
 @media (max-width: 1024px) {
   .content {
@@ -62,7 +52,6 @@
   .formContainer {
     min-height: calc(100vh - 64px);
     padding-top: 40px;
-    justify-content: flex-start;
   }
 
   .rightSection {

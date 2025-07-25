@@ -1,10 +1,7 @@
-// app/forgot-password/sent/page.tsx
 "use client";
-
-import { useState, Suspense, useEffect } from "react";
+import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Image from "next/image";
-import ActionHeader from "@/components/layouts/headers/ActionHeader";
+import AuthLayout from "@/components/layouts/AuthLayout";
 import Button from "@/components/ui/Button";
 import styles from "./page.module.css";
 
@@ -45,6 +42,7 @@ function ResetEmailSentContent() {
         }, 1000);
       }
     } catch (error) {
+      // Handle error silently
     } finally {
       setIsResending(false);
     }
@@ -57,84 +55,58 @@ function ResetEmailSentContent() {
   };
 
   return (
-    <div className={styles.container}>
-      <div className={styles.content}>
-        <div className={styles.leftSection}>
-          <ActionHeader
-            type="back"
-            secondaryAction={handleBack}
-            constrained={false}
-          />
-
-          <div className={styles.formContainer}>
-            <div className={styles.formWrapper}>
-              <div className={styles.checkIcon}>
-                <svg
-                  width="64"
-                  height="64"
-                  viewBox="0 0 64 64"
-                  fill="none"
-                  className={styles.checkSvg}
-                >
-                  <circle
-                    cx="32"
-                    cy="32"
-                    r="30"
-                    stroke="#000"
-                    strokeWidth="2"
-                    fill="none"
-                  />
-                  <path
-                    d="M20 32l8 8 16-16"
-                    stroke="#000"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    fill="none"
-                  />
-                </svg>
-              </div>
-
-              <div className={styles.titleSection}>
-                <h1 className={styles.title}>Reset Email Sent!</h1>
-                <p className={styles.description}>
-                  Please check your inbox to reset your password. If you didn't
-                  receive your email, please check your junk mail folder.
-                </p>
-              </div>
-
-              <Button
-                variant="primary-green"
-                onClick={handleBackToLogin}
-                fullWidth
-              >
-                Back to log In
-              </Button>
-
-              <div className={styles.resendSection}>
-                <button
-                  onClick={handleResendCode}
-                  disabled={isResending || showSentConfirmation}
-                  className={styles.resendButton}
-                >
-                  {getResendButtonText()}
-                </button>
-              </div>
-            </div>
-          </div>
+    <AuthLayout showBackButton={true} onBackClick={handleBack}>
+      <div className={styles.formWrapper}>
+        <div className={styles.checkIcon}>
+          <svg
+            width="64"
+            height="64"
+            viewBox="0 0 64 64"
+            fill="none"
+            className={styles.checkSvg}
+          >
+            <circle
+              cx="32"
+              cy="32"
+              r="30"
+              stroke="#000"
+              strokeWidth="2"
+              fill="none"
+            />
+            <path
+              d="M20 32l8 8 16-16"
+              stroke="#000"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              fill="none"
+            />
+          </svg>
         </div>
 
-        <div className={styles.imageContainer}>
-          <Image
-            src="/images/login/auth-bg.png"
-            alt="Sports facility background"
-            fill
-            style={{ objectFit: "cover" }}
-            priority
-          />
+        <div className={styles.titleSection}>
+          <h1 className={styles.title}>Reset Email Sent!</h1>
+          <p className={styles.description}>
+            Please check your inbox to reset your password. If you didn't
+            receive your email, please check your junk mail folder.
+          </p>
+        </div>
+
+        <Button variant="primary-green" onClick={handleBackToLogin} fullWidth>
+          Back to log In
+        </Button>
+
+        <div className={styles.resendSection}>
+          <button
+            onClick={handleResendCode}
+            disabled={isResending || showSentConfirmation}
+            className={styles.resendButton}
+          >
+            {getResendButtonText()}
+          </button>
         </div>
       </div>
-    </div>
+    </AuthLayout>
   );
 }
 

@@ -1,11 +1,10 @@
-// app/(auth)/verify-email/page.tsx - Email verification with proper flow
 "use client";
 
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { useRouter } from "next/navigation";
 import EmailVerification from "@/components/auth/EmailVerification";
-import styles from "./page.module.css"; // Preserve existing styles
+import styles from "./page.module.css";
 
 function VerifyEmailContent() {
   const searchParams = useSearchParams();

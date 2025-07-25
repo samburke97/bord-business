@@ -1,9 +1,9 @@
+// app/(auth)/auth/forgot-password/page.tsx
 "use client";
 
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Image from "next/image";
-import ActionHeader from "@/components/layouts/headers/ActionHeader";
+import AuthLayout from "@/components/layouts/AuthLayout";
 import TitleDescription from "@/components/ui/TitleDescription";
 import TextInput from "@/components/ui/TextInput";
 import Button from "@/components/ui/Button";
@@ -79,68 +79,38 @@ function ForgotPasswordContent() {
     setEmailError(null);
   };
 
-  // Extract name from email for personalization
-  const getName = () => {
-    if (email && email.includes("@")) {
-      return email.split("@")[0];
-    }
-    return "";
-  };
-
   return (
-    <div className={styles.container}>
-      <div className={styles.content}>
-        <div className={styles.leftSection}>
-          <ActionHeader
-            type="back"
-            secondaryAction={handleBack}
-            constrained={false}
-          />
+    <AuthLayout showBackButton={true} onBackClick={handleBack}>
+      <div className={styles.formWrapper}>
+        <TitleDescription
+          title="Forgot your Password?"
+          description={`We'll send you a secure link to create a new password to ${email || "your email"}`}
+        />
 
-          <div className={styles.formContainer}>
-            <div className={styles.formWrapper}>
-              <TitleDescription
-                title={`Forgot your Password?`}
-                description={`We'll send you a secure link to create a new password to ${email || ""}`}
-              />
-
-              <div className={styles.formFields}>
-                <TextInput
-                  id="email"
-                  label="Email"
-                  type="email"
-                  value={email}
-                  onChange={handleEmailChange}
-                  placeholder="Enter your email address"
-                  error={emailError}
-                  required
-                  autoFocus
-                />
-              </div>
-
-              <Button
-                variant="primary-green"
-                onClick={handleResetPassword}
-                disabled={isLoading || !email}
-                fullWidth
-              >
-                {isLoading ? "Sending..." : "Reset Password"}
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        <div className={styles.imageContainer}>
-          <Image
-            src="/images/login/auth-bg.png"
-            alt="Sports facility background"
-            fill
-            style={{ objectFit: "cover" }}
-            priority
+        <div className={styles.formFields}>
+          <TextInput
+            id="email"
+            label="Email"
+            type="email"
+            value={email}
+            onChange={handleEmailChange}
+            placeholder="Enter your email address"
+            error={emailError}
+            required
+            autoFocus
           />
         </div>
+
+        <Button
+          variant="primary-green"
+          onClick={handleResetPassword}
+          disabled={isLoading || !email}
+          fullWidth
+        >
+          {isLoading ? "Sending..." : "Reset Password"}
+        </Button>
       </div>
-    </div>
+    </AuthLayout>
   );
 }
 

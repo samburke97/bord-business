@@ -1,10 +1,11 @@
+// components/auth/PasswordScreen.tsx
 "use client";
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import Image from "next/image";
-import ActionHeader from "../layouts/headers/ActionHeader";
+import AuthLayout from "@/components/layouts/AuthLayout";
 import TitleDescription from "@/components/ui/TitleDescription";
 import TextInput from "@/components/ui/TextInput";
 import Button from "@/components/ui/Button";
@@ -137,7 +138,6 @@ export default function PasswordScreen({
         }
 
         if (result?.ok) {
-          // CRITICAL FIX: Use home page routing instead of direct redirects
           if (continueBusinessSetup) {
             window.location.href = "/"; // Let home page determine the right place
           } else {
@@ -211,98 +211,80 @@ export default function PasswordScreen({
   );
 
   return (
-    <div className={styles.container}>
-      <div className={styles.content}>
-        <div className={styles.leftSection}>
-          <ActionHeader
-            type="back"
-            secondaryAction={handleBack}
-            constrained={false}
-          />
+    <AuthLayout showBackButton={true} onBackClick={handleBack}>
+      <div className={styles.formWrapper}>
+        <TitleDescription title={getTitle()} description={getDescription()} />
 
-          <div className={styles.formContainer}>
-            <div className={styles.formWrapper}>
-              <TitleDescription
-                title={getTitle()}
-                description={getDescription()}
-              />
-
-              <div className={styles.passwordForm}>
-                <TextInput
-                  id="password"
-                  label="Password"
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={handlePasswordChange}
-                  placeholder="Enter your password"
-                  error={passwordError}
-                  autoComplete={isNewUser ? "new-password" : "current-password"}
-                  rightIcon={
-                    <button
-                      type="button"
-                      className={styles.passwordToggle}
-                      onClick={togglePasswordVisibility}
-                    >
-                      {passwordIcon}
-                    </button>
-                  }
-                  required
-                />
-
-                {isNewUser && (
-                  <TextInput
-                    id="confirmPassword"
-                    label="Confirm Password"
-                    type={showPassword ? "text" : "password"}
-                    value={confirmPassword}
-                    onChange={handleConfirmPasswordChange}
-                    placeholder="Confirm your password"
-                    error={confirmPasswordError}
-                    autoComplete="new-password"
-                    required
-                  />
-                )}
-              </div>
-
-              <Button
-                variant="primary-green"
-                onClick={handleSubmit}
-                disabled={isLoading}
-                fullWidth
-                size="lg"
+        <div className={styles.passwordForm}>
+          <TextInput
+            id="password"
+            label="Password"
+            type={showPassword ? "text" : "password"}
+            value={password}
+            onChange={handlePasswordChange}
+            placeholder="Enter your password"
+            error={passwordError}
+            autoComplete={isNewUser ? "new-password" : "current-password"}
+            rightIcon={
+              <button
+                type="button"
+                className={styles.passwordToggle}
+                onClick={togglePasswordVisibility}
               >
-                {isLoading
-                  ? "Processing..."
-                  : isNewUser
-                    ? "Set Password"
-                    : "Continue"}
-              </Button>
-
-              {!isNewUser && (
-                <div className={styles.forgotPassword}>
-                  <button
-                    type="button"
-                    onClick={handleForgotPassword}
-                    className={styles.forgotPasswordLink}
-                  >
-                    Forgot Password?
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className={styles.imageContainer}>
-          <Image
-            src="/images/login/auth-bg.png"
-            alt="Sports facility background"
-            fill
-            style={{ objectFit: "cover" }}
-            priority
+                {passwordIcon}
+              </button>
+            }
+            required
           />
+
+          {isNewUser && (
+            <TextInput
+              id="confirmPassword"
+              label="Confirm Password"
+              type={showPassword ? "text" : "password"}
+              value={confirmPassword}
+              onChange={handleConfirmPasswordChange}
+              placeholder="Confirm your password"
+              error={confirmPasswordError}
+              autoComplete="new-password"
+              rightIcon={
+                <button
+                  type="button"
+                  className={styles.passwordToggle}
+                  onClick={togglePasswordVisibility}
+                >
+                  {passwordIcon}
+                </button>
+              }
+              required
+            />
+          )}
+
+          <Button
+            variant="primary-green"
+            onClick={handleSubmit}
+            disabled={isLoading}
+            fullWidth
+          >
+            {isLoading
+              ? "Loading..."
+              : isNewUser
+                ? "Create Account"
+                : "Sign In"}
+          </Button>
         </div>
+
+        {!isNewUser && (
+          <div className={styles.forgotPassword}>
+            <button
+              onClick={handleForgotPassword}
+              className={styles.forgotPasswordLink}
+            >
+              Forgot your password?
+            </button>
+          </div>
+        )}
       </div>
-    </div>
+    </AuthLayout>
   );
 }
