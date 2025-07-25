@@ -13,7 +13,6 @@ export default async function Home() {
   }
 
   try {
-    // Get user with accounts, credentials, and business relationships
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
       include: {
@@ -47,11 +46,10 @@ export default async function Home() {
       user.dateOfBirth
     );
 
-    // Route based on user type and completion status
+    /
     if (isOAuthUser) {
       if (!isProfileComplete) {
         redirect("/oauth/setup"); // UPDATED
-        redirect("/signup/complete");
         return;
       }
     } else if (isEmailUser) {
@@ -59,11 +57,9 @@ export default async function Home() {
         redirect(
           `/signup/verify-email?email=${encodeURIComponent(user.email || "")}`
         ); // UPDATED
-        redirect("/signup/complete");
         return;
       }
       if (!isProfileComplete) {
-        redirect("/signup/complete");
         return;
       }
     }

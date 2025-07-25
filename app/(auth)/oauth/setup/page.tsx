@@ -74,8 +74,6 @@ export default function OAuthSetupPage() {
               profileData.phone &&
               profileData.dateOfBirth
             ) {
-              // This shouldn't happen - if profile is complete, user should be ACTIVE
-              // But handle it gracefully
               router.push("/business-onboarding");
               return;
             } else {

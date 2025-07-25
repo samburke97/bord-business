@@ -167,7 +167,7 @@ export async function middleware(req: NextRequest) {
       "/api/auth/check-username",
 
       // NEW: Updated routes
-      "/signup/complete", // Updated from /auth/complete-setup
+      "/signup/complete", // Updated from /oauth/setup
       "/oauth/setup", // CRITICAL ADD: Allow OAuth setup page
       "/oauth/", // CRITICAL ADD: All OAuth routes
       "/signup/", // All signup routes
@@ -175,6 +175,7 @@ export async function middleware(req: NextRequest) {
       "/oauth/", // CRITICAL ADD: All OAuth routes
       "/business/onboarding", // Updated from /business-onboarding
       "/business/", // All business routes
+      "/", // Allow root page access for proper routing
     ];
     const isPendingUserAllowedRoute = allowedForPendingUsers.some((route) =>
       pathname.startsWith(route)
@@ -251,7 +252,7 @@ export async function middleware(req: NextRequest) {
       }
 
       // For page routes, redirect to complete setup
-      const setupUrl = new URL("/auth/complete-setup", req.url);
+      const setupUrl = new URL("/oauth/setup", req.url);
       return NextResponse.redirect(setupUrl);
     }
 

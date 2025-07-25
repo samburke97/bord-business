@@ -397,7 +397,7 @@ export const authOptions: NextAuthOptions = {
       }
 
       // Handle OAuth success redirects
-      if (url.includes("oauth/setup") || url.includes("auth/complete-setup")) {
+      if (url.includes("oauth/setup") || url.includes("signup/complete")) {
         return url.startsWith(baseUrl) ? url : `${baseUrl}${url}`;
       }
 
