@@ -31,17 +31,17 @@ function EmailSetupContent() {
 
       if (response.ok) {
         // Code sent successfully, redirect to verification
-        router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+        router.push(`/signup/verify-email?email=${encodeURIComponent(email)}`);
       } else {
         // Failed to send code, show error or retry
         console.error("Failed to send verification code");
         // Still redirect, user can hit resend
-        router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+        router.push(`/signup/verify-email?email=${encodeURIComponent(email)}`);
       }
     } catch (error) {
       console.error("Error sending verification code:", error);
       // Still redirect, user can hit resend
-      router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+      router.push(`/signup/verify-email?email=${encodeURIComponent(email)}`);
     }
   };
 

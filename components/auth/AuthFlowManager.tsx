@@ -66,7 +66,7 @@ export default function AuthFlowManager({
       }
 
       // If we're explicitly on verification pages, show verification
-      if (pathname === "/auth/verify" || pathname === "/verify-email") {
+      if (pathname === "/auth/verify" || pathname === "/signup/verify-email") {
         setCurrentStep("verification");
         setUserInfo({
           isNewUser: true,
@@ -185,18 +185,18 @@ export default function AuthFlowManager({
 
         if (response.ok) {
           // Code sent successfully, redirect to verification
-          router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+          router.push(`/signup/verify-email?email=${encodeURIComponent(email)}`);
         } else {
           // Failed to send code, show error or retry
           console.error("Failed to send verification code");
           // You might want to show an error message to the user here
           // For now, still redirect but user will need to hit resend
-          router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+          router.push(`/signup/verify-email?email=${encodeURIComponent(email)}`);
         }
       } catch (error) {
         console.error("Error sending verification code:", error);
         // Still redirect, user can hit resend
-        router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+        router.push(`/signup/verify-email?email=${encodeURIComponent(email)}`);
       }
     } else {
       // For OAuth users, show congratulations step
@@ -206,7 +206,7 @@ export default function AuthFlowManager({
 
   // FIXED: Updated callback names to match master component
   const handleCongratulationsContinue = useCallback(() => {
-    router.push("/business-onboarding");
+    router.push("/business/onboarding");
   }, [router]);
 
   const handleCongratulationsRemindLater = useCallback(() => {

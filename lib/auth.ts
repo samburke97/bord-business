@@ -82,7 +82,7 @@ export const authOptions: NextAuthOptions = {
 
   pages: {
     signIn: "/login",
-    error: "/auth/error",
+    error: "/oauth/error",
   },
 
   session: {
@@ -152,7 +152,7 @@ export const authOptions: NextAuthOptions = {
               });
 
               // Redirect to error page with existing methods info
-              const errorUrl = `/auth/error?error=AccountExistsWithDifferentMethod&email=${encodeURIComponent(
+              const errorUrl = `/oauth/error?error=AccountExistsWithDifferentMethod&email=${encodeURIComponent(
                 user.email
               )}&available=${existingMethods.join(",")}&attempted=${account.provider}`;
 
@@ -392,7 +392,7 @@ export const authOptions: NextAuthOptions = {
 
     async redirect({ url, baseUrl }) {
       // Handle OAuth error redirects
-      if (url.includes("/auth/error")) {
+      if (url.includes("/oauth/error")) {
         return url.startsWith(baseUrl) ? url : `${baseUrl}${url}`;
       }
 
@@ -409,7 +409,7 @@ export const authOptions: NextAuthOptions = {
       ) {
         // We need to get the user info somehow - let's check if we stored it
         // For now, redirect to a generic error that will be handled by the error page
-        return `${baseUrl}/auth/error?error=AccountExistsWithDifferentMethod&attempted=oauth`;
+        return `${baseUrl}/oauth/error?error=AccountExistsWithDifferentMethod&attempted=oauth`;
       }
 
       // For relative URLs, return as-is

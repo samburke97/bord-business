@@ -1,19 +1,20 @@
-// app/(auth)/auth/reset-password/success/page.tsx
+// app/(auth)/signup/verify-email/sent/page.tsx
 "use client";
 
 import { Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import AuthLayout from "@/components/layouts/AuthLayout";
+import TitleDescription from "@/components/ui/TitleDescription";
 import Button from "@/components/ui/Button";
 import styles from "./page.module.css";
 
-function PasswordUpdatedContent() {
+function VerificationSentContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams.get("email") || "";
 
   const handleBack = () => {
-    router.push("/login");
+    router.back();
   };
 
   const handleBackToLogin = () => {
@@ -35,13 +36,13 @@ function PasswordUpdatedContent() {
               cx="32"
               cy="32"
               r="30"
-              stroke="#000"
+              stroke="#059669"
               strokeWidth="2"
               fill="none"
             />
             <path
               d="M20 32l8 8 16-16"
-              stroke="#000"
+              stroke="#059669"
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -51,23 +52,21 @@ function PasswordUpdatedContent() {
         </div>
 
         <div className={styles.titleSection}>
-          <h1 className={styles.title}>Password Updated</h1>
-          <p className={styles.description}>
-            You have successfully changed your password for{" "}
-            {email || "[email address]"}. You can can log into bord admin with
-            your new details.
-          </p>
+          <TitleDescription
+            title="Check your email"
+            description={`We've sent a verification code to ${email}. Please check your inbox and enter the code to continue.`}
+          />
         </div>
 
         <Button variant="primary-green" onClick={handleBackToLogin} fullWidth>
-          Back to Log In
+          Back to Sign In
         </Button>
       </div>
     </AuthLayout>
   );
 }
 
-export default function PasswordUpdatedPage() {
+export default function VerificationSentPage() {
   return (
     <Suspense
       fallback={
@@ -76,7 +75,7 @@ export default function PasswordUpdatedPage() {
         </div>
       }
     >
-      <PasswordUpdatedContent />
+      <VerificationSentContent />
     </Suspense>
   );
 }

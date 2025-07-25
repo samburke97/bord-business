@@ -1,3 +1,6 @@
+/* app/(auth)/signup/success/page.module.css */
+/* Only form-specific styles - layout handled by AuthLayout */
+
 .formWrapper {
   width: 100%;
   display: flex;
@@ -36,6 +39,13 @@
 .checkSvg {
   width: 64px;
   height: 64px;
+}
+
+.buttonGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
 }
 
 .loadingContainer {

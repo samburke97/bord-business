@@ -155,7 +155,7 @@ export default function PasswordScreen({
   };
 
   const handleForgotPassword = () => {
-    router.push(`/auth/forgot-password?email=${encodeURIComponent(email)}`);
+    router.push(`/password/forgot?email=${encodeURIComponent(email)}`);
   };
 
   const getTitle = () => {

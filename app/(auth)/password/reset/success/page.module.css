@@ -1,3 +1,6 @@
+/* app/(auth)/password/reset/success/page.module.css */
+/* Only form-specific styles - layout handled by AuthLayout */
+
 .formWrapper {
   width: 100%;
   display: flex;
@@ -36,39 +39,6 @@
 .checkSvg {
   width: 64px;
   height: 64px;
-}
-
-.resendSection {
-  display: flex;
-  justify-content: center;
-}
-
-.resendButton {
-  color: var(--grey-500);
-  text-decoration: none;
-  font-size: 14px;
-  font-weight: 400;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 8px;
-  border-radius: 4px;
-  transition: all 0.2s ease;
-}
-
-.resendButton:hover:not(:disabled) {
-  color: var(--grey-600);
-  background-color: var(--grey-100);
-}
-
-.resendButton:focus {
-  outline: none;
-  background-color: var(--grey-200);
-}
-
-.resendButton:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }
 
 .loadingContainer {

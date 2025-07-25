@@ -17,14 +17,11 @@ export default function OAuthSetupPage() {
         return;
       }
 
-      // If no session, redirect to login
       if (!session?.user) {
         router.push("/login");
         return;
       }
 
-      // CRITICAL FIX: If user is already ACTIVE, only redirect if we're still initializing
-      // This prevents automatic redirects when user has moved to congratulations page
       if (
         session.user.status === "ACTIVE" &&
         session.user.isVerified &&
@@ -104,7 +101,7 @@ export default function OAuthSetupPage() {
 
   // ✅ FIXED: Remove auto-routing - just go to congratulations without next parameter
   const handleSetupComplete = () => {
-    router.push("/auth/congratulations");
+    router.push("/signup/success");
   };
 
   // Show loading while initializing

@@ -1,4 +1,6 @@
+// app/(auth)/password/forgot/sent/page.tsx
 "use client";
+
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import AuthLayout from "@/components/layouts/AuthLayout";
@@ -36,7 +38,6 @@ function ResetEmailSentContent() {
 
       if (response.ok) {
         setShowSentConfirmation(true);
-        // Hide the confirmation after 1 second
         setTimeout(() => {
           setShowSentConfirmation(false);
         }, 1000);
@@ -87,12 +88,16 @@ function ResetEmailSentContent() {
         <div className={styles.titleSection}>
           <h1 className={styles.title}>Reset Email Sent!</h1>
           <p className={styles.description}>
-            Please check your inbox to reset your password. If you didn't
-            receive your email, please check your junk mail folder.
+            Please check your inbox to reset your password.
+            If you didn't receive your email, please check your junk mail folder.
           </p>
         </div>
 
-        <Button variant="primary-green" onClick={handleBackToLogin} fullWidth>
+        <Button
+          variant="primary-green"
+          onClick={handleBackToLogin}
+          fullWidth
+        >
           Back to log In
         </Button>
 

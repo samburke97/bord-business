@@ -50,15 +50,20 @@ export default async function Home() {
     // Route based on user type and completion status
     if (isOAuthUser) {
       if (!isProfileComplete) {
-        redirect("/auth/oauth/setup");
+        redirect("/oauth/setup"); // UPDATED
+        redirect("/signup/complete");
         return;
       }
     } else if (isEmailUser) {
       if (!user.isVerified) {
-        redirect(`/verify-email?email=${encodeURIComponent(user.email || "")}`);
+        redirect(
+          `/signup/verify-email?email=${encodeURIComponent(user.email || "")}`
+        ); // UPDATED
+        redirect("/signup/complete");
         return;
       }
       if (!isProfileComplete) {
+        redirect("/signup/complete");
         return;
       }
     }
@@ -69,15 +74,14 @@ export default async function Home() {
       (user.businessMemberships?.length || 0) > 0;
 
     if (!hasBusinessConnection) {
-      redirect("/business-onboarding");
+      redirect("/business/onboarding"); // UPDATED
       return;
     }
 
     // User is completely set up - go to dashboard
-
     redirect("/dashboard");
   } catch (error) {
     // Fallback to business onboarding on error (safer than login)
-    redirect("/business-onboarding");
+    redirect("/business/onboarding"); // UPDATED
   }
 }
