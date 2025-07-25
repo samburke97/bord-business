@@ -21,11 +21,11 @@ export default function OAuthSetupPage() {
         return;
       }
 
+      // If user is ACTIVE, check business status and route accordingly
       if (
         session.user.status === "ACTIVE" &&
         session.user.isVerified &&
-        session.user.isActive &&
-        isInitializing
+        session.user.isActive
       ) {
         try {
           const businessResponse = await fetch("/api/user/business-status", {
@@ -43,53 +43,24 @@ export default function OAuthSetupPage() {
               return;
             }
           } else {
-            // Fallback to business onboarding
             router.push("/business/onboarding");
             return;
           }
         } catch (error) {
-          // Fallback to business onboarding
           router.push("/business/onboarding");
           return;
         }
       }
 
-      // If user is PENDING, check profile completion
+      // If user is PENDING, always show the setup form
+      // Do not check profile completion - force them to complete setup
       if (session.user.status === "PENDING") {
-        try {
-          const response = await fetch("/api/user/profile-status", {
-            credentials: "include",
-          });
-
-          if (response.ok) {
-            const profileData = await response.json();
-
-            // Check if profile is complete with ALL required fields
-            if (
-              profileData.isProfileComplete &&
-              profileData.firstName &&
-              profileData.lastName &&
-              profileData.username &&
-              profileData.phone &&
-              profileData.dateOfBirth
-            ) {
-              router.push("/business/onboarding");
-              return;
-            } else {
-              setIsInitializing(false);
-              return;
-            }
-          } else {
-            // Show setup form as fallback
-            setIsInitializing(false);
-            return;
-          }
-        } catch (error) {
-          // Show setup form as fallback
-          setIsInitializing(false);
-          return;
-        }
+        console.log("PENDING OAuth user - showing setup form");
+        setIsInitializing(false);
+        return;
       }
+
+      // Fallback - redirect to login if status is unknown
       router.push("/login");
     };
 
@@ -100,7 +71,6 @@ export default function OAuthSetupPage() {
     router.push("/signup/success");
   };
 
-  // Show loading while initializing
   if (isInitializing || status === "loading") {
     return (
       <div

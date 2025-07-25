@@ -9,7 +9,7 @@ export default function BusinessLoginPage() {
       accountType="business"
       title="Bord for Business"
       description="Create an account or log in to manage your business on bord."
-      callbackUrl="/dashboard"
+      callbackUrl="/"
     />
   );
 }
