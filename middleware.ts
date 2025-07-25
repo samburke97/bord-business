@@ -74,10 +74,14 @@ export async function middleware(req: NextRequest) {
     "/api/auth/csrf",
     "/api/auth/providers",
     "/api/auth/check-user-status", // CRITICAL: Allow user status check for login flow
-    "/auth/",
-    "/auth/congratulations", // ALL auth pages (including /auth/setup, /auth/password, etc.)
-    "/oauth/", // CRITICAL ADD: All OAuth setup pages
-    "/verify-email",
+
+    // NEW: Updated auth route structure
+    "/password/", // All password-related routes (enter, forgot, reset, success)
+    "/signup/", // All signup-related routes (complete, email-setup, verify-email, success)
+    "/business/", // All business-related routes (onboarding, setup)
+    "/oauth/", // All OAuth setup pages
+
+    // Keep these as-is
     "/_next",
     "/favicon.ico",
     "/icons",
@@ -161,12 +165,17 @@ export async function middleware(req: NextRequest) {
       "/api/user/profile-status",
       "/api/user/business-status", // CRITICAL ADD: Allow business status check
       "/api/auth/check-username",
-      "/auth/complete-setup",
+
+      // NEW: Updated routes
+      "/signup/complete", // Updated from /auth/complete-setup
       "/oauth/setup", // CRITICAL ADD: Allow OAuth setup page
       "/oauth/", // CRITICAL ADD: All OAuth routes
-      "/business-onboarding", // CRITICAL ADD: Allow newly activated users (with stale tokens) to access business onboarding
+      "/signup/", // All signup routes
+      "/oauth/setup", // CRITICAL ADD: Allow OAuth setup page
+      "/oauth/", // CRITICAL ADD: All OAuth routes
+      "/business/onboarding", // Updated from /business-onboarding
+      "/business/", // All business routes
     ];
-
     const isPendingUserAllowedRoute = allowedForPendingUsers.some((route) =>
       pathname.startsWith(route)
     );
@@ -220,7 +229,7 @@ export async function middleware(req: NextRequest) {
       }
 
       // For page routes, redirect to error page
-      const errorUrl = new URL("/auth/error", req.url);
+      const errorUrl = new URL("/oauth/error", req.url);
       errorUrl.searchParams.set("error", "AccountDisabled");
       return NextResponse.redirect(errorUrl);
     }
@@ -279,7 +288,7 @@ export async function middleware(req: NextRequest) {
         userInfo.globalRole !== "ADMIN" &&
         userInfo.globalRole !== "SUPER_ADMIN"
       ) {
-        const errorUrl = new URL("/auth/error", req.url);
+        const errorUrl = new URL("/oauth/error", req.url);
         errorUrl.searchParams.set("error", "AccessDenied");
         return NextResponse.redirect(errorUrl);
       }

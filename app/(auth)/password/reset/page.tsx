@@ -104,7 +104,7 @@ function ResetPasswordContent() {
 
       // Navigate to success page
       router.push(
-        `/auth/reset-password/success?email=${encodeURIComponent(email)}`
+        `/password/reset/success?email=${encodeURIComponent(email)}`
       );
     } catch (error) {
       setNewPasswordError(
@@ -161,7 +161,7 @@ function ResetPasswordContent() {
 
           <Button
             variant="primary-green"
-            onClick={() => router.push("/auth/forgot-password")}
+            onClick={() => router.push("/password/forgot")}
             fullWidth
           >
             Request New Reset Link

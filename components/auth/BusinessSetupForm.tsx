@@ -263,7 +263,7 @@ export default function BusinessSetupForm({
 
         onSetupComplete();
       } else {
-        window.location.href = `/verify-email?email=${encodeURIComponent(email)}`;
+        window.location.href = `/signup/verify-email?email=${encodeURIComponent(email)}`;
       }
     } catch (error) {
       if (error instanceof Error) {

@@ -3,7 +3,6 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import ActionHeader from "@/components/layouts/headers/ActionHeader";
 import TitleDescription from "@/components/ui/TitleDescription";
 import Button from "@/components/ui/Button";
 import styles from "./EmailVerification.module.css";
@@ -184,11 +183,6 @@ export default function EmailVerification({
 
   return (
     <div className={styles.container}>
-      <ActionHeader
-        type="back"
-        secondaryAction={handleBack}
-        className={styles.header}
-      />
 
       <div className={styles.content}>
         <div className={styles.formContainer}>

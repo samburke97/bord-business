@@ -55,7 +55,51 @@ export default function LoginForm({
     }
 
     setIsLoading(true);
-    router.push(`/auth/password?email=${encodeURIComponent(email)}`);
+    setEmailError(null);
+
+    try {
+      // Check if user exists first
+      const response = await fetch("/api/auth/check-user-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to check user status");
+      }
+
+      const userData = await response.json();
+
+      if (userData.exists) {
+        const methods = userData.methods || [];
+
+        // If user exists but DOES NOT have email credentials and has other methods, redirect to error page
+        if (!methods.includes("email") && methods.length > 0) {
+          router.push(
+            `/oauth/error?error=AccountExistsWithDifferentMethod&email=${encodeURIComponent(
+              email
+            )}&available=${methods.join(",")}&attempted=email`
+          );
+          return;
+        }
+
+        // User has email credentials - continue to password screen
+        router.push(
+          `/password/enter?email=${encodeURIComponent(email)}&type=login&name=${encodeURIComponent(
+            userData.name || ""
+          )}`
+        );
+      } else {
+        // User doesn't exist - redirect to signup
+        router.push(`/signup/email-setup?email=${encodeURIComponent(email)}`);
+      }
+    } catch (error) {
+      console.error("Email continue error:", error);
+      setEmailError("Something went wrong. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSocialLogin = async (provider: string) => {

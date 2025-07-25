@@ -61,7 +61,7 @@ function ForgotPasswordContent() {
 
       // Navigate to success page
       router.push(
-        `/auth/forgot-password/sent?email=${encodeURIComponent(email)}`
+        `/password/forgot/sent?email=${encodeURIComponent(email)}`
       );
     } catch (error) {
       setEmailError(

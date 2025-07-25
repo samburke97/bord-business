@@ -3,6 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { useRouter } from "next/navigation";
+import AuthLayout from "@/components/layouts/AuthLayout";
 import EmailVerification from "@/components/auth/EmailVerification";
 import styles from "./page.module.css";
 
@@ -12,20 +13,25 @@ function VerifyEmailContent() {
   const email = searchParams.get("email") || "";
 
   if (!email) {
-    // Redirect back to login if no email
     router.push("/login");
     return null;
   }
 
+  const handleBack = () => {
+    router.back();
+  };
+
   const handleVerificationComplete = () => {
-    router.push("/auth/congratulations");
+    router.push("/signup/success");
   };
 
   return (
-    <EmailVerification
-      email={email}
-      onVerificationComplete={handleVerificationComplete}
-    />
+    <AuthLayout showBackButton={true} onBackClick={handleBack}>
+      <EmailVerification
+        email={email}
+        onVerificationComplete={handleVerificationComplete}
+      />
+    </AuthLayout>
   );
 }
 
