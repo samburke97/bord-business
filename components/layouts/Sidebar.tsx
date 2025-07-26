@@ -4,133 +4,109 @@ import { useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { signOut, useSession } from "next-auth/react";
-import {
-  RiHomeLine,
-  RiSettings4Line,
-  RiUser3Line,
-  RiMapPinLine,
-} from "react-icons/ri";
 import styles from "./Sidebar.module.css";
+
+interface SidebarItem {
+  icon: string;
+  href: string;
+  label: string;
+  isActive?: boolean;
+}
+
+const sidebarItems: SidebarItem[] = [
+  { icon: "/icons/menu/home.svg", href: "/dashboard", label: "Home" },
+  { icon: "/icons/menu/calendar.svg", href: "/calendar", label: "Calendar" },
+  { icon: "/icons/menu/sales.svg", href: "/sales", label: "Sales" },
+  { icon: "/icons/menu/inventory.svg", href: "/inventory", label: "Inventory" },
+  {
+    icon: "/icons/menu/marketplace.svg",
+    href: "/marketplace",
+    label: "Marketplace",
+  },
+  { icon: "/icons/menu/players.svg", href: "/players", label: "Players" },
+  { icon: "/icons/menu/reports.svg", href: "/reports", label: "Reports" },
+  { icon: "/icons/menu/settings.svg", href: "/settings", label: "Settings" },
+];
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { data: session } = useSession();
-  const [configureExpanded, setConfigureExpanded] = useState(
-    () =>
-      pathname?.includes("/configure") ||
-      pathname?.includes("/groups") ||
-      pathname?.includes("/tags") ||
-      pathname?.includes("/sports")
-  );
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [hoveredItem, setHoveredItem] = useState<string | null>(null);
 
-  const [locationsExpanded, setLocationsExpanded] = useState(() =>
-    pathname?.includes("/locations")
-  );
-
-  const isActive = (path: string) =>
-    pathname === path || pathname?.startsWith(`${path}/`);
+  const isActive = (href: string) => {
+    if (href === "/dashboard") {
+      return pathname === "/dashboard" || pathname === "/";
+    }
+    return pathname?.startsWith(href);
+  };
 
   return (
-    <aside className={styles.sidebar}>
+    <aside className={`${styles.sidebar} ${isExpanded ? styles.expanded : ""}`}>
+      {/* Logo */}
       <div className={styles.logoContainer}>
         <Link href="/dashboard">
-          <Image
-            src="/bord.svg"
-            alt="Bord Logo"
-            width={40}
-            height={40}
-            className={styles.logo}
-          />
+          <div className={styles.logoWrapper}>
+            <span className={styles.logoText}>bord</span>
+          </div>
         </Link>
       </div>
 
+      {/* Navigation Items */}
       <nav className={styles.navItems}>
-        <Link
-          href="/dashboard"
-          className={`${styles.navItem} ${
-            isActive("/dashboard") ? styles.active : ""
-          }`}
-        >
-          <RiHomeLine className={styles.icon} />
-          <span className={styles.navLabel}>Dashboard</span>
-        </Link>
+        {sidebarItems.map((item) => {
+          const itemIsActive = isActive(item.href);
+          const isHovered = hoveredItem === item.href;
 
-        <button
-          onClick={() => setLocationsExpanded(!locationsExpanded)}
-          className={`${styles.navItem} ${
-            isActive("/locations") ? styles.active : ""
-          }`}
-        >
-          <RiMapPinLine className={styles.icon} />
-          <span className={styles.navLabel}>Locations</span>
-        </button>
+          return (
+            <div key={item.href} className={styles.navItemWrapper}>
+              <Link
+                href={item.href}
+                className={`${styles.navItem} ${
+                  itemIsActive ? styles.active : ""
+                } ${isHovered ? styles.hovered : ""}`}
+                onMouseEnter={() => setHoveredItem(item.href)}
+                onMouseLeave={() => setHoveredItem(null)}
+              >
+                <div className={styles.iconContainer}>
+                  <Image
+                    src={item.icon}
+                    alt={item.label}
+                    width={24}
+                    height={24}
+                    className={`${styles.icon} ${itemIsActive ? styles.iconActive : ""}`}
+                  />
+                </div>
+              </Link>
 
-        {locationsExpanded && (
-          <div className={styles.subnav}>
-            <Link
-              href="/locations"
-              className={`${styles.subnavItem} ${
-                pathname === "/locations" ? styles.subactive : ""
-              }`}
-            >
-              <span className={styles.navLabel}>Full Library</span>
-            </Link>
-            <Link
-              href="/locations/requests"
-              className={`${styles.subnavItem} ${
-                isActive("/locations/requests") ? styles.subactive : ""
-              }`}
-            >
-              <span className={styles.navLabel}>Requests</span>
-            </Link>
-          </div>
-        )}
-
-        <button
-          onClick={() => setConfigureExpanded(!configureExpanded)}
-          className={`${styles.navItem} ${
-            isActive("/configure") ||
-            isActive("/sports") ||
-            isActive("/groups") ||
-            isActive("/tags")
-              ? styles.active
-              : ""
-          }`}
-        >
-          <RiSettings4Line className={styles.icon} />
-          <span className={styles.navLabel}>Configure</span>
-        </button>
-
-        {configureExpanded && (
-          <div className={styles.subnav}>
-            <Link
-              href="/sports"
-              className={`${styles.subnavItem} ${
-                isActive("/sports") ? styles.subactive : ""
-              }`}
-            >
-              <span className={styles.navLabel}>Sports</span>
-            </Link>
-            <Link
-              href="/groups"
-              className={`${styles.subnavItem} ${
-                isActive("/groups") ? styles.subactive : ""
-              }`}
-            >
-              <span className={styles.navLabel}>Groups</span>
-            </Link>
-            <Link
-              href="/tags"
-              className={`${styles.subnavItem} ${
-                isActive("/tags") ? styles.subactive : ""
-              }`}
-            >
-              <span className={styles.navLabel}>Tags</span>
-            </Link>
-          </div>
-        )}
+              {/* Tooltip for icon-only state */}
+              {!isExpanded && isHovered && (
+                <div className={styles.tooltip}>{item.label}</div>
+              )}
+            </div>
+          );
+        })}
       </nav>
+
+      {/* Expand/Collapse Toggle */}
+      <button
+        className={styles.toggleButton}
+        onClick={() => setIsExpanded(!isExpanded)}
+        aria-label={isExpanded ? "Collapse sidebar" : "Expand sidebar"}
+      >
+        <div
+          className={`${styles.toggleIcon} ${isExpanded ? styles.rotated : ""}`}
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path
+              d="M6 4l4 4-4 4"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </div>
+      </button>
     </aside>
   );
 }

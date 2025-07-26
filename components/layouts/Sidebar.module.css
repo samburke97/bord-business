@@ -1,124 +1,199 @@
+/* Sidebar.module.css */
+
 .sidebar {
-  width: 250px;
+  position: fixed;
+  left: 0;
+  top: 0;
   height: 100vh;
-  background-color: var(--con-lightest);
+  width: 80px; /* Icon-only width */
+  background: #ffffff;
+  border-right: 1px solid #e5e7eb;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid var(--out-light);
-  position: sticky;
-  top: 0;
-}
-
-.logoContainer {
-  padding: 1.5rem;
-  display: flex;
-  justify-content: flex-start;
   align-items: center;
-  border-bottom: 1px solid var(--out-light);
-  height: 72px;
+  padding: 24px 0;
+  transition: width 0.3s ease;
+  z-index: 1000;
 }
 
-.logo {
+.sidebar.expanded {
+  width: 240px; /* Expanded width */
+}
+
+/* Logo Container */
+.logoContainer {
+  margin-bottom: 32px;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.logoWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+}
+
+.logoText {
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+  text-decoration: none;
+}
+
+/* Navigation Items */
+.navItems {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  align-items: center;
+  flex: 1;
+}
+
+.navItemWrapper {
+  position: relative;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.navItem {
+  display: flex;
+  padding: 12px;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  position: relative;
+  width: 48px;
+  height: 48px;
+}
+
+/* Hover state */
+.navItem.hovered {
+  background: var(--Container-Medium, #edf0f0);
+}
+
+/* Active state */
+.navItem.active {
+  background: var(--Container-Medium, #edf0f0);
+}
+
+/* Icon Container */
+.iconContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 24px;
   height: 24px;
 }
 
-.navItems {
-  display: flex;
-  flex-direction: column;
-  padding: 1rem 1rem;
-  flex-grow: 1;
+.icon {
+  width: 24px;
+  height: 24px;
+  transition: filter 0.2s ease;
 }
 
-.navItem {
-  height: 40px;
-  width: 100%;
-  display: flex;
-  align-items: center;
-  padding: 0.75rem 0.75rem;
-  margin: 0.2rem 0;
-  color: var(--for-medium);
-  transition: all 0.2s;
-  text-decoration: none;
+/* Active icon (filled black) */
+.iconActive {
+  filter: brightness(0) saturate(100%); /* Makes SVG black */
+}
+
+/* Tooltip */
+.tooltip {
+  position: absolute;
+  left: calc(100% + 12px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: #000000;
+  color: #ffffff;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  z-index: 1001;
+  opacity: 0;
+  animation: fadeIn 0.2s ease forwards;
+}
+
+.tooltip::before {
+  content: "";
+  position: absolute;
+  left: -4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-right: 4px solid #000000;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-50%) translateX(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+  }
+}
+
+/* Toggle Button */
+.toggleButton {
   background: none;
   border: none;
+  padding: 8px;
   cursor: pointer;
-  text-align: left;
-  font-size: 1rem;
+  border-radius: 6px;
+  transition: background-color 0.2s ease;
+  margin-top: auto;
 }
 
-.navItem:hover {
-  background-color: var(--con-light);
-  border-radius: 8px;
-  color: var(--for-dark);
+.toggleButton:hover {
+  background: #f3f4f6;
 }
 
-.icon {
-  width: 20px;
-  height: 20px;
-  margin-right: 10px;
-}
-
-.navLabel {
-  font-size: 0.9rem;
-}
-
-.active {
-  color: var(--for-darkest);
-  border-radius: 8px;
-  background-color: var(--con-medium);
-  font-weight: 500;
-}
-
-.active .icon {
-  color: var(--for-darkest);
-}
-
-.subnav {
-  display: flex;
-  flex-direction: column;
-  margin-left: 1rem;
-}
-
-.subnavItem {
-  height: 40px;
-  width: 100%;
+.toggleIcon {
+  transition: transform 0.3s ease;
   display: flex;
   align-items: center;
-  padding: 0 1.5rem;
-  color: var(--for-medium);
-  transition: all 0.2s;
-  text-decoration: none;
-  border-left: 1px solid var(--out-light);
+  justify-content: center;
+  color: #6b7280;
 }
 
-.subnavItem:hover {
-  color: var(--for-dark);
+.toggleIcon.rotated {
+  transform: rotate(180deg);
 }
 
-.subactive {
-  color: var(--for-dark);
-  border-left: 1px solid var(--out-dark);
-}
-
-.userSection {
-  padding: 1.5rem;
-  display: flex;
+/* Expanded State Styles */
+.sidebar.expanded .navItem {
+  width: auto;
+  min-width: 200px;
+  flex-direction: row;
   justify-content: flex-start;
-  margin-top: auto;
-  border-top: 1px solid var(--border-color);
+  padding: 12px 16px;
+  gap: 12px;
 }
 
-.profileImage {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  overflow: hidden;
+.sidebar.expanded .navItemWrapper {
+  justify-content: flex-start;
+  padding: 0 16px;
 }
 
-.avatar {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 50%;
+.sidebar.expanded .logoWrapper {
+  justify-content: flex-start;
+  padding-left: 16px;
+}
+
+/* CSS Variables (add these to your root CSS if not already present) */
+:root {
+  --Container-Medium: #edf0f0;
 }

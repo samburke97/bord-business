@@ -31,7 +31,6 @@ export class RouteGuard {
     "/api/user/activate-profile",
     "/api/user/profile-status",
     "/api/user/business-status",
-    "/api/auth/check-username",
     "/signup/complete",
     "/oauth/setup",
     "/",

@@ -1,4 +1,4 @@
-// lib/services/UserJourneyService.ts - COMPLETE WITH SESSION REFRESH
+// lib/services/UserJourneyService.ts - FIXED: Move getJourneyFromSession to server side
 import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -8,31 +8,139 @@ import {
   AuthMethod,
   UserJourneyState,
 } from "./UserJourneyTypes";
-import { UserJourneyClient } from "./UserJourneyClient";
 
 export class UserJourneyService {
   private static readonly CACHE_TTL = 10 * 60 * 1000; // 10 minutes
   private static readonly STALE_TTL = 5 * 60 * 1000; // 5 minutes (stale threshold)
 
   /**
-   * ✅ ENTERPRISE OPTIMIZATION: Get journey from session cache (0 DB hits)
-   * Delegates to client-safe implementation
+   * ✅ FIXED: Get journey from session cache (moved from UserJourneyClient)
+   * This needs to run on the server side for app/page.tsx
    */
   static getJourneyFromSession(session: any): UserJourneyState | null {
-    return UserJourneyClient.getJourneyFromSession(session);
+    if (!session?.user?.id) return null;
+
+    const user = session.user;
+    if (!user.authMethod) return null;
+
+    return {
+      id: user.id,
+      email: user.email,
+      status: user.status || "PENDING",
+      isVerified: user.isVerified || false,
+      isActive: user.isActive || false,
+      firstName: user.firstName || null,
+      lastName: user.lastName || null,
+      phone: user.phone || null,
+      dateOfBirth: user.dateOfBirth ? new Date(user.dateOfBirth) : null,
+      hasViewedSuccess: user.hasViewedSuccess || false,
+      businessIntention: user.businessIntention || null,
+      intentionSetAt: user.intentionSetAt
+        ? new Date(user.intentionSetAt)
+        : null,
+      onboardingStep: user.onboardingStep || null,
+      emailVerifiedAt: user.emailVerifiedAt
+        ? new Date(user.emailVerifiedAt)
+        : null,
+      profileCompletedAt: user.profileCompletedAt
+        ? new Date(user.profileCompletedAt)
+        : null,
+      authMethod: user.authMethod as AuthMethod,
+      isOAuthUser: user.authMethod === AuthMethod.OAUTH,
+      isEmailUser: user.authMethod === AuthMethod.EMAIL,
+      isProfileComplete: user.isProfileComplete || false,
+      hasBusinessConnection: user.hasBusinessConnection || false,
+      currentStep: user.onboardingStep as any,
+      intention: user.businessIntention as any,
+    };
   }
 
   /**
-   * ✅ ENTERPRISE OPTIMIZATION: Ultra-fast route determination
-   * Delegates to client-safe implementation
+   * ✅ FIXED: Route determination (moved from UserJourneyClient)
+   * This also needs to run on the server side
    */
+  // Fixed determineNextRoute method - ACTIVE users go straight to dashboard
+
   static determineNextRoute(journeyState: UserJourneyState): string {
-    return UserJourneyClient.determineNextRoute(journeyState);
+    const {
+      authMethod,
+      status,
+      isVerified,
+      isProfileComplete,
+      hasBusinessConnection,
+      hasViewedSuccess,
+      intention,
+      email,
+    } = journeyState;
+
+    // OAuth Flow
+    if (authMethod === AuthMethod.OAUTH) {
+      if (status === "PENDING" || !isProfileComplete) {
+        return "/oauth/setup";
+      }
+      if (!hasViewedSuccess) {
+        return "/signup/success";
+      }
+      if (hasBusinessConnection) {
+        return "/dashboard";
+      }
+      if (intention === BusinessIntention.SETUP_NOW) {
+        return "/business/onboarding";
+      }
+      if (intention === BusinessIntention.SKIP) {
+        return "/dashboard";
+      }
+      if (intention === BusinessIntention.SETUP_LATER) {
+        const intentionAge = journeyState.intentionSetAt
+          ? Date.now() - new Date(journeyState.intentionSetAt).getTime()
+          : 0;
+        if (intentionAge > 24 * 60 * 60 * 1000) {
+          return "/signup/success";
+        }
+        return "/dashboard";
+      }
+      return "/signup/success";
+    }
+
+    // Email Flow - FIXED: ACTIVE users go straight to dashboard
+    if (authMethod === AuthMethod.EMAIL) {
+      // ✅ FIXED: ACTIVE + verified users go straight to business logic or dashboard
+      if (status === "ACTIVE" && isVerified) {
+        // User is fully signed up and verified - check business status only
+
+        if (hasBusinessConnection) {
+          return "/dashboard";
+        }
+
+        // Check business intention only for routing to business setup
+        if (intention === BusinessIntention.SETUP_NOW) {
+          return "/business/onboarding";
+        }
+
+        // ✅ FIXED: All other ACTIVE users go straight to dashboard
+        // No more success page for already signed up users
+        return "/dashboard";
+      }
+
+      // ✅ User is not yet ACTIVE or verified - complete signup flow
+      if (!isVerified) {
+        return `/signup/verify-email?email=${encodeURIComponent(email || "")}`;
+      }
+
+      if (!isProfileComplete) {
+        return `/signup/email-setup?email=${encodeURIComponent(email || "")}`;
+      }
+
+      // Fallback for any other email user states
+      return "/login";
+    }
+
+    // Default fallback
+    return "/login";
   }
 
   /**
-   * ✅ ENTERPRISE OPTIMIZATION: Smart journey state fetching with stale-while-revalidate
-   * Tries session cache first, falls back to optimized DB query only when needed
+   * ✅ Smart journey state fetching with stale-while-revalidate
    */
   static async getUserJourneyState(userId: string): Promise<UserJourneyState> {
     // Try to get current session and use cached data
@@ -64,7 +172,7 @@ export class UserJourneyService {
   }
 
   /**
-   * ✅ NEW: Get cache status (fresh, stale, or expired)
+   * ✅ Get cache status (fresh, stale, or expired)
    */
   private static getCacheStatus(session: any): "fresh" | "stale" | "expired" {
     const lastRefresh = session.user?.lastJourneyRefresh;
@@ -80,7 +188,7 @@ export class UserJourneyService {
   }
 
   /**
-   * ✅ NEW: Background refresh for stale-while-revalidate
+   * ✅ Background refresh for stale-while-revalidate
    */
   private static async refreshInBackground(userId: string): Promise<void> {
     try {
@@ -95,15 +203,7 @@ export class UserJourneyService {
   }
 
   /**
-   * ✅ ENTERPRISE OPTIMIZATION: Check if session cache is still valid
-   */
-  private static isCacheValid(session: any): boolean {
-    return this.getCacheStatus(session) !== "expired";
-  }
-
-  /**
-   * ✅ ENTERPRISE OPTIMIZATION: Highly optimized DB query
-   * Only called when session cache is invalid - uses minimal field selection
+   * ✅ Highly optimized DB query
    */
   private static async getUserJourneyStateFromDB(
     userId: string
@@ -111,7 +211,6 @@ export class UserJourneyService {
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: {
-        // ✅ Only select fields we actually need
         id: true,
         email: true,
         status: true,
@@ -127,8 +226,6 @@ export class UserJourneyService {
         onboardingStep: true,
         emailVerifiedAt: true,
         profileCompletedAt: true,
-
-        // ✅ Use _count for performance instead of loading full relations
         _count: {
           select: {
             accounts: true,
@@ -136,8 +233,6 @@ export class UserJourneyService {
             businessMemberships: { where: { isActive: true } },
           },
         },
-
-        // ✅ Only get password hash existence, not the actual hash
         credentials: {
           select: {
             passwordHash: true,
@@ -175,7 +270,7 @@ export class UserJourneyService {
   }
 
   /**
-   * ✅ ENHANCED: Update journey with complete session cache refresh
+   * ✅ Update journey with complete session cache refresh
    */
   static async updateUserJourney(
     userId: string,
@@ -221,7 +316,7 @@ export class UserJourneyService {
       data: updateData,
     });
 
-    // ✅ COMPLETE IMPLEMENTATION: Trigger session refresh for immediate cache update
+    // ✅ Trigger session refresh for immediate cache update
     try {
       const freshJourney = await this.getUserJourneyStateFromDB(userId);
       await this.triggerSessionUpdate(userId, freshJourney);
@@ -234,28 +329,21 @@ export class UserJourneyService {
   }
 
   /**
-   * ✅ NEW: Complete session update implementation
+   * ✅ Complete session update implementation
    */
   private static async triggerSessionUpdate(
     userId: string,
     journeyState: UserJourneyState
   ): Promise<void> {
     try {
-      // Create optimized cache data
       const cacheData = this.createJourneyCacheData(journeyState);
 
-      // ✅ Method 1: Server-side session update (for API routes)
       if (typeof window === "undefined") {
-        // We're on the server - emit custom event for any listening clients
         console.log(`Server: Session update triggered for user ${userId}`);
-
-        // ✅ Emit event that can be picked up by server-side event systems
         process.emit("journey-session-update", { userId, cacheData });
       }
 
-      // ✅ Method 2: Client-side session update trigger
       if (typeof window !== "undefined") {
-        // Dispatch custom event that useJourneyUpdate hook can listen for
         window.dispatchEvent(
           new CustomEvent("journey-session-update", {
             detail: { userId, cacheData },
@@ -271,8 +359,7 @@ export class UserJourneyService {
   }
 
   /**
-   * ✅ ENTERPRISE HELPER: Create optimized journey data for session caching
-   * This helps prepare data to be stored in the NextAuth session/JWT
+   * ✅ Create optimized journey data for session caching
    */
   static createJourneyCacheData(journeyState: UserJourneyState) {
     return {
@@ -290,15 +377,12 @@ export class UserJourneyService {
   }
 
   /**
-   * ✅ COMPLETE IMPLEMENTATION: Force refresh of journey cache
+   * ✅ Force refresh of journey cache
    */
   static async forceRefreshCache(userId: string): Promise<UserJourneyState> {
     try {
       const freshJourney = await this.getUserJourneyStateFromDB(userId);
-
-      // ✅ Complete cache invalidation and refresh
       await this.triggerSessionUpdate(userId, freshJourney);
-
       console.log(`Cache force-refreshed for user ${userId}`);
       return freshJourney;
     } catch (error) {
