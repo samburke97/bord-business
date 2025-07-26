@@ -1,7 +1,7 @@
-// app/api/user/activate-profile/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { verifyRecaptcha } from "@/lib/auth/recaptcha";
 import prisma from "@/lib/prisma";
 
 export async function POST(request: NextRequest) {
@@ -34,8 +34,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { firstName, lastName, dateOfBirth, fullMobile } =
+    const { firstName, lastName, dateOfBirth, fullMobile, recaptchaToken } =
       await request.json();
+
+    // reCAPTCHA verification - now using centralized function
+    const recaptchaResult = await verifyRecaptcha(recaptchaToken);
+    if (!recaptchaResult.success) {
+      return NextResponse.json(
+        {
+          message: "Security verification failed. Please try again.",
+          code: "RECAPTCHA_FAILED",
+        },
+        { status: 400 }
+      );
+    }
 
     // Validate required fields
     if (!firstName || !lastName || !dateOfBirth || !fullMobile) {

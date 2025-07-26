@@ -12,15 +12,15 @@ export class SecurityHeaders {
       "camera=(), microphone=(), geolocation=(), payment=()"
     );
 
-    // CSP for reCAPTCHA and Mapbox support
+    // FIXED CSP with all required domains for reCAPTCHA and Mapbox
     const csp = [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://connect.facebook.net https://www.recaptcha.net https://api.mapbox.com",
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://api.mapbox.com",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://connect.facebook.net https://www.facebook.com https://www.google.com https://www.gstatic.com https://www.recaptcha.net https://recaptcha.google.com https://api.mapbox.com",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://www.google.com https://www.gstatic.com https://api.mapbox.com",
       "font-src 'self' https://fonts.gstatic.com data:",
       "img-src 'self' data: https: blob: https://api.mapbox.com https://*.tiles.mapbox.com",
-      "connect-src 'self' https://accounts.google.com https://www.recaptcha.net https://api.mapbox.com",
-      "frame-src 'self' https://accounts.google.com https://www.recaptcha.net",
+      "connect-src 'self' https://accounts.google.com https://www.facebook.com https://graph.facebook.com https://www.google.com https://www.recaptcha.net https://api.mapbox.com https://*.tiles.mapbox.com https://events.mapbox.com",
+      "frame-src 'self' https://accounts.google.com https://www.facebook.com https://www.google.com https://www.recaptcha.net https://recaptcha.google.com",
       "worker-src 'self' blob:",
       "object-src 'none'",
       "base-uri 'self'",

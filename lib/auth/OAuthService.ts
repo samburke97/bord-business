@@ -18,13 +18,6 @@ export class OAuthService {
     );
 
     if (existingOAuthAccount) {
-      // This is the SAME OAuth user - allow them to continue regardless of status
-      console.log("✅ Same OAuth user continuing setup:", {
-        userId: existingUser.id,
-        email: existingUser.email,
-        status: existingUser.status,
-        provider: account.provider,
-      });
       return existingUser;
     }
 
@@ -34,19 +27,10 @@ export class OAuthService {
     );
 
     if (sameProviderAccount) {
-      // Same provider, different account - this is suspicious, block it
       throw new Error(`OAuthAccountNotLinked`);
     }
 
-    // CRITICAL FIX: For PENDING users with no completed setup, allow linking new OAuth provider
     if (existingUser.status === "PENDING" && !existingUser.isVerified) {
-      console.log("✅ Linking new OAuth provider to PENDING user:", {
-        userId: existingUser.id,
-        email: existingUser.email,
-        newProvider: account.provider,
-        existingProviders: existingUser.accounts.map((acc) => acc.provider),
-      });
-
       // Link the new OAuth account to the pending user
       await prisma.account.create({
         data: {

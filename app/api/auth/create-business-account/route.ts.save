@@ -1,13 +1,14 @@
+// app/api/auth/create-business-account/route.ts - FIXED: Proper email handling
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import prisma from "@/lib/prisma";
 import { hashPassword } from "@/lib/security/password";
 import { sanitizeEmail, validateEmail } from "@/lib/security/utils/utils";
-import { verifyRecaptcha } from "@/lib/auth/recaptcha";
 import crypto from "crypto";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+xlwaer
 // Enterprise password policy (same as set-password)
 const PASSWORD_POLICY = {
   minLength: 12,
@@ -63,6 +64,45 @@ function validatePasswordStrength(password: string): {
   };
 }
 
+// reCAPTCHA verification function
+async function verifyRecaptcha(token: string): Promise<{
+  success: boolean;
+  score?: number;
+  error?: string;
+}> {
+  try {
+    const response = await fetch(
+      `https://www.google.com/recaptcha/api/siteverify`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: `secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${token}`,
+      }
+    );
+
+    const data = await response.json();
+
+    if (!data.success) {
+      return {
+        success: false,
+        error: data["error-codes"]?.join(", ") || "Verification failed",
+      };
+    }
+
+    return {
+      success: true,
+      score: data.score,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: "reCAPTCHA verification failed",
+    };
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const {
@@ -75,7 +115,7 @@ export async function POST(request: NextRequest) {
       recaptchaToken,
     } = await request.json();
 
-    // reCAPTCHA verification - now using centralized function
+    // reCAPTCHA verification
     const recaptchaResult = await verifyRecaptcha(recaptchaToken);
     if (!recaptchaResult.success) {
       return NextResponse.json(

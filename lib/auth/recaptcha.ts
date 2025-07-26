@@ -1,4 +1,3 @@
-// app/api/auth/verify-recaptcha.ts - Helper function for reCAPTCHA verification
 interface RecaptchaResponse {
   success: boolean;
   score?: number;
@@ -8,7 +7,10 @@ interface RecaptchaResponse {
   "error-codes"?: string[];
 }
 
-export async function verifyRecaptcha(token: string): Promise<{
+export async function verifyRecaptcha(
+  token: string,
+  minScore: number = 0.5
+): Promise<{
   success: boolean;
   score?: number;
   error?: string;
@@ -40,21 +42,17 @@ export async function verifyRecaptcha(token: string): Promise<{
     if (!data.success) {
       return {
         success: false,
-        error: "reCAPTCHA verification failed",
+        error: `reCAPTCHA failed: ${data["error-codes"]?.join(", ") || "Unknown error"}`,
       };
     }
 
-    // For reCAPTCHA v3, check the score (0.0 - 1.0)
-    // Lower scores indicate bot-like behavior
-    if (data.score !== undefined) {
-      const threshold = 0.5; // Adjust based on your needs
-      if (data.score < threshold) {
-        return {
-          success: false,
-          score: data.score,
-          error: "Suspicious activity detected",
-        };
-      }
+    // For reCAPTCHA v3, check the score
+    if (data.score !== undefined && data.score < minScore) {
+      return {
+        success: false,
+        score: data.score,
+        error: `Suspicious activity detected (score: ${data.score})`,
+      };
     }
 
     return {
@@ -62,6 +60,7 @@ export async function verifyRecaptcha(token: string): Promise<{
       score: data.score,
     };
   } catch (error) {
+    console.error("reCAPTCHA verification error:", error);
     return {
       success: false,
       error: "reCAPTCHA verification failed",
