@@ -4,7 +4,7 @@
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
-import { OnboardingStep } from "@/lib/services/UserJourneyService";
+import { OnboardingStep } from "@/lib/services/UserJourneyTypes";
 import BusinessSetupForm from "@/components/auth/BusinessSetupForm";
 
 export default function OAuthSetupPage() {
