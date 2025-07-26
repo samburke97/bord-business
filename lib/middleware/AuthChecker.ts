@@ -1,3 +1,4 @@
+// lib/middleware/AuthChecker.ts - FIXED URL construction
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 
@@ -29,7 +30,10 @@ export class AuthChecker {
     };
   }
 
-  static createUnauthorizedResponse(pathname: string): NextResponse {
+  static createUnauthorizedResponse(
+    req: NextRequest,
+    pathname: string
+  ): NextResponse {
     if (pathname.startsWith("/api/")) {
       return NextResponse.json(
         { error: "Unauthorized", message: "Authentication required" },
@@ -37,12 +41,13 @@ export class AuthChecker {
       );
     }
 
-    const loginUrl = new URL("/login", pathname);
+    // FIXED: Use req.url as base for URL construction
+    const loginUrl = new URL("/login", req.url);
     loginUrl.searchParams.set("return_to", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  static createErrorResponse(pathname: string): NextResponse {
+  static createErrorResponse(req: NextRequest, pathname: string): NextResponse {
     if (pathname.startsWith("/api/")) {
       return NextResponse.json(
         { error: "Server error", message: "Authentication system error" },
@@ -50,7 +55,8 @@ export class AuthChecker {
       );
     }
 
-    const loginUrl = new URL("/login", pathname);
+    // FIXED: Use req.url as base for URL construction
+    const loginUrl = new URL("/login", req.url);
     loginUrl.searchParams.set("error", "SessionError");
     loginUrl.searchParams.set("return_to", pathname);
     return NextResponse.redirect(loginUrl);
