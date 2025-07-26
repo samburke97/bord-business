@@ -3,7 +3,7 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { signIn } from "next-auth/react";
+import { signIn, getSession } from "next-auth/react";
 import Image from "next/image";
 import AuthLayout from "@/components/layouts/AuthLayout";
 import TitleDescription from "@/components/ui/TitleDescription";
@@ -122,14 +122,11 @@ export default function PasswordScreen({
 
         onPasswordComplete();
       } else {
-        // CRITICAL FIX: Use callbackUrl to ensure proper redirect
+        // PRODUCTION FIX: Enhanced existing user login flow
         const result = await signIn("credentials", {
           email,
           password,
           redirect: false, // Important: don't let NextAuth handle redirect
-          callbackUrl: continueBusinessSetup
-            ? "/business/onboarding"
-            : "/dashboard",
         });
 
         if (result?.error) {
@@ -138,10 +135,18 @@ export default function PasswordScreen({
         }
 
         if (result?.ok) {
+          // CRITICAL FIX: Force session refresh to get updated user data
+          await getSession();
+
+          // PRODUCTION APPROACH: Let UserJourneyService determine routing
+          // This ensures consistent routing logic across the entire application
           if (continueBusinessSetup) {
-            window.location.href = "/"; // Let home page determine the right place
+            // Special case: user was in middle of business setup
+            window.location.href = "/business/onboarding";
           } else {
-            window.location.href = "/"; // Let home page determine the right place
+            // Standard case: let home page (UserJourney) determine correct route
+            // This will route existing users to dashboard, new users through onboarding
+            window.location.href = "/";
           }
         }
       }

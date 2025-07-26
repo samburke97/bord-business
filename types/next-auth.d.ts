@@ -1,46 +1,41 @@
-// types/next-auth.d.ts - FIXED: Added missing status field
-import "next-auth";
-import { UserRole, UserStatus } from "@prisma/client";
+import { DefaultSession, DefaultUser } from "next-auth";
+import { DefaultJWT } from "next-auth/jwt";
 
 declare module "next-auth" {
-  interface User {
-    id: string;
-    name?: string | null;
-    email?: string | null;
-    image?: string | null;
-    // Custom fields from your database
-    globalRole?: UserRole;
-    isVerified?: boolean;
-    isActive?: boolean;
-    status?: UserStatus; // CRITICAL FIX: Add status field
-  }
-
-  interface Session {
+  interface Session extends DefaultSession {
     user: {
       id: string;
-      name?: string | null;
-      email?: string | null;
-      image?: string | null;
-      // Custom fields from your database
-      globalRole?: UserRole;
-      isVerified?: boolean;
-      isActive?: boolean;
-      status?: UserStatus; // CRITICAL FIX: Add status field
-    };
+      globalRole: string;
+      isVerified: boolean;
+      isActive: boolean;
+      status: string;
+      hasBusinessConnection: boolean;
+      isProfileComplete: boolean;
+    } & DefaultSession["user"];
+  }
+
+  interface User extends DefaultUser {
+    globalRole: string;
+    isVerified: boolean;
+    isActive: boolean;
+    status: string;
+    hasBusinessConnection?: boolean;
+    isProfileComplete?: boolean;
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
+    dateOfBirth?: Date;
   }
 }
 
-// The `JWT` interface can be used to have more detailed control over the token
 declare module "next-auth/jwt" {
-  interface JWT {
-    sub?: string;
-    name?: string | null;
-    email?: string | null;
-    picture?: string | null;
-    // Custom fields from your database
-    globalRole?: UserRole;
-    isVerified?: boolean;
-    isActive?: boolean;
-    status?: UserStatus; // CRITICAL FIX: Add status field
+  interface JWT extends DefaultJWT {
+    globalRole: string;
+    isVerified: boolean;
+    isActive: boolean;
+    status: string;
+    hasBusinessConnection: boolean;
+    isProfileComplete: boolean;
+    lastRefresh: number;
   }
 }

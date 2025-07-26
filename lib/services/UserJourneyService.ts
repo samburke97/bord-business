@@ -206,10 +206,47 @@ export class UserJourneyService {
       // 6. No intention set - show success page for choice
       return "/signup/success";
     }
+
     // =======================================================================
-    // EMAIL FLOW ROUTING - SIMPLIFIED ENTERPRISE
+    // EMAIL FLOW ROUTING - FIXED FOR EXISTING USERS
     // =======================================================================
     if (authMethod === AuthMethod.EMAIL) {
+      // CRITICAL FIX: For existing email users who are signing in
+      // Check if user is ACTIVE status (existing user with complete profile)
+      if (status === "ACTIVE" && isVerified && isProfileComplete) {
+        // Has business connection - go to dashboard
+        if (hasBusinessConnection) {
+          return "/dashboard";
+        }
+
+        // Active users without business connection - check intention
+        if (intention === BusinessIntention.SETUP_NOW) {
+          return "/business/onboarding";
+        }
+
+        if (intention === BusinessIntention.SKIP) {
+          return "/dashboard";
+        }
+
+        if (intention === BusinessIntention.SETUP_LATER) {
+          const intentionAge = journeyState.intentionSetAt
+            ? Date.now() - new Date(journeyState.intentionSetAt).getTime()
+            : 0;
+
+          // After 24 hours, ask again
+          if (intentionAge > 24 * 60 * 60 * 1000) {
+            return "/signup/success";
+          }
+
+          return "/dashboard";
+        }
+
+        // No intention set - for existing users, default to dashboard
+        // (They can set up business later from dashboard)
+        return "/dashboard";
+      }
+
+      // NEW USER EMAIL FLOW
       // 1. Profile not complete - needs setup
       if (!isProfileComplete) {
         return `/signup/email-setup?email=${encodeURIComponent(email || "")}`;
@@ -225,14 +262,35 @@ export class UserJourneyService {
         return "/dashboard";
       }
 
-      // 4. SIMPLE: All verified email users go to dashboard
-      // We can add choice logic later once basic flow works
+      // 4. New verified email users - check if they've seen success page
       if (isVerified && isProfileComplete) {
-        return "/dashboard";
+        // If they haven't viewed success page, show it
+        if (!hasViewedSuccess) {
+          return "/signup/success";
+        }
+
+        // Handle business intentions for new users
+        if (intention === BusinessIntention.SETUP_NOW) {
+          return "/business/onboarding";
+        }
+
+        if (intention === BusinessIntention.SKIP) {
+          return "/dashboard";
+        }
+
+        if (intention === BusinessIntention.SETUP_LATER) {
+          return "/dashboard";
+        }
+
+        // No intention set - show success page for choice
+        return "/signup/success";
       }
 
       // Fallback
       return "/login";
     }
+
+    // Fallback for unknown auth method
+    return "/login";
   }
 }
