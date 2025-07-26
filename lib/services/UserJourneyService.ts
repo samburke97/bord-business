@@ -236,31 +236,42 @@ export class UserJourneyService {
         return "/dashboard";
       }
 
-      // ✅ ENTERPRISE LOGIC: Distinguish between new signups and existing logins
+      // ✅ ENTERPRISE LOGIC: Check if user has journey tracking data
 
-      // 5. EXISTING USER LOGIN: Verified, complete profile, no journey tracking
-      // This indicates an existing user who created account before journey tracking
+      // 5. EXISTING USER: No journey tracking AND emailVerifiedAt is old (> 1 hour)
+      // This indicates an existing user logging in, not a fresh signup
       if (
         isVerified &&
         isProfileComplete &&
         !hasViewedSuccess &&
         !currentStep &&
         !intention &&
-        !emailVerifiedAt // No recent verification timestamp
+        emailVerifiedAt
       ) {
-        // Existing user - send directly to dashboard without choice page
-        return "/dashboard";
+        const verificationAge =
+          Date.now() - new Date(emailVerifiedAt).getTime();
+        const oneHour = 60 * 60 * 1000;
+
+        // If verification is older than 1 hour, treat as existing user login
+        if (verificationAge > oneHour) {
+          return "/dashboard";
+        }
+
+        // If verification is fresh (< 1 hour), treat as new signup
+        return "/signup/success";
       }
 
-      // 6. NEW USER - Recently verified (has emailVerifiedAt) but no business intention set
+      // 6. EXISTING USER: No journey tracking AND no emailVerifiedAt
+      // Legacy users who created accounts before journey tracking
       if (
         isVerified &&
         isProfileComplete &&
-        emailVerifiedAt &&
-        !hasViewedSuccess
+        !hasViewedSuccess &&
+        !currentStep &&
+        !intention &&
+        !emailVerifiedAt
       ) {
-        // New user who just completed verification - show choice page
-        return "/signup/success";
+        return "/dashboard";
       }
 
       // 7. USER WITH PREVIOUS INTENTIONS - Check business intentions
@@ -309,8 +320,5 @@ export class UserJourneyService {
       // 9. FALLBACK: New users without clear state - show choice page
       return "/signup/success";
     }
-
-    // Fallback
-    return "/login";
   }
 }
