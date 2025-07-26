@@ -172,18 +172,10 @@ export default function EmailVerification({
     }
   };
 
-  // Auto-submit when all digits are entered - REMOVED
-  // useEffect(() => {
-  //   if (code.every((digit) => digit !== "") && !isLoading) {
-  //     handleVerify();
-  //   }
-  // }, [code, isLoading]);
-
   const isCodeComplete = code.every((digit) => digit !== "");
 
   return (
     <div className={styles.container}>
-
       <div className={styles.content}>
         <div className={styles.formContainer}>
           <TitleDescription

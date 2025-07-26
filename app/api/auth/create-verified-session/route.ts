@@ -1,4 +1,4 @@
-// app/api/auth/create-verified-session/route.ts
+// app/api/auth/create-verified-session/route.ts - ORIGINAL VERSION RESTORED
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { encode } from "next-auth/jwt";
@@ -38,6 +38,8 @@ export async function POST(request: NextRequest) {
         name: user.name,
         globalRole: user.globalRole,
         isVerified: user.isVerified,
+        isActive: user.isActive,
+        status: user.status,
       },
       secret: process.env.NEXTAUTH_SECRET!,
       maxAge: 30 * 24 * 60 * 60, // 30 days

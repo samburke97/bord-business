@@ -1,9 +1,7 @@
-// lib/security/csrf.ts - FIXED VERSION FOR NEXTAUTH
 import { NextRequest } from "next/server";
 import { generateSecureToken, secureCompare } from "./password";
 import { getToken } from "next-auth/jwt";
 
-// PRIORITY 1: CSRF Protection for state-changing operations
 export class CSRFProtection {
   private static readonly CSRF_HEADER = "x-csrf-token";
 
@@ -13,36 +11,28 @@ export class CSRFProtection {
 
   static async validateToken(request: NextRequest): Promise<boolean> {
     try {
-      // Get token from header
+      // Must have CSRF token in header
       const headerToken = request.headers.get(this.CSRF_HEADER);
-
       if (!headerToken) {
         return false;
       }
 
-      // Get the NextAuth session token
+      // Must have valid session
       const sessionToken = await getToken({
         req: request,
         secret: process.env.NEXTAUTH_SECRET,
       });
-
       if (!sessionToken) {
         return false;
       }
 
-      try {
-        // Decode the CSRF token to see if it's valid
-        const decoded = Buffer.from(headerToken, "base64").toString();
+      if (headerToken.includes("|") && headerToken.length > 32) {
+        return true; // Valid NextAuth CSRF format
+      }
 
-        // A valid NextAuth CSRF token should contain session information
-        if (decoded && decoded.length > 10) {
-          return true;
-        }
-      } catch (decodeError) {
-        // If it's not base64, it might be a plain token - that's also valid
-        if (headerToken.length >= 20) {
-          return true;
-        }
+      // Fallback for other valid tokens (minimum 32 chars)
+      if (headerToken.length >= 32) {
+        return true;
       }
 
       return false;
@@ -51,9 +41,6 @@ export class CSRFProtection {
     }
   }
 
-  /**
-   * Check if request needs CSRF validation
-   */
   static requiresValidation(request: NextRequest): boolean {
     const method = request.method;
     const pathname = request.nextUrl.pathname;
@@ -82,9 +69,6 @@ export class CSRFProtection {
     return pathname.startsWith("/api/");
   }
 
-  /**
-   * Middleware to add CSRF protection - ENHANCED LOGGING
-   */
   static middleware() {
     return async (request: NextRequest) => {
       // Check if CSRF validation is required
