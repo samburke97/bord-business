@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useGoogleReCaptcha } from "react-google-recaptcha-v3";
 import Image from "next/image";
 import AuthLayout from "@/components/layouts/AuthLayout";
 import TitleDescription from "@/components/ui/TitleDescription";
@@ -12,9 +13,8 @@ import styles from "./page.module.css";
 function ResetPasswordContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const token = searchParams.get("token") || "";
-  const email = searchParams.get("email") || "";
-
+  const { executeRecaptcha } = useGoogleReCaptcha();
+  const [token, setToken] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -24,64 +24,65 @@ function ResetPasswordContent() {
     string | null
   >(null);
 
-  const handleBack = () => {
-    router.push("/login");
-  };
+  useEffect(() => {
+    const resetToken = searchParams.get("token");
+    if (!resetToken) {
+      router.push("/password/forgot");
+    } else {
+      setToken(resetToken);
+    }
+  }, [searchParams, router]);
 
-  const validateNewPassword = (password: string) => {
-    if (!password) {
+  const validatePasswords = () => {
+    let isValid = true;
+
+    // Validate new password
+    if (!newPassword) {
       setNewPasswordError("Password is required");
-      return false;
-    }
-
-    if (password.length < 8) {
+      isValid = false;
+    } else if (newPassword.length < 8) {
       setNewPasswordError("Password must be at least 8 characters");
-      return false;
+      isValid = false;
+    } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(newPassword)) {
+      setNewPasswordError(
+        "Password must contain uppercase, lowercase, and number"
+      );
+      isValid = false;
+    } else {
+      setNewPasswordError(null);
     }
 
-    setNewPasswordError(null);
-    return true;
-  };
-
-  const validateConfirmPassword = (
-    password: string,
-    confirmPassword: string
-  ) => {
+    // Validate confirm password
     if (!confirmPassword) {
       setConfirmPasswordError("Please confirm your password");
-      return false;
-    }
-
-    if (password !== confirmPassword) {
+      isValid = false;
+    } else if (newPassword !== confirmPassword) {
       setConfirmPasswordError("Passwords do not match");
-      return false;
+      isValid = false;
+    } else {
+      setConfirmPasswordError(null);
     }
 
-    setConfirmPasswordError(null);
-    return true;
+    return isValid;
   };
 
   const handleUpdatePassword = async () => {
-    const isNewPasswordValid = validateNewPassword(newPassword);
-    const isConfirmPasswordValid = validateConfirmPassword(
-      newPassword,
-      confirmPassword
-    );
-
-    if (!isNewPasswordValid || !isConfirmPasswordValid) {
-      return;
-    }
-
-    if (!token) {
-      setNewPasswordError(
-        "Invalid reset link. Please request a new password reset."
-      );
+    if (!validatePasswords()) {
       return;
     }
 
     setIsLoading(true);
 
     try {
+      // Generate reCAPTCHA token
+      const recaptchaToken = await executeRecaptcha("reset_password");
+
+      if (!recaptchaToken) {
+        setNewPasswordError("Security verification failed. Please try again.");
+        setIsLoading(false);
+        return;
+      }
+
       const response = await fetch("/api/auth/reset-password", {
         method: "POST",
         headers: {
@@ -89,20 +90,19 @@ function ResetPasswordContent() {
         },
         body: JSON.stringify({
           token,
-          email,
           newPassword,
+          recaptchaToken,
         }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        setNewPasswordError(data.message || "Failed to update password");
-        return;
+        throw new Error(data.message || "Failed to update password");
       }
 
       // Navigate to success page
-      router.push(`/password/reset/success?email=${encodeURIComponent(email)}`);
+      router.push("/password/reset/success");
     } catch (error) {
       setNewPasswordError(
         error instanceof Error
@@ -116,6 +116,18 @@ function ResetPasswordContent() {
 
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
+  };
+
+  const handleNewPasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewPassword(e.target.value);
+    setNewPasswordError(null);
+  };
+
+  const handleConfirmPasswordChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    setConfirmPassword(e.target.value);
+    setConfirmPasswordError(null);
   };
 
   const passwordIcon = showPassword ? (
@@ -134,46 +146,12 @@ function ResetPasswordContent() {
     />
   );
 
-  const handleNewPasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setNewPassword(e.target.value);
-    setNewPasswordError(null);
-  };
-
-  const handleConfirmPasswordChange = (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    setConfirmPassword(e.target.value);
-    setConfirmPasswordError(null);
-  };
-
-  // Check if token is missing
-  if (!token) {
-    return (
-      <AuthLayout showBackButton={true} onBackClick={handleBack}>
-        <div className={styles.formWrapper}>
-          <TitleDescription
-            title="Invalid Reset Link"
-            description="This password reset link is invalid or has expired. Please request a new password reset."
-          />
-
-          <Button
-            variant="primary-green"
-            onClick={() => router.push("/password/forgot")}
-            fullWidth
-          >
-            Request New Reset Link
-          </Button>
-        </div>
-      </AuthLayout>
-    );
-  }
-
   return (
-    <AuthLayout showBackButton={true} onBackClick={handleBack}>
+    <AuthLayout>
       <div className={styles.formWrapper}>
         <TitleDescription
           title="Reset Your Password"
-          description="Enter your new password below."
+          description="Enter your new password below"
         />
 
         <div className={styles.formFields}>
@@ -186,7 +164,6 @@ function ResetPasswordContent() {
             placeholder="Enter your new password"
             error={newPasswordError}
             required
-            autoFocus
             rightIcon={
               <button
                 type="button"

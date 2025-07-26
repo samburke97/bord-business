@@ -1,8 +1,8 @@
-// components/auth/PasswordScreen.tsx
 "use client";
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useGoogleReCaptcha } from "react-google-recaptcha-v3";
 import { signIn, getSession } from "next-auth/react";
 import Image from "next/image";
 import AuthLayout from "@/components/layouts/AuthLayout";
@@ -26,6 +26,7 @@ export default function PasswordScreen({
 }: PasswordScreenProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { executeRecaptcha } = useGoogleReCaptcha();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -46,17 +47,17 @@ export default function PasswordScreen({
       setPasswordError("Password is required");
       isValid = false;
     } else if (isNewUser) {
-      // Use the secure password validation for new users
+      // Enhanced validation for new users
       if (password.length < 12) {
-        setPasswordError("Password must be at least 12 characters long");
+        setPasswordError("Password must be at least 12 characters");
         isValid = false;
-      } else if (!/[A-Z]/.test(password)) {
-        setPasswordError("Password must contain at least one uppercase letter");
-        isValid = false;
-      } else if (!/[a-z]/.test(password)) {
+      } else if (!/(?=.*[a-z])/.test(password)) {
         setPasswordError("Password must contain at least one lowercase letter");
         isValid = false;
-      } else if (!/\d/.test(password)) {
+      } else if (!/(?=.*[A-Z])/.test(password)) {
+        setPasswordError("Password must contain at least one uppercase letter");
+        isValid = false;
+      } else if (!/(?=.*\d)/.test(password)) {
         setPasswordError("Password must contain at least one number");
         isValid = false;
       } else if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
@@ -95,11 +96,19 @@ export default function PasswordScreen({
     setIsLoading(true);
 
     try {
-      // Check if this is a business setup continuation
       const continueBusinessSetup =
         searchParams.get("continue_business_setup") === "true";
 
       if (isNewUser) {
+        // Generate reCAPTCHA token for password setup
+        const recaptchaToken = await executeRecaptcha("set_password");
+
+        if (!recaptchaToken) {
+          setPasswordError("Security verification failed. Please try again.");
+          setIsLoading(false);
+          return;
+        }
+
         // For new users, save the password and continue to setup
         const response = await fetch("/api/auth/set-password", {
           method: "POST",
@@ -110,6 +119,7 @@ export default function PasswordScreen({
           body: JSON.stringify({
             email,
             password,
+            recaptchaToken,
           }),
         });
 
@@ -122,11 +132,11 @@ export default function PasswordScreen({
 
         onPasswordComplete();
       } else {
-        // PRODUCTION FIX: Enhanced existing user login flow
+        // For existing users, use credentials sign-in (no reCAPTCHA needed for login)
         const result = await signIn("credentials", {
           email,
           password,
-          redirect: false, // Important: don't let NextAuth handle redirect
+          redirect: false,
         });
 
         if (result?.error) {
@@ -135,17 +145,11 @@ export default function PasswordScreen({
         }
 
         if (result?.ok) {
-          // CRITICAL FIX: Force session refresh to get updated user data
           await getSession();
 
-          // PRODUCTION APPROACH: Let UserJourneyService determine routing
-          // This ensures consistent routing logic across the entire application
           if (continueBusinessSetup) {
-            // Special case: user was in middle of business setup
             window.location.href = "/business/onboarding";
           } else {
-            // Standard case: let home page (UserJourney) determine correct route
-            // This will route existing users to dashboard, new users through onboarding
             window.location.href = "/";
           }
         }
@@ -183,7 +187,6 @@ export default function PasswordScreen({
 
   const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setPassword(e.target.value);
-    // Clear error when user starts typing
     if (passwordError) {
       setPasswordError(null);
     }
@@ -193,7 +196,6 @@ export default function PasswordScreen({
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
     setConfirmPassword(e.target.value);
-    // Clear error when user starts typing
     if (confirmPasswordError) {
       setConfirmPasswordError(null);
     }
@@ -264,24 +266,27 @@ export default function PasswordScreen({
               required
             />
           )}
-
-          <Button
-            variant="primary-green"
-            onClick={handleSubmit}
-            disabled={isLoading}
-            fullWidth
-          >
-            {isLoading
-              ? "Loading..."
-              : isNewUser
-                ? "Create Account"
-                : "Sign In"}
-          </Button>
         </div>
+
+        <Button
+          variant="primary-green"
+          onClick={handleSubmit}
+          disabled={isLoading || !password || (isNewUser && !confirmPassword)}
+          fullWidth
+        >
+          {isLoading
+            ? isNewUser
+              ? "Setting Password..."
+              : "Signing In..."
+            : isNewUser
+              ? "Set Password"
+              : "Sign In"}
+        </Button>
 
         {!isNewUser && (
           <div className={styles.forgotPassword}>
             <button
+              type="button"
               onClick={handleForgotPassword}
               className={styles.forgotPasswordLink}
             >

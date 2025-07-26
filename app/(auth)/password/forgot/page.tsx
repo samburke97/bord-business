@@ -2,6 +2,7 @@
 
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useGoogleReCaptcha } from "react-google-recaptcha-v3";
 import AuthLayout from "@/components/layouts/AuthLayout";
 import TitleDescription from "@/components/ui/TitleDescription";
 import TextInput from "@/components/ui/TextInput";
@@ -11,6 +12,7 @@ import styles from "./page.module.css";
 function ForgotPasswordContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { executeRecaptcha } = useGoogleReCaptcha();
   const [email, setEmail] = useState(searchParams.get("email") || "");
   const [isLoading, setIsLoading] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
@@ -44,12 +46,24 @@ function ForgotPasswordContent() {
     setEmailError(null);
 
     try {
+      // Generate reCAPTCHA token
+      const recaptchaToken = await executeRecaptcha("forgot_password");
+
+      if (!recaptchaToken) {
+        setEmailError("Security verification failed. Please try again.");
+        setIsLoading(false);
+        return;
+      }
+
       const response = await fetch("/api/auth/forgot-password", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({
+          email,
+          recaptchaToken,
+        }),
       });
 
       const data = await response.json();
