@@ -2,13 +2,15 @@
 
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import BusinessSetupForm from "@/components/auth/BusinessSetupForm";
 
 export default function OAuthSetupPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [isInitializing, setIsInitializing] = useState(true);
+  const [hasCompletedSetup, setHasCompletedSetup] = useState(false);
+  const setupCompletedRef = useRef(false);
 
   useEffect(() => {
     const initializeOAuthFlow = async () => {
@@ -21,7 +23,14 @@ export default function OAuthSetupPage() {
         return;
       }
 
+      // ✅ CRITICAL FIX: Don't auto-redirect if user just completed setup
+      if (hasCompletedSetup || setupCompletedRef.current) {
+        // User just finished setup, let them go to congratulations page
+        return;
+      }
+
       // If user is ACTIVE, check business status and route accordingly
+      // BUT only if they didn't just complete setup on this page
       if (
         session.user.status === "ACTIVE" &&
         session.user.isVerified &&
@@ -65,9 +74,14 @@ export default function OAuthSetupPage() {
     };
 
     initializeOAuthFlow();
-  }, [session, status, router]);
+  }, [session, status, router, hasCompletedSetup]);
 
   const handleSetupComplete = () => {
+    // ✅ CRITICAL FIX: Mark that setup was completed to prevent auto-redirect
+    setHasCompletedSetup(true);
+    setupCompletedRef.current = true;
+
+    // Navigate to congratulations page
     router.push("/signup/success");
   };
 

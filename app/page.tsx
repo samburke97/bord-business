@@ -1,4 +1,4 @@
-// app/page.tsx - Fixed routing logic for OAuth and email users
+// app/page.tsx - FIXED: Proper OAuth status routing
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
@@ -12,8 +12,9 @@ export default async function Home() {
     return;
   }
 
+  let user;
   try {
-    const user = await prisma.user.findUnique({
+    user = await prisma.user.findUnique({
       where: { id: session.user.id },
       include: {
         accounts: true,
@@ -26,52 +27,61 @@ export default async function Home() {
         },
       },
     });
-
-    if (!user) {
-      redirect("/login");
-      return;
-    }
-
-    const isOAuthUser =
-      user.accounts.length > 0 && !user.credentials?.passwordHash;
-    const isEmailUser = !!user.credentials?.passwordHash;
-
-    const isProfileComplete = !!(
-      user.firstName &&
-      user.lastName &&
-      user.phone &&
-      user.dateOfBirth
-    );
-
-    if (isOAuthUser) {
-      if (!isProfileComplete) {
-        redirect("/oauth/setup");
-        return;
-      }
-    } else if (isEmailUser) {
-      if (!user.isVerified) {
-        redirect(
-          `/signup/verify-email?email=${encodeURIComponent(user.email || "")}`
-        );
-        return;
-      }
-      if (!isProfileComplete) {
-        redirect("/signup/complete");
-        return;
-      }
-    }
-
-    const hasBusinessConnection =
-      (user.ownedBusinesses?.length || 0) > 0 ||
-      (user.businessMemberships?.length || 0) > 0;
-
-    if (!hasBusinessConnection) {
-      redirect("/business/onboarding");
-      return;
-    }
-
-    redirect("/dashboard");
   } catch (error) {
-    redirect("/business/onboarding");
+    console.error("Database error:", error);
+    redirect("/login");
+    return;
   }
+
+  if (!user) {
+    redirect("/login");
+    return;
+  }
+
+  const isOAuthUser =
+    user.accounts.length > 0 && !user.credentials?.passwordHash;
+  const isEmailUser = !!user.credentials?.passwordHash;
+
+  const isProfileComplete = !!(
+    user.firstName &&
+    user.lastName &&
+    user.phone &&
+    user.dateOfBirth
+  );
+
+  if (isOAuthUser) {
+    // ✅ CRITICAL FIX: Check status FIRST - PENDING users must complete setup
+    if (user.status === "PENDING") {
+      redirect("/oauth/setup");
+      return;
+    }
+
+    // THEN: Check profile completion for ACTIVE users
+    if (!isProfileComplete) {
+      redirect("/oauth/setup");
+      return;
+    }
+  } else if (isEmailUser) {
+    if (!user.isVerified) {
+      redirect(
+        `/signup/verify-email?email=${encodeURIComponent(user.email || "")}`
+      );
+      return;
+    }
+    if (!isProfileComplete) {
+      redirect("/signup/complete");
+      return;
+    }
+  }
+
+  const hasBusinessConnection =
+    (user.ownedBusinesses?.length || 0) > 0 ||
+    (user.businessMemberships?.length || 0) > 0;
+
+  if (!hasBusinessConnection) {
+    redirect("/business/onboarding");
+    return;
+  }
+
+  redirect("/dashboard");
 }
