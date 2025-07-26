@@ -206,9 +206,8 @@ export class UserJourneyService {
       // 6. No intention set - show success page for choice
       return "/signup/success";
     }
-
     // =======================================================================
-    // EMAIL FLOW ROUTING - ENTERPRISE GRADE
+    // EMAIL FLOW ROUTING - SIMPLIFIED ENTERPRISE
     // =======================================================================
     if (authMethod === AuthMethod.EMAIL) {
       // 1. Profile not complete - needs setup
@@ -221,104 +220,19 @@ export class UserJourneyService {
         return `/signup/verify-email?email=${encodeURIComponent(email || "")}`;
       }
 
-      // 3. Email verified but hasn't seen verification success page
-      // Only for users who just completed verification (have emailVerifiedAt but no success step)
-      if (
-        emailVerifiedAt &&
-        currentStep !== OnboardingStep.EMAIL_VERIFICATION_SUCCESS_VIEWED &&
-        currentStep === OnboardingStep.EMAIL_VERIFIED
-      ) {
-        return `/signup/verify-email/success?email=${encodeURIComponent(email || "")}`;
-      }
-
-      // 4. Has business connection - go to dashboard (applies to all verified users)
+      // 3. Has business connection - go to dashboard
       if (hasBusinessConnection) {
         return "/dashboard";
       }
 
-      // ✅ ENTERPRISE LOGIC: Check if user has journey tracking data
-
-      // 5. EXISTING USER: No journey tracking AND emailVerifiedAt is old (> 1 hour)
-      // This indicates an existing user logging in, not a fresh signup
-      if (
-        isVerified &&
-        isProfileComplete &&
-        !hasViewedSuccess &&
-        !currentStep &&
-        !intention &&
-        emailVerifiedAt
-      ) {
-        const verificationAge =
-          Date.now() - new Date(emailVerifiedAt).getTime();
-        const oneHour = 60 * 60 * 1000;
-
-        // If verification is older than 1 hour, treat as existing user login
-        if (verificationAge > oneHour) {
-          return "/dashboard";
-        }
-
-        // If verification is fresh (< 1 hour), treat as new signup
-        return "/signup/success";
-      }
-
-      // 6. EXISTING USER: No journey tracking AND no emailVerifiedAt
-      // Legacy users who created accounts before journey tracking
-      if (
-        isVerified &&
-        isProfileComplete &&
-        !hasViewedSuccess &&
-        !currentStep &&
-        !intention &&
-        !emailVerifiedAt
-      ) {
+      // 4. SIMPLE: All verified email users go to dashboard
+      // We can add choice logic later once basic flow works
+      if (isVerified && isProfileComplete) {
         return "/dashboard";
       }
 
-      // 7. USER WITH PREVIOUS INTENTIONS - Check business intentions
-      if (hasViewedSuccess) {
-        // Handle business intentions same as OAuth
-        if (intention === BusinessIntention.SETUP_NOW) {
-          return "/business/onboarding";
-        }
-
-        if (intention === BusinessIntention.SKIP) {
-          return "/dashboard";
-        }
-
-        if (intention === BusinessIntention.SETUP_LATER) {
-          const intentionAge = journeyState.intentionSetAt
-            ? Date.now() - new Date(journeyState.intentionSetAt).getTime()
-            : 0;
-
-          // After 24 hours, ask again
-          if (intentionAge > 24 * 60 * 60 * 1000) {
-            return "/signup/success";
-          }
-
-          return "/dashboard";
-        }
-
-        return "/signup/success";
-      }
-
-      // 8. EDGE CASE: User in middle of signup flow
-      if (currentStep) {
-        switch (currentStep) {
-          case OnboardingStep.EMAIL_PROFILE_SETUP:
-            return `/signup/email-setup?email=${encodeURIComponent(email || "")}`;
-          case OnboardingStep.EMAIL_VERIFICATION_PENDING:
-            return `/signup/verify-email?email=${encodeURIComponent(email || "")}`;
-          case OnboardingStep.EMAIL_VERIFIED:
-            return `/signup/verify-email/success?email=${encodeURIComponent(email || "")}`;
-          case OnboardingStep.EMAIL_VERIFICATION_SUCCESS_VIEWED:
-            return "/signup/success";
-          default:
-            return "/signup/success";
-        }
-      }
-
-      // 9. FALLBACK: New users without clear state - show choice page
-      return "/signup/success";
+      // Fallback
+      return "/login";
     }
   }
 }

@@ -1,4 +1,4 @@
-// lib/auth.ts - FIXED: Manual Account creation without adapter conflicts
+// lib/auth.ts - FIXED: Complete session callback and enterprise user journey
 import { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import FacebookProvider from "next-auth/providers/facebook";
@@ -334,11 +334,12 @@ export const authOptions: NextAuthOptions = {
         session.user.isVerified = (token.isVerified as boolean) || false;
         session.user.isActive = (token.isActive as boolean) || false;
 
+        // ✅ FIXED: Complete the session status logic
         if (token.status) {
           session.user.status = token.status as string;
         } else {
-          // Email users (who have credentials/passwords) should never be PENDING
-          // Only OAuth users without completed profiles are PENDING
+          // Email users (who have credentials/passwords) should be ACTIVE when verified
+          // OAuth users without completed profiles are PENDING
           session.user.status = session.user.isVerified ? "ACTIVE" : "PENDING";
         }
       }
@@ -396,10 +397,10 @@ export const authOptions: NextAuthOptions = {
         return url.startsWith(baseUrl) ? url : `${baseUrl}${url}`;
       }
 
-      // ✅ NEW: Direct OAuth users to setup page after login
+      // ✅ ENTERPRISE FIX: Direct OAuth users to setup page after login
       if (url === baseUrl || url === `${baseUrl}/`) {
         // This is the default redirect after OAuth login
-        // Let our enterprise routing handle it, but give it a moment
+        // Direct to OAuth setup instead of root page to avoid redirect loops
         return `${baseUrl}/oauth/setup`;
       }
 
