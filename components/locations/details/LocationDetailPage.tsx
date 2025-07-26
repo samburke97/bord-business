@@ -13,7 +13,7 @@ import FacilitiesCard from "./cards/FacilitiesCard";
 import ContactCard from "./cards/ContactCard";
 import ActivitiesCard from "./cards/ActvitiesCard";
 import ConfirmModal from "@/components/modals/ConfirmModal";
-import { checkActivationStatus } from "@/lib/service/locationEditService";
+import { checkActivationStatus } from "@/lib/services/locationEditService";
 import styles from "./LocationDetailPage.module.css";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 

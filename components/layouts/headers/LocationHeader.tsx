@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import IconButton from "@/components/ui/IconButton";
-import { checkActivationStatus } from "@/lib/service/locationEditService";
+import { checkActivationStatus } from "@/lib/services/locationEditService";
 import styles from "./LocationHeader.module.css";
 
 interface LocationHeaderProps {
@@ -99,8 +99,8 @@ const LocationHeader: React.FC<LocationHeaderProps> = ({
               {isLoading
                 ? "Checking status..."
                 : active
-                ? "Active"
-                : "Inactive"}
+                  ? "Active"
+                  : "Inactive"}
             </span>
           </div>
 

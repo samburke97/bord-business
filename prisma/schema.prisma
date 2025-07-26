@@ -196,16 +196,17 @@ model SecurityEvent {
   @@map("security_events")
 }
 
+// Add these fields to your existing User model in prisma/schema.prisma
+
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  firstName     String?   @map("first_name")
-  lastName      String?   @map("last_name")
-  email         String?   @unique
+  id        String   @id @default(cuid())
+  name      String?
+  firstName String?  @map("first_name")
+  lastName  String?  @map("last_name")
+  email     String?  @unique
   emailVerified DateTime?
-  image         String?
-  phone         String?
- 
+  image     String?
+  phone     String?
 
   // Global role (for platform-wide permissions)
   globalRole UserRole @default(USER) @map("global_role")
@@ -220,6 +221,24 @@ model User {
   isActive           Boolean @default(true) @map("is_active")
   isVerified         Boolean @default(false) @map("is_verified")
   hasCompletedSignup Boolean @default(false) @map("has_completed_signup")
+
+  // ============================================================================
+  // NEW: Enterprise User Journey Fields
+  // ============================================================================
+  
+  // Journey State Management
+  onboardingStep     String?   @map("onboarding_step")
+  onboardingData     Json?     @map("onboarding_data")
+  lastOnboardingAt   DateTime? @map("last_onboarding_at")
+  
+  // Success Page & Business Intention Tracking
+  hasViewedSuccess   Boolean   @default(false) @map("has_viewed_success")
+  businessIntention  String?   @map("business_intention") 
+  intentionSetAt     DateTime? @map("intention_set_at")
+  
+  // Flow-Specific Tracking
+  emailVerifiedAt    DateTime? @map("email_verified_at")
+  profileCompletedAt DateTime? @map("profile_completed_at")
 
   // Timestamps
   createdAt   DateTime  @default(now()) @map("created_at")
@@ -243,6 +262,10 @@ model User {
   @@index([email])
   @@index([globalRole])
   @@index([isActive])
+  // NEW: Indexes for journey tracking
+  @@index([onboardingStep])
+  @@index([businessIntention])
+  @@index([hasViewedSuccess])
   @@map("users")
 }
 

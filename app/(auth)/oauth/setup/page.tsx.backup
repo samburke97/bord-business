@@ -4,7 +4,6 @@
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
-import { OnboardingStep } from "@/lib/services/UserJourneyService";
 import BusinessSetupForm from "@/components/auth/BusinessSetupForm";
 
 export default function OAuthSetupPage() {
@@ -93,25 +92,9 @@ export default function OAuthSetupPage() {
     };
 
     initializeOAuthFlow();
-  }, [session?.user?.id, session?.user?.status, status, router]);
+  }, [session?.user?.id, session?.user?.status, status, router]); // ✅ CRITICAL FIX: More specific dependencies
 
-  const handleSetupComplete = async () => {
-    try {
-      // Record OAuth profile completion in journey
-      await fetch("/api/user/journey", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          step: OnboardingStep.OAUTH_PROFILE_SETUP,
-          profileCompleted: true,
-        }),
-      });
-
-      console.log("✅ OAuth profile completion recorded");
-    } catch (error) {
-      console.error("Failed to record journey step:", error);
-    }
-
+  const handleSetupComplete = () => {
     // ✅ CRITICAL FIX: Prevent any further routing logic
     setupCompletedRef.current = true;
     isNavigatingRef.current = true;

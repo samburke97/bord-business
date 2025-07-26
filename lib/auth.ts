@@ -396,19 +396,23 @@ export const authOptions: NextAuthOptions = {
         return url.startsWith(baseUrl) ? url : `${baseUrl}${url}`;
       }
 
-      // Handle OAuth success redirects
+      // ✅ NEW: Direct OAuth users to setup page after login
+      if (url === baseUrl || url === `${baseUrl}/`) {
+        // This is the default redirect after OAuth login
+        // Let our enterprise routing handle it, but give it a moment
+        return `${baseUrl}/oauth/setup`;
+      }
+
+      // Handle specific OAuth routes
       if (url.includes("oauth/setup") || url.includes("signup/complete")) {
         return url.startsWith(baseUrl) ? url : `${baseUrl}${url}`;
       }
 
-      // ✅ CUSTOM: Handle our specific error case
-      // When OAuth is blocked due to existing different method, redirect to our custom error
+      // Handle our specific error case
       if (
         url.includes("error=OAuthAccountNotLinked") ||
         url.includes("error=AccessDenied")
       ) {
-        // We need to get the user info somehow - let's check if we stored it
-        // For now, redirect to a generic error that will be handled by the error page
         return `${baseUrl}/oauth/error?error=AccountExistsWithDifferentMethod&attempted=oauth`;
       }
 
