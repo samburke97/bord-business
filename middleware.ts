@@ -1,4 +1,4 @@
-// middleware.ts - FIXED modular version with complete logic
+// middleware.ts - FIXED modular version with ACTIVE user signup blocking
 import { NextResponse } from "next/server";
 import { NextRequest } from "next/server";
 import { SecurityHeaders } from "./lib/middleware/SecurityHeaders";
@@ -12,14 +12,24 @@ export async function middleware(req: NextRequest) {
   // Apply security headers (including fixed CSP)
   SecurityHeaders.apply(response);
 
-  // Check if route needs authentication
-  if (!RouteGuard.requiresAuthentication(pathname)) {
-    return response;
-  }
-
-  // Get user info for protected routes
+  // Get user info for ALL routes (including public ones) to check ACTIVE user status
   try {
     const userInfo = await AuthChecker.getUserInfo(req);
+
+    // BLOCK: ACTIVE users from accessing signup routes
+    if (
+      userInfo &&
+      userInfo.status === "ACTIVE" &&
+      pathname.startsWith("/signup/")
+    ) {
+      const dashboardUrl = new URL("/dashboard", req.url);
+      return NextResponse.redirect(dashboardUrl);
+    }
+
+    // Check if route needs authentication
+    if (!RouteGuard.requiresAuthentication(pathname)) {
+      return response;
+    }
 
     if (!userInfo) {
       return AuthChecker.createUnauthorizedResponse(req, pathname);

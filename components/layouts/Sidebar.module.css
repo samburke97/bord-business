@@ -3,15 +3,15 @@
 .sidebar {
   position: fixed;
   left: 0;
-  top: 0;
-  height: 100vh;
-  width: 80px; /* Icon-only width */
+  top: 80px;
+  height: calc(100vh - 64px);
+  width: 100px;
   background: #ffffff;
   border-right: 1px solid #e5e7eb;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 24px 0;
+  padding: 12px 0;
   transition: width 0.3s ease;
   z-index: 1000;
 }
@@ -20,29 +20,7 @@
   width: 240px; /* Expanded width */
 }
 
-/* Logo Container */
-.logoContainer {
-  margin-bottom: 32px;
-  width: 100%;
-  display: flex;
-  justify-content: center;
-}
-
-.logoWrapper {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 8px;
-}
-
-.logoText {
-  font-size: 18px;
-  font-weight: 600;
-  color: #111827;
-  text-decoration: none;
-}
-
-/* Navigation Items */
+/* Navigation Items - moved up without logo margin */
 .navItems {
   display: flex;
   flex-direction: column;
@@ -50,6 +28,7 @@
   width: 100%;
   align-items: center;
   flex: 1;
+  margin-top: 24px; /* Add top margin since no logo */
 }
 
 .navItemWrapper {
@@ -61,7 +40,7 @@
 
 .navItem {
   display: flex;
-  padding: 12px;
+  padding: 14px;
   flex-direction: column;
   justify-content: center;
   align-items: center;
@@ -70,8 +49,8 @@
   text-decoration: none;
   transition: all 0.2s ease;
   position: relative;
-  width: 48px;
-  height: 48px;
+  width: 56px;
+  height: 56px;
 }
 
 /* Hover state */
@@ -89,13 +68,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
 }
 
 .icon {
-  width: 24px;
-  height: 24px;
+  width: 32px;
+  height: 32px;
   transition: filter 0.2s ease;
 }
 
@@ -186,11 +165,6 @@
 .sidebar.expanded .navItemWrapper {
   justify-content: flex-start;
   padding: 0 16px;
-}
-
-.sidebar.expanded .logoWrapper {
-  justify-content: flex-start;
-  padding-left: 16px;
 }
 
 /* CSS Variables (add these to your root CSS if not already present) */

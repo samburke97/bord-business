@@ -42,16 +42,6 @@ export default function Sidebar() {
 
   return (
     <aside className={`${styles.sidebar} ${isExpanded ? styles.expanded : ""}`}>
-      {/* Logo */}
-      <div className={styles.logoContainer}>
-        <Link href="/dashboard">
-          <div className={styles.logoWrapper}>
-            <span className={styles.logoText}>bord</span>
-          </div>
-        </Link>
-      </div>
-
-      {/* Navigation Items */}
       <nav className={styles.navItems}>
         {sidebarItems.map((item) => {
           const itemIsActive = isActive(item.href);
@@ -71,8 +61,8 @@ export default function Sidebar() {
                   <Image
                     src={item.icon}
                     alt={item.label}
-                    width={24}
-                    height={24}
+                    width={28}
+                    height={28}
                     className={`${styles.icon} ${itemIsActive ? styles.iconActive : ""}`}
                   />
                 </div>

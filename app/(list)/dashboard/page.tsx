@@ -21,6 +21,21 @@ export default function DashboardPage() {
 
   return (
     <div className={styles.container}>
+      {/* Background Art Layers */}
+      <div className={styles.backgroundArt}>
+        <img
+          src="/backgrounds/dots.svg"
+          className={styles.dotsPattern}
+          alt=""
+        />
+        <img
+          src="/backgrounds/lines.svg"
+          className={styles.linesPattern}
+          alt=""
+        />
+      </div>
+
+      {/* Main Content */}
       <div className={styles.content}>
         {/* Main Heading */}
         <h1 className={styles.title}>

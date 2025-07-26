@@ -1,12 +1,128 @@
+/* TopNavbar.module.css */
+
 .topNav {
-  position: sticky;
+  position: fixed;
   top: 0;
-  z-index: 100;
+  left: 0; /* Start from edge, not offset by sidebar */
+  right: 0;
+  height: 80px;
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 2rem;
-  background-color: #fff;
-  border-bottom: 1px solid var(--out-light);
-  height: 72px;
+  justify-content: space-between;
+  padding: 0 24px 0 0; /* Remove left padding, keep right */
+  z-index: 1001; /* Above sidebar */
+  transition: none; /* Remove transition */
+}
+
+/* Remove sidebar expanded class */
+
+/* Left Section */
+.leftSection {
+  display: flex;
+  align-items: center;
+  margin-left: 24px; /* Same as right padding for symmetry */
+}
+
+.logoContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Remove all hover effects and animations */
+}
+
+.logoIcon {
+  width: 60px;
+  height: 60px;
+}
+
+/* Right Section */
+.rightSection {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Icon Buttons (Search, Notifications) */
+.iconButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.iconButton:hover {
+  background: #f3f4f6;
+}
+
+.iconButton:active {
+  background: #e5e7eb;
+}
+
+.icon {
+  width: 24px;
+  height: 24px;
+  transition: opacity 0.2s ease;
+}
+
+.iconButton:hover .icon {
+  opacity: 0.8;
+}
+
+/* Profile Badge */
+.profileBadge {
+  display: flex;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1/1;
+  border-radius: 100px;
+  border: 1px solid var(--Outline-Medium, #d9dbdb);
+  background: var(--Container-Medium, #edf0f0);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  overflow: hidden;
+  position: relative;
+}
+
+.profileBadge:hover {
+  transform: scale(1.05);
+  border-color: #9ca3af;
+}
+
+.profileBadge:active {
+  transform: scale(0.98);
+}
+
+/* Profile Image */
+.profileImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 100px;
+}
+
+/* Profile Initials */
+.profileInitials {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  text-transform: uppercase;
+  user-select: none;
+}
+
+/* CSS Variables */
+:root {
+  --Outline-Medium: #d9dbdb;
+  --Container-Medium: #edf0f0;
 }
