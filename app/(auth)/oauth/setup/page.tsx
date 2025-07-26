@@ -1,4 +1,3 @@
-// app/(auth)/oauth/setup/page.tsx - FIXED: Prevent useEffect re-triggering
 "use client";
 
 import { useSession } from "next-auth/react";
@@ -12,7 +11,6 @@ export default function OAuthSetupPage() {
   const router = useRouter();
   const [isInitializing, setIsInitializing] = useState(true);
 
-  // ✅ CRITICAL FIX: More granular state management
   const setupCompletedRef = useRef(false);
   const isNavigatingRef = useRef(false);
   const lastSessionStatusRef = useRef("");
