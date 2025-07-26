@@ -1,4 +1,3 @@
-// app/page.tsx - Enterprise User Journey Routing
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
@@ -35,8 +34,14 @@ export default async function Home() {
 
     redirect(nextRoute);
   } catch (error) {
+    // CRITICAL FIX: Don't catch NEXT_REDIRECT errors - they're intentional redirects
+    if (error instanceof Error && error.message.includes("NEXT_REDIRECT")) {
+      // This is a normal Next.js redirect, let it propagate
+      throw error;
+    }
+
     console.error("User journey error:", error);
-    // Fallback to login on error
+    // Fallback to login on actual errors only
     redirect("/login");
   }
 }

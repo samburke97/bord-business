@@ -291,6 +291,12 @@ export async function middleware(req: NextRequest) {
 
     return response;
   } catch (error) {
+    // CRITICAL FIX: Don't catch NEXT_REDIRECT errors - these are normal Next.js redirects
+    if (error instanceof Error && error.message.includes("NEXT_REDIRECT")) {
+      // This is a normal Next.js redirect, let it pass through
+      throw error;
+    }
+
     // PRIORITY 1: Sanitized error logging - no sensitive information
 
     // For API routes, return 500 JSON response
