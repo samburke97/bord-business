@@ -1,3 +1,4 @@
+// app/api/user/activate-profile/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
@@ -37,15 +38,32 @@ export async function POST(request: NextRequest) {
     const { firstName, lastName, dateOfBirth, fullMobile, recaptchaToken } =
       await request.json();
 
-    // reCAPTCHA verification - now using centralized function
-    const recaptchaResult = await verifyRecaptcha(recaptchaToken);
-    if (!recaptchaResult.success) {
-      return NextResponse.json(
-        {
-          message: "Security verification failed. Please try again.",
-          code: "RECAPTCHA_FAILED",
-        },
-        { status: 400 }
+    // reCAPTCHA verification - OPTIONAL for OAuth users (they're already verified by OAuth provider)
+    if (recaptchaToken) {
+      const recaptchaResult = await verifyRecaptcha(recaptchaToken);
+      if (!recaptchaResult.success) {
+        console.warn(
+          "reCAPTCHA verification failed for OAuth user:",
+          recaptchaResult.error
+        );
+        // For OAuth users, we log but don't block (they're already authenticated by Google/Facebook)
+        // Only block if it's a really low score indicating bot behavior
+        if (
+          recaptchaResult.score !== undefined &&
+          recaptchaResult.score < 0.3
+        ) {
+          return NextResponse.json(
+            {
+              message: "Security verification failed. Please try again.",
+              code: "RECAPTCHA_FAILED",
+            },
+            { status: 400 }
+          );
+        }
+      }
+    } else {
+      console.warn(
+        "No reCAPTCHA token provided for OAuth user - proceeding (OAuth already authenticated)"
       );
     }
 
@@ -97,6 +115,8 @@ export async function POST(request: NextRequest) {
       shouldUpdateSession: true,
     });
   } catch (error) {
+    console.error("Activate profile error:", error);
+
     // Better error handling for different Prisma errors
     if (error.code === "P2025") {
       return NextResponse.json(
