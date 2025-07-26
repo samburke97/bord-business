@@ -208,7 +208,7 @@ export class UserJourneyService {
     }
 
     // =======================================================================
-    // EMAIL FLOW ROUTING
+    // EMAIL FLOW ROUTING - ENTERPRISE GRADE
     // =======================================================================
     if (authMethod === AuthMethod.EMAIL) {
       // 1. Profile not complete - needs setup
@@ -222,19 +222,48 @@ export class UserJourneyService {
       }
 
       // 3. Email verified but hasn't seen verification success page
+      // Only for users who just completed verification (have emailVerifiedAt but no success step)
       if (
         emailVerifiedAt &&
-        currentStep !== OnboardingStep.EMAIL_VERIFICATION_SUCCESS_VIEWED
+        currentStep !== OnboardingStep.EMAIL_VERIFICATION_SUCCESS_VIEWED &&
+        currentStep === OnboardingStep.EMAIL_VERIFIED
       ) {
         return `/signup/verify-email/success?email=${encodeURIComponent(email || "")}`;
       }
 
-      // 4. Has business connection - go to dashboard
+      // 4. Has business connection - go to dashboard (applies to all verified users)
       if (hasBusinessConnection) {
         return "/dashboard";
       }
 
-      // 5. For email users, check if they should see choice page
+      // ✅ ENTERPRISE LOGIC: Distinguish between new signups and existing logins
+
+      // 5. EXISTING USER LOGIN: Verified, complete profile, no journey tracking
+      // This indicates an existing user who created account before journey tracking
+      if (
+        isVerified &&
+        isProfileComplete &&
+        !hasViewedSuccess &&
+        !currentStep &&
+        !intention &&
+        !emailVerifiedAt // No recent verification timestamp
+      ) {
+        // Existing user - send directly to dashboard without choice page
+        return "/dashboard";
+      }
+
+      // 6. NEW USER - Recently verified (has emailVerifiedAt) but no business intention set
+      if (
+        isVerified &&
+        isProfileComplete &&
+        emailVerifiedAt &&
+        !hasViewedSuccess
+      ) {
+        // New user who just completed verification - show choice page
+        return "/signup/success";
+      }
+
+      // 7. USER WITH PREVIOUS INTENTIONS - Check business intentions
       if (hasViewedSuccess) {
         // Handle business intentions same as OAuth
         if (intention === BusinessIntention.SETUP_NOW) {
@@ -250,6 +279,7 @@ export class UserJourneyService {
             ? Date.now() - new Date(journeyState.intentionSetAt).getTime()
             : 0;
 
+          // After 24 hours, ask again
           if (intentionAge > 24 * 60 * 60 * 1000) {
             return "/signup/success";
           }
@@ -260,7 +290,23 @@ export class UserJourneyService {
         return "/signup/success";
       }
 
-      // 6. Default for email users - show success page for choice
+      // 8. EDGE CASE: User in middle of signup flow
+      if (currentStep) {
+        switch (currentStep) {
+          case OnboardingStep.EMAIL_PROFILE_SETUP:
+            return `/signup/email-setup?email=${encodeURIComponent(email || "")}`;
+          case OnboardingStep.EMAIL_VERIFICATION_PENDING:
+            return `/signup/verify-email?email=${encodeURIComponent(email || "")}`;
+          case OnboardingStep.EMAIL_VERIFIED:
+            return `/signup/verify-email/success?email=${encodeURIComponent(email || "")}`;
+          case OnboardingStep.EMAIL_VERIFICATION_SUCCESS_VIEWED:
+            return "/signup/success";
+          default:
+            return "/signup/success";
+        }
+      }
+
+      // 9. FALLBACK: New users without clear state - show choice page
       return "/signup/success";
     }
 

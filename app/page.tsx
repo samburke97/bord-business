@@ -14,26 +14,28 @@ export default async function Home() {
 
   try {
     // Get comprehensive user journey state
-    const journeyState = await UserJourneyService.getUserJourneyState(session.user.id);
-    
+    const journeyState = await UserJourneyService.getUserJourneyState(
+      session.user.id
+    );
+
     // Determine next route based on enterprise logic
     const nextRoute = UserJourneyService.determineNextRoute(journeyState);
-    
+
     // Debug logging in development
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🚀 Enterprise Journey Routing:', {
+    if (process.env.NODE_ENV === "development") {
+      console.log("🚀 Enterprise Journey Routing:", {
         userId: session.user.id,
         authMethod: journeyState.authMethod,
         currentStep: journeyState.currentStep,
         hasViewedSuccess: journeyState.hasViewedSuccess,
         intention: journeyState.intention,
-        nextRoute
+        nextRoute,
       });
     }
-    
+
     redirect(nextRoute);
   } catch (error) {
-    console.error('User journey error:', error);
+    console.error("User journey error:", error);
     // Fallback to login on error
     redirect("/login");
   }

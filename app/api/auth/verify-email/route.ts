@@ -55,15 +55,17 @@ export async function POST(request: NextRequest) {
     // Check if this is an existing verified user (sign-in) vs new user (setup)
     const wasAlreadyVerified = user.isVerified;
 
-    // CRITICAL FIX: Update user verification status AND mark signup as complete
+    // ✅ ENTERPRISE FIX: Update user verification status AND activate account
     await prisma.$transaction([
-      // Mark user as verified AND completed signup
+      // Mark user as verified, active, and completed signup
       prisma.user.update({
         where: { email },
         data: {
           isVerified: true,
           emailVerified: new Date(),
-          hasCompletedSignup: true, // FIXED: This was missing!
+          hasCompletedSignup: true,
+          status: "ACTIVE", // ✅ CRITICAL: Set email users to ACTIVE status
+          emailVerifiedAt: new Date(), // ✅ ENTERPRISE: Journey tracking timestamp
           updatedAt: new Date(),
         },
       }),
