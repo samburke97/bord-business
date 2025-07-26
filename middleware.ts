@@ -1,4 +1,4 @@
-// middleware.ts - Fixed: Handle stale token data for status changes
+// middleware.ts - Fixed: Proper OAuth flow handling
 import { NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { NextRequest } from "next/server";
@@ -78,7 +78,7 @@ export async function middleware(req: NextRequest) {
     // NEW: Updated auth route structure
     "/password/", // All password-related routes (enter, forgot, reset, success)
     "/signup/", // All signup-related routes (complete, email-setup, verify-email, success)
-    "/business/", // All business-related routes (onboarding, setup)
+    // ❌ REMOVED: "/business/", // This was allowing anyone to bypass auth!
     "/oauth/", // All OAuth setup pages
 
     // Keep these as-is
@@ -157,7 +157,7 @@ export async function middleware(req: NextRequest) {
     };
 
     // ============================================================================
-    // CRITICAL FIX: Allow PENDING users to access activation endpoints
+    // CRITICAL FIX: Allow PENDING users to access activation endpoints ONLY
     // ============================================================================
 
     const allowedForPendingUsers = [
@@ -166,12 +166,11 @@ export async function middleware(req: NextRequest) {
       "/api/user/business-status", // CRITICAL ADD: Allow business status check
       "/api/auth/check-username",
 
-      // NEW: Updated routes
+      // NEW: Updated routes - ONLY setup/signup routes for PENDING users
       "/signup/complete", // For email users completing setup
       "/oauth/setup", // CRITICAL ADD: Allow OAuth setup page
       "/oauth/", // CRITICAL ADD: All OAuth routes
       "/signup/", // All signup routes
-      "/business/", // All business routes - ONLY for ACTIVE users
       "/", // Allow root page access for proper routing
     ];
     const isPendingUserAllowedRoute = allowedForPendingUsers.some((route) =>
