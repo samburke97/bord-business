@@ -57,8 +57,9 @@ function SignupSuccessContent() {
         <div className={styles.titleSection}>
           <h1 className={styles.title}>Welcome to Bord!</h1>
           <p className={styles.description}>
-            Your account has been successfully created{email && ` for ${email}`}. 
-            You can now start setting up your business or explore the dashboard.
+            Your account has been successfully created{email && ` for ${email}`}
+            . You can now start setting up your business or explore the
+            dashboard.
           </p>
         </div>
 
@@ -71,11 +72,7 @@ function SignupSuccessContent() {
             Set Up Your Business
           </Button>
 
-          <Button
-            variant="secondary"
-            onClick={handleGoToDashboard}
-            fullWidth
-          >
+          <Button variant="secondary" onClick={handleGoToDashboard} fullWidth>
             Explore Dashboard
           </Button>
         </div>

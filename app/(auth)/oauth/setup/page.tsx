@@ -1,3 +1,4 @@
+// app/(auth)/oauth/setup/page.tsx - FIXED: Prevent useEffect re-triggering
 "use client";
 
 import { useSession } from "next-auth/react";
@@ -9,8 +10,11 @@ export default function OAuthSetupPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [isInitializing, setIsInitializing] = useState(true);
-  const [hasCompletedSetup, setHasCompletedSetup] = useState(false);
+
+  // ✅ CRITICAL FIX: More granular state management
   const setupCompletedRef = useRef(false);
+  const isNavigatingRef = useRef(false);
+  const lastSessionStatusRef = useRef("");
 
   useEffect(() => {
     const initializeOAuthFlow = async () => {
@@ -19,23 +23,36 @@ export default function OAuthSetupPage() {
       }
 
       if (!session?.user) {
-        router.push("/login");
+        if (!isNavigatingRef.current) {
+          isNavigatingRef.current = true;
+          router.push("/login");
+        }
         return;
       }
 
-      // ✅ CRITICAL FIX: Don't auto-redirect if user just completed setup
-      if (hasCompletedSetup || setupCompletedRef.current) {
-        // User just finished setup, let them go to congratulations page
+      // ✅ CRITICAL FIX: Prevent re-routing after setup completion
+      if (setupCompletedRef.current || isNavigatingRef.current) {
         return;
       }
 
-      // If user is ACTIVE, check business status and route accordingly
-      // BUT only if they didn't just complete setup on this page
+      // ✅ CRITICAL FIX: Only trigger routing logic on actual status changes
+      const currentSessionKey = `${session.user.id}-${session.user.status}-${session.user.isActive}`;
+      if (lastSessionStatusRef.current === currentSessionKey) {
+        // No actual change, just a re-render
+        if (session.user.status === "PENDING") {
+          setIsInitializing(false);
+        }
+        return;
+      }
+      lastSessionStatusRef.current = currentSessionKey;
+
       if (
         session.user.status === "ACTIVE" &&
         session.user.isVerified &&
         session.user.isActive
       ) {
+        isNavigatingRef.current = true;
+
         try {
           const businessResponse = await fetch("/api/user/business-status", {
             credentials: "include",
@@ -61,27 +78,28 @@ export default function OAuthSetupPage() {
         }
       }
 
-      // If user is PENDING, always show the setup form
-      // Do not check profile completion - force them to complete setup
       if (session.user.status === "PENDING") {
         console.log("PENDING OAuth user - showing setup form");
         setIsInitializing(false);
         return;
       }
 
-      // Fallback - redirect to login if status is unknown
-      router.push("/login");
+      // Fallback
+      if (!isNavigatingRef.current) {
+        isNavigatingRef.current = true;
+        router.push("/login");
+      }
     };
 
     initializeOAuthFlow();
-  }, [session, status, router, hasCompletedSetup]);
+  }, [session?.user?.id, session?.user?.status, status, router]); // ✅ CRITICAL FIX: More specific dependencies
 
   const handleSetupComplete = () => {
-    // ✅ CRITICAL FIX: Mark that setup was completed to prevent auto-redirect
-    setHasCompletedSetup(true);
+    // ✅ CRITICAL FIX: Prevent any further routing logic
     setupCompletedRef.current = true;
+    isNavigatingRef.current = true;
 
-    // Navigate to congratulations page
+    // Navigate to success page and let user control next step
     router.push("/signup/success");
   };
 
@@ -132,9 +150,7 @@ export default function OAuthSetupPage() {
                 fontSize: "14px",
               }}
             >
-              {status === "loading"
-                ? "Verifying your account..."
-                : "Preparing your profile setup..."}
+              Please wait while we prepare your account
             </p>
           </div>
         </div>

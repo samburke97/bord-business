@@ -1,7 +1,8 @@
-// app/page.tsx - FIXED: Proper OAuth status routing
+// app/page.tsx - FIXED: Prevent auto-redirect from success pages
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import prisma from "@/lib/prisma";
 
 export default async function Home() {
@@ -9,6 +10,21 @@ export default async function Home() {
 
   if (!session) {
     redirect("/login");
+    return;
+  }
+
+  // ✅ CRITICAL FIX: Check if user is coming from success pages
+  const headersList = headers();
+  const referer = headersList.get("referer") || "";
+
+  // Don't auto-redirect if coming from success/completion pages
+  if (
+    referer.includes("/signup/success") ||
+    referer.includes("/oauth/setup") ||
+    referer.includes("/verify-email/success")
+  ) {
+    // Let them stay on success page - don't force business redirect
+    redirect("/signup/success");
     return;
   }
 
@@ -50,13 +66,11 @@ export default async function Home() {
   );
 
   if (isOAuthUser) {
-    // ✅ CRITICAL FIX: Check status FIRST - PENDING users must complete setup
     if (user.status === "PENDING") {
       redirect("/oauth/setup");
       return;
     }
 
-    // THEN: Check profile completion for ACTIVE users
     if (!isProfileComplete) {
       redirect("/oauth/setup");
       return;
@@ -78,6 +92,8 @@ export default async function Home() {
     (user.ownedBusinesses?.length || 0) > 0 ||
     (user.businessMemberships?.length || 0) > 0;
 
+  // ✅ CRITICAL FIX: Only redirect to business onboarding if explicitly requested
+  // Don't auto-redirect newly completed users
   if (!hasBusinessConnection) {
     redirect("/business/onboarding");
     return;
