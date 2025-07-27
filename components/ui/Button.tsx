@@ -24,7 +24,7 @@ interface ButtonProps {
   className?: string;
   fullWidth?: boolean;
   icon?: ReactNode;
-  iconPath?: string; // Path to an icon in the public folder
+  iconPath?: string;
   iconPosition?: IconPosition;
   alt?: string;
 }

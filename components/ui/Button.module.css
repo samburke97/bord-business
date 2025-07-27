@@ -48,6 +48,7 @@
 .primary-green {
   background: var(--primary-300);
   color: #000;
+  border: none;
 }
 
 .primary-green:hover:not(:disabled) {

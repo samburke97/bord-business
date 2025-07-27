@@ -35,6 +35,7 @@
   border: 1px solid var(--out-medium, #d9dbdb);
   background: var(--con-lightest, #fff);
   width: 100%;
+  box-sizing: border-box; /* Add this line */
   position: relative;
   transition: all var(--transition-fast, 0.15s ease);
 }

@@ -1,15 +1,18 @@
 .container {
   display: flex;
-  width: 600px;
+  width: 100%; /* Change from 600px to 100% */
+  max-width: 600px; /* Add this line */
   flex-direction: column;
   justify-content: center;
   align-items: flex-start;
   gap: 12px;
 }
 
+.title {
+  font-size: 2rem;
+}
+
 .titleRow {
-  display: flex;
-  align-items: center;
   gap: 12px;
   width: 100%;
 }
