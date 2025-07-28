@@ -13,7 +13,6 @@ export default async function Home() {
   }
 
   try {
-    // ✅ OPTIMIZED: Get journey from session cache (no DB hit!)
     const journeyState = UserJourneyService.getJourneyFromSession(session);
 
     if (!journeyState) {
