@@ -6,14 +6,10 @@
 
 .contentContainer {
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  height: calc(100vh - 80px); /* Subtract topnav height */
   margin-left: 100px;
-  margin-top: 80px; /* Push below fixed topnav */
+  padding-top: 80px;
 }
 
 .main {
-  flex: 1;
   padding: 1.5rem;
 }
