@@ -1,6 +1,8 @@
+/* Fixed Marketplace page.module.css */
+
 .pageContainer {
   display: flex;
-  min-height: calc(100vh - 80px);
+  height: 100%; /* Use 100% instead of calc() */
 }
 
 .content {
@@ -8,6 +10,8 @@
   margin-left: 280px; /* Account for secondary sidebar width */
   padding: 0;
   transition: margin-left 0.3s ease;
+  overflow-y: auto; /* Add proper scrolling */
+  height: 100%; /* Ensure proper height */
 }
 
 /* Adjust margin when secondary sidebar is collapsed */
@@ -18,6 +22,7 @@
 .contentInner {
   padding: 32px;
   max-width: 1200px;
+  /* Remove any height constraints that might cause issues */
 }
 
 .pageTitle {
@@ -59,4 +64,19 @@
   font-size: 14px;
   color: #6b7280;
   margin: 0;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .content {
+    margin-left: 0; /* Remove sidebar margin on mobile */
+  }
+
+  .content.collapsed {
+    margin-left: 0;
+  }
+
+  .contentInner {
+    padding: 16px;
+  }
 }

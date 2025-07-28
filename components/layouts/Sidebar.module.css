@@ -1,11 +1,7 @@
-/* Sidebar.module.css */
+/* Sidebar.module.css - Fixed version with working tooltips */
 
 .sidebar {
-  position: fixed;
-  left: 0;
-  top: 80px;
-  height: calc(100vh - 64px);
-  width: 100px;
+  grid-area: sidebar;
   background: #ffffff;
   border-right: 1px solid #e5e7eb;
   display: flex;
@@ -14,13 +10,14 @@
   padding: 12px 0;
   transition: width 0.3s ease;
   z-index: 1000;
+  overflow: visible; /* IMPORTANT: Changed from auto to visible for tooltips */
+  position: relative; /* IMPORTANT: Ensure proper positioning context */
 }
 
 .sidebar.expanded {
-  width: 240px; /* Expanded width */
+  width: 240px;
 }
 
-/* Navigation Items - moved up without logo margin */
 .navItems {
   display: flex;
   flex-direction: column;
@@ -29,6 +26,7 @@
   align-items: center;
   flex: 1;
   margin-top: 24px;
+  overflow: visible; /* IMPORTANT: Allow tooltips to show outside */
 }
 
 .navItemWrapper {
@@ -36,6 +34,7 @@
   width: 100%;
   display: flex;
   justify-content: center;
+  overflow: visible; /* IMPORTANT: Allow tooltips to overflow */
 }
 
 .navItem {
@@ -53,17 +52,14 @@
   height: 56px;
 }
 
-/* Hover state */
 .navItem.hovered {
   background: var(--Container-Medium, #edf0f0);
 }
 
-/* Active state */
 .navItem.active {
   background: var(--Container-Medium, #edf0f0);
 }
 
-/* Icon Container */
 .iconContainer {
   display: flex;
   align-items: center;
@@ -78,47 +74,49 @@
   transition: filter 0.2s ease;
 }
 
-/* Active icon (filled black) */
 .iconActive {
-  filter: brightness(0) saturate(100%); /* Makes SVG black */
+  filter: brightness(0) saturate(100%);
 }
 
-/* Tooltip - 2x bigger all around */
+/* FIXED TOOLTIP STYLES */
 .tooltip {
   position: absolute;
-  left: calc(100% + 16px); /* Adjusted spacing for larger triangle */
+  left: calc(100% + 16px); /* Position to the right of the sidebar */
   top: 50%;
   transform: translateY(-50%);
   background: #000000;
   color: #ffffff;
-  padding: 12px 18px; /* 2x original: 6px -> 12px, 12px -> 24px */
-  border-radius: 12px; /* 2x original: 6px -> 12px */
-  font-size: 18px; /* 2x original: 14px -> 28px */
+  padding: 12px 18px;
+  border-radius: 12px;
+  font-size: 14px; /* Reduced from 18px for better readability */
   font-weight: 500;
   white-space: nowrap;
-  z-index: 1001;
+  z-index: 1050; /* INCREASED z-index to be above TopNavbar */
   opacity: 0;
+  pointer-events: none; /* IMPORTANT: Prevent tooltip from interfering with mouse events */
   animation: fadeIn 0.2s ease forwards;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); /* Added shadow for better visibility */
 }
 
-/* Triangle - 2x bigger */
+/* TOOLTIP ARROW */
 .tooltip::before {
   content: "";
   position: absolute;
-  left: -8px; /* 2x original: -4px -> -8px */
+  left: -8px;
   top: 50%;
   transform: translateY(-50%);
   width: 0;
   height: 0;
-  border-top: 8px solid transparent; /* 2x original: 4px -> 8px */
-  border-bottom: 8px solid transparent; /* 2x original: 4px -> 8px */
-  border-right: 8px solid #000000; /* 2x original: 4px -> 8px */
+  border-top: 8px solid transparent;
+  border-bottom: 8px solid transparent;
+  border-right: 8px solid #000000;
 }
 
+/* FADE IN ANIMATION */
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(-50%) translateX(-4px);
+    transform: translateY(-50%) translateX(-8px);
   }
   to {
     opacity: 1;
@@ -126,7 +124,6 @@
   }
 }
 
-/* Toggle Button */
 .toggleButton {
   background: none;
   border: none;
@@ -168,8 +165,17 @@
   padding: 0 16px;
 }
 
-/* CSS Variables (add these to your root CSS if not already present) */
-:root {
-  --Container-Medium: #edf0f0;
-  --Foreground-Darkest: #141414;
+/* Mobile: Hide sidebar completely */
+@media (max-width: 768px) {
+  .sidebar {
+    display: none;
+  }
 }
+
+/* DEBUGGING: Uncomment to see tooltip boundaries */
+/*
+.tooltip {
+  border: 2px solid red !important;
+  background: red !important;
+}
+*/

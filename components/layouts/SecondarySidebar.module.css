@@ -1,3 +1,5 @@
+/* SecondarySidebar.module.css - Complete version with all animations */
+
 .secondarySidebar {
   position: fixed;
   left: 100px;
@@ -13,6 +15,7 @@
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  overflow-y: auto;
 }
 
 .secondarySidebar.animating {
@@ -46,6 +49,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 24px 24px 24px 24px;
+  flex-shrink: 0;
 }
 
 .title {
@@ -74,8 +78,9 @@
 
 .navItems {
   flex: 1;
-  padding: 16px 12px 16px 12px;
+  padding: 0 12px 16px 12px;
   position: relative;
+  overflow-y: auto;
 }
 
 .navItems::before {
@@ -169,4 +174,26 @@
   background: #f9fafb;
   transform: scale(1.05);
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.15);
+}
+
+/* Responsive behavior */
+@media (max-width: 1024px) {
+  .secondarySidebar {
+    width: 240px;
+  }
+
+  .collapsedContainer {
+    left: 116px; /* Adjust for smaller sidebar if needed */
+  }
+}
+
+/* Mobile: Hide secondary sidebar */
+@media (max-width: 768px) {
+  .secondarySidebar {
+    display: none;
+  }
+
+  .collapsedContainer {
+    display: none;
+  }
 }

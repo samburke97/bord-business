@@ -1,13 +1,13 @@
-/* Dashboard Homepage CSS Module */
+/* Fixed Dashboard page.module.css */
 
 .container {
   position: relative;
-  min-height: calc(100vh - 125px);
+  height: 100%; /* Use 100% instead of calc() */
   background-color: var(--bg-standard);
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
+  /* REMOVE overflow: hidden - this was causing issues */
 }
 
 /* Background Art Layers */
@@ -44,7 +44,7 @@
   max-width: 40rem;
   margin: 0 auto;
   text-align: left;
-  padding: 2rem; /* Add some padding for better spacing */
+  padding: 2rem;
 }
 
 .title {

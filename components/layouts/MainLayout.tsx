@@ -1,3 +1,4 @@
+// MainLayout.tsx - Modern CSS Grid Version
 "use client";
 
 import Sidebar from "./Sidebar";
@@ -11,11 +12,9 @@ interface MainLayoutProps {
 export default function MainLayout({ children }: MainLayoutProps) {
   return (
     <div className={styles.layout}>
+      <TopNavbar />
       <Sidebar />
-      <div className={styles.contentContainer}>
-        <TopNavbar />
-        <main className={styles.main}>{children}</main>
-      </div>
+      <main className={styles.main}>{children}</main>
     </div>
   );
 }

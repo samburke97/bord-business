@@ -1,11 +1,7 @@
-/* TopNavbar.module.css */
+/* TopNavbar.module.css - CSS Grid Version */
 
 .topNav {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 80px;
+  grid-area: header;
   background: #ffffff;
   border-bottom: 1px solid #e5e7eb;
   display: flex;
@@ -13,10 +9,11 @@
   justify-content: space-between;
   padding: 0 24px 0 0;
   z-index: 1001;
-  transition: none;
 }
 
-/* Left Section */
+/* Remove all position: fixed - not needed with grid */
+/* Rest of your styles stay the same */
+
 .leftSection {
   display: flex;
   align-items: center;
@@ -34,14 +31,12 @@
   height: 60px;
 }
 
-/* Right Section */
 .rightSection {
   display: flex;
   align-items: center;
   gap: 16px;
 }
 
-/* Icon Buttons (Search, Notifications) - NO EFFECTS */
 .iconButton {
   display: flex;
   align-items: center;
@@ -54,26 +49,11 @@
   cursor: pointer;
 }
 
-/* Removed all hover and active effects */
-.iconButton:hover {
-  /* No background change */
-}
-
-.iconButton:active {
-  /* No background change */
-}
-
 .icon {
   width: 24px;
   height: 24px;
 }
 
-/* Removed icon opacity change on hover */
-.iconButton:hover .icon {
-  /* No opacity change */
-}
-
-/* Profile Badge - Keep existing effects */
 .profileBadge {
   display: flex;
   width: 42px;
@@ -101,7 +81,6 @@
   transform: scale(0.98);
 }
 
-/* Profile Image */
 .profileImage {
   width: 100%;
   height: 100%;
@@ -109,17 +88,10 @@
   border-radius: 100px;
 }
 
-/* Profile Initials */
 .profileInitials {
   font-size: 14px;
   font-weight: 600;
   color: #374151;
   text-transform: uppercase;
   user-select: none;
-}
-
-/* CSS Variables */
-:root {
-  --Outline-Medium: #d9dbdb;
-  --Container-Medium: #edf0f0;
 }
