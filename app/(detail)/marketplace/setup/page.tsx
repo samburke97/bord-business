@@ -63,7 +63,7 @@ function MarketplaceSetupContent() {
   const [currentStep, setCurrentStep] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [businessId, setBusinessId] = useState<string | null>(null);
+  const [centerId, setCenterId] = useState<string | null>(null); // This will hold the center ID for location APIs
 
   const stepRef = useRef<HTMLDivElement>(null);
 
@@ -81,9 +81,10 @@ function MarketplaceSetupContent() {
         }
 
         const data = await response.json();
-        console.log("📊 Business status data:", data);
+        console.log("📊 Business status data:", JSON.stringify(data, null, 2));
 
         if (!data.business) {
+          console.log("❌ No business found in response");
           setError("No business found. Please complete business setup first.");
           return;
         }
@@ -94,7 +95,22 @@ function MarketplaceSetupContent() {
           "ID:",
           data.business.id
         );
-        setBusinessId(data.business.id);
+
+        // Check if business already has a center
+        if (data.business.centers && data.business.centers.length > 0) {
+          console.log("✅ Using existing center:", data.business.centers[0].id);
+          setBusinessId(data.business.centers[0].id); // Use center ID, not business ID
+        } else {
+          console.log("🔨 Creating new center from business...");
+          // Auto-create a center from business data
+          const centerId = await createCenterFromBusiness(data.business.id);
+          console.log("🆕 Created center ID:", centerId);
+          if (centerId) {
+            setBusinessId(centerId); // Use the newly created center ID
+          } else {
+            setError("Failed to create location for business setup.");
+          }
+        }
       } catch (error) {
         console.error("❌ Error getting business ID:", error);
         setError("Failed to load business information");
@@ -157,15 +173,14 @@ function MarketplaceSetupContent() {
 
       // Intercept navigation and redirect to next step instead
       router.push = (url: string) => {
+        console.log("🔄 Intercepted navigation to:", url);
         // If component tries to navigate away after saving, continue to next step
-        if (
-          url.includes("/locations/") ||
-          url.includes("/businesses/") ||
-          url === "/marketplace"
-        ) {
+        if (url.includes("/locations/") && !url.includes("/marketplace")) {
+          console.log("✅ Continuing to next step");
           handleContinue();
           return Promise.resolve(true);
         }
+        console.log("🔄 Allowing navigation to:", url);
         return originalPush(url);
       };
 
@@ -189,27 +204,34 @@ function MarketplaceSetupContent() {
       };
     }, [stepIndex]);
 
-    // Clone the component and pass the business ID as location ID
-    // The existing components will use this ID with business APIs instead of location APIs
+    // Clone the component and pass the center ID to use location APIs
+    console.log("🎯 Cloning component with center ID:", centerId);
     return React.cloneElement(children, {
-      params: Promise.resolve({ id: businessId }),
+      params: Promise.resolve({ id: centerId }),
       // Add onboarding mode prop to modify component behavior
       onboardingMode: true,
     });
   };
 
   const renderStep = () => {
-    if (!businessId) {
-      console.log("⏳ Waiting for business ID...", { businessId, error });
-      return <div className={styles.loading}>Loading...</div>;
+    if (!centerId) {
+      return (
+        <div className={styles.loading}>
+          <div className={styles.loadingContent}>
+            {isLoading ? (
+              <>
+                <div className={styles.loadingSpinner}></div>
+                <p>Setting up your first location...</p>
+              </>
+            ) : (
+              <p>Loading marketplace setup...</p>
+            )}
+          </div>
+        </div>
+      );
     }
 
-    console.log(
-      "🎯 Rendering step",
-      currentStep,
-      "with business ID:",
-      businessId
-    );
+    console.log("🎯 Rendering step", currentStep, "with center ID:", centerId);
 
     switch (currentStep) {
       case 0:

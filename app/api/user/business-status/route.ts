@@ -41,7 +41,20 @@ export async function GET(request: NextRequest) {
             isActive: true,
           },
           include: {
-            business: true,
+            business: {
+              include: {
+                centers: {
+                  where: {
+                    isDeleted: false,
+                  },
+                  select: {
+                    id: true,
+                    name: true,
+                    isActive: true,
+                  },
+                },
+              },
+            },
           },
         },
       },

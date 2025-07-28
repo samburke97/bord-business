@@ -12,7 +12,11 @@ import styles from "./page.module.css";
 import { getCenterLogoProps } from "@/lib/cloudinary/upload-helpers";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 
-export default function EditAboutPage() {
+export default function EditAboutPage({
+  onboardingMode = false,
+}: {
+  onboardingMode?: boolean;
+}) {
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
@@ -20,7 +24,7 @@ export default function EditAboutPage() {
   // Get the appropriate folder and preset for center logo uploads
   const { folder, preset } = getCenterLogoProps(id);
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!onboardingMode); // Skip loading in onboarding mode
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<{
@@ -40,6 +44,22 @@ export default function EditAboutPage() {
   });
 
   useEffect(() => {
+    if (onboardingMode) {
+      // In onboarding mode, start with empty data and listen for save events
+      setLoading(false);
+
+      const handleOnboardingSave = () => {
+        handleSave();
+      };
+
+      window.addEventListener("marketplaceSave", handleOnboardingSave);
+
+      return () => {
+        window.removeEventListener("marketplaceSave", handleOnboardingSave);
+      };
+    }
+
+    // Only fetch existing data in edit mode
     const fetchLocationData = async () => {
       try {
         setLoading(true);
@@ -69,7 +89,7 @@ export default function EditAboutPage() {
     if (id) {
       fetchLocationData();
     }
-  }, [id]);
+  }, [id, onboardingMode]);
 
   // Handle input changes for highlights
   const handleHighlightChange = (index: number, value: string) => {
@@ -154,10 +174,12 @@ export default function EditAboutPage() {
         type: "success",
       });
 
-      // Navigate back to the location detail page after a short delay
-      setTimeout(() => {
-        router.push(`/locations/${id}`);
-      }, 1500);
+      // Only navigate in edit mode, not onboarding mode
+      if (!onboardingMode) {
+        setTimeout(() => {
+          router.push(`/locations/${id}`);
+        }, 1500);
+      }
     } catch (err) {
       setToast({
         visible: true,
@@ -189,13 +211,17 @@ export default function EditAboutPage() {
 
   return (
     <>
-      <ActionHeader
-        primaryAction={handleSave}
-        secondaryAction={handleClose}
-        primaryLabel="Save"
-        secondaryLabel="Close"
-        isProcessing={saving}
-      />
+      {/* Only show ActionHeader when NOT in onboarding mode */}
+      {!onboardingMode && (
+        <ActionHeader
+          primaryAction={handleSave}
+          secondaryAction={handleClose}
+          primaryLabel="Save"
+          secondaryLabel="Close"
+          isProcessing={saving}
+        />
+      )}
+
       <div className={styles.container}>
         <div className={styles.content}>
           <TitleDescription
