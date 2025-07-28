@@ -1,4 +1,4 @@
-// app/api/user/business-status/route.ts - FIXED LOGIC
+// app/api/user/business-status/route.ts - Updated to include centers
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    // Find user with their business relationships
+    // Find user with their business relationships INCLUDING centers
     const user = await prisma.user.findUnique({
       where: {
         id: session.user.id,
@@ -22,6 +22,18 @@ export async function GET(request: NextRequest) {
         ownedBusinesses: {
           where: {
             isActive: true,
+          },
+          include: {
+            centers: {
+              where: {
+                isDeleted: false,
+              },
+              select: {
+                id: true,
+                name: true,
+                isActive: true,
+              },
+            },
           },
         },
         businessMemberships: {
@@ -50,8 +62,16 @@ export async function GET(request: NextRequest) {
     const hasOwnedBusiness = activeOwnedBusinesses.length > 0;
     const hasBusinessMembership = activeMemberships.length > 0;
 
-    // FIXED LOGIC: User needs setup if they have NO business connection at all
+    // User needs setup if they have NO business connection at all
     const needsSetup = !hasOwnedBusiness && !hasBusinessMembership;
+
+    // Use the first business for marketplace setup
+    let businessForMarketplace = null;
+    if (hasOwnedBusiness) {
+      businessForMarketplace = activeOwnedBusinesses[0];
+    } else if (hasBusinessMembership) {
+      businessForMarketplace = activeMemberships[0].business;
+    }
 
     const responseData = {
       needsSetup,
@@ -59,22 +79,25 @@ export async function GET(request: NextRequest) {
       hasBusinessMembership,
       businessCount: activeOwnedBusinesses.length,
       membershipCount: activeMemberships.length,
+      // Include the business for marketplace setup
+      business: businessForMarketplace,
       ownedBusinesses: activeOwnedBusinesses,
       memberships: activeMemberships.map((m) => ({
         ...m.business,
         role: m.role,
       })),
-      // Add business data for dashboard
+      // Add business data for dashboard (keeping existing structure)
       businessData: hasOwnedBusiness
         ? {
             businessName: activeOwnedBusinesses[0].name,
-            businessType: activeOwnedBusinesses[0].businessType,
+            businessType: activeOwnedBusinesses[0].categoryId,
           }
         : null,
     };
 
     return NextResponse.json(responseData);
   } catch (error) {
+    console.error("Business status API error:", error);
     // Apply constant time delay for security
     await constantTimeDelay();
 

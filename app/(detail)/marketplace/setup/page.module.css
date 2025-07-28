@@ -1,0 +1,177 @@
+/* app/(detail)/marketplace/setup/page.module.css */
+
+.container {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--white);
+}
+
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.stepWrapper {
+  width: 100%;
+}
+
+/* Hide ActionHeader from existing components in onboarding mode */
+.stepWrapper :global(.actionHeader) {
+  display: none !important;
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  font-size: 16px;
+  color: var(--text-secondary);
+}
+
+.errorContainer {
+  background-color: var(--error-50);
+  border: 1px solid var(--error-200);
+  border-radius: 8px;
+  padding: 16px;
+  margin: 20px auto;
+  color: var(--error-700);
+  font-size: 14px;
+  max-width: 800px;
+}
+
+/* Congratulations Step Styles */
+.congratulationsContainer {
+  width: 100%;
+  min-height: 80vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+}
+
+.congratulationsContent {
+  max-width: 500px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 32px;
+}
+
+.successIcon {
+  width: 80px;
+  height: 80px;
+  background-color: var(--success-50, #f0f9ff);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--success-200, #bfdbfe);
+}
+
+.congratulationsTitle {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--text-color);
+  margin: 0;
+}
+
+.congratulationsDescription {
+  font-size: 16px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.congratulationsButton {
+  width: 100%;
+  max-width: 300px;
+  padding: 16px 24px;
+  font-size: 16px;
+  font-weight: 600;
+  background-color: var(--primary-500, #10b981);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.congratulationsButton:hover {
+  background-color: var(--primary-600, #059669);
+}
+
+.featuresContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  text-align: left;
+  width: 100%;
+}
+
+.featuresContainer h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-color);
+  margin: 0;
+  text-align: center;
+}
+
+.featuresContainer ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.featuresContainer li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  color: var(--text-secondary);
+  position: relative;
+  padding-left: 24px;
+}
+
+.featuresContainer li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  color: var(--success-500, #10b981);
+  font-weight: 600;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .congratulationsContainer {
+    padding: 20px;
+    min-height: 70vh;
+  }
+
+  .congratulationsContent {
+    gap: 24px;
+  }
+
+  .congratulationsTitle {
+    font-size: 28px;
+  }
+
+  .congratulationsDescription {
+    font-size: 15px;
+  }
+}
