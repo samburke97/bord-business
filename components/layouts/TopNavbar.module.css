@@ -3,7 +3,7 @@
 .topNav {
   position: fixed;
   top: 0;
-  left: 0; /* Start from edge, not offset by sidebar */
+  left: 0;
   right: 0;
   height: 80px;
   background: #ffffff;
@@ -11,25 +11,22 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 24px 0 0; /* Remove left padding, keep right */
-  z-index: 1001; /* Above sidebar */
-  transition: none; /* Remove transition */
+  padding: 0 24px 0 0;
+  z-index: 1001;
+  transition: none;
 }
-
-/* Remove sidebar expanded class */
 
 /* Left Section */
 .leftSection {
   display: flex;
   align-items: center;
-  margin-left: 24px; /* Same as right padding for symmetry */
+  margin-left: 24px;
 }
 
 .logoContainer {
   display: flex;
   align-items: center;
   justify-content: center;
-  /* Remove all hover effects and animations */
 }
 
 .logoIcon {
@@ -44,7 +41,7 @@
   gap: 16px;
 }
 
-/* Icon Buttons (Search, Notifications) */
+/* Icon Buttons (Search, Notifications) - NO EFFECTS */
 .iconButton {
   display: flex;
   align-items: center;
@@ -55,28 +52,28 @@
   background: transparent;
   border-radius: 8px;
   cursor: pointer;
-  transition: background-color 0.2s ease;
 }
 
+/* Removed all hover and active effects */
 .iconButton:hover {
-  background: #f3f4f6;
+  /* No background change */
 }
 
 .iconButton:active {
-  background: #e5e7eb;
+  /* No background change */
 }
 
 .icon {
   width: 24px;
   height: 24px;
-  transition: opacity 0.2s ease;
 }
 
+/* Removed icon opacity change on hover */
 .iconButton:hover .icon {
-  opacity: 0.8;
+  /* No opacity change */
 }
 
-/* Profile Badge */
+/* Profile Badge - Keep existing effects */
 .profileBadge {
   display: flex;
   width: 42px;

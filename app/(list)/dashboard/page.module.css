@@ -1,11 +1,8 @@
 /* Dashboard Homepage CSS Module */
 
 .container {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  position: relative;
+  min-height: calc(100vh - 80px); /* Account for topnav */
   background-color: var(--bg-standard);
   display: flex;
   align-items: center;
@@ -47,6 +44,7 @@
   max-width: 40rem;
   margin: 0 auto;
   text-align: left;
+  padding: 2rem; /* Add some padding for better spacing */
 }
 
 .title {
@@ -79,6 +77,10 @@
 
 /* Responsive Design */
 @media (max-width: 640px) {
+  .content {
+    padding: 1rem;
+  }
+
   .buttonContainer {
     flex-direction: column;
   }

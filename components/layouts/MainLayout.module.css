@@ -8,11 +8,12 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: calc(100vh - 80px); /* Subtract topnav height */
+  margin-left: 100px;
+  margin-top: 80px; /* Push below fixed topnav */
 }
 
 .main {
   flex: 1;
-  overflow-y: auto;
   padding: 1.5rem;
 }

@@ -24,12 +24,12 @@ export default function DashboardPage() {
       {/* Background Art Layers */}
       <div className={styles.backgroundArt}>
         <img
-          src="/backgrounds/dots.svg"
+          src="/images/backgrounds/dots.svg"
           className={styles.dotsPattern}
           alt=""
         />
         <img
-          src="/backgrounds/lines.svg"
+          src="/images/backgrounds/lines.svg"
           className={styles.linesPattern}
           alt=""
         />

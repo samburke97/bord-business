@@ -40,6 +40,14 @@ export default function Sidebar() {
     return pathname?.startsWith(href);
   };
 
+  const getIconPath = (iconPath: string, isActive: boolean) => {
+    if (isActive) {
+      // Replace .svg with -filled.svg
+      return iconPath.replace(".svg", "-filled.svg");
+    }
+    return iconPath;
+  };
+
   return (
     <aside className={`${styles.sidebar} ${isExpanded ? styles.expanded : ""}`}>
       <nav className={styles.navItems}>
@@ -59,11 +67,11 @@ export default function Sidebar() {
               >
                 <div className={styles.iconContainer}>
                   <Image
-                    src={item.icon}
+                    src={getIconPath(item.icon, itemIsActive)}
                     alt={item.label}
                     width={28}
                     height={28}
-                    className={`${styles.icon} ${itemIsActive ? styles.iconActive : ""}`}
+                    className={styles.icon}
                   />
                 </div>
               </Link>

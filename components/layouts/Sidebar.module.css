@@ -83,17 +83,17 @@
   filter: brightness(0) saturate(100%); /* Makes SVG black */
 }
 
-/* Tooltip */
+/* Tooltip - 2x bigger all around */
 .tooltip {
   position: absolute;
-  left: calc(100% + 12px);
+  left: calc(100% + 16px); /* Adjusted spacing for larger triangle */
   top: 50%;
   transform: translateY(-50%);
   background: #000000;
   color: #ffffff;
-  padding: 6px 12px;
-  border-radius: 6px;
-  font-size: 14px;
+  padding: 12px 18px; /* 2x original: 6px -> 12px, 12px -> 24px */
+  border-radius: 12px; /* 2x original: 6px -> 12px */
+  font-size: 18px; /* 2x original: 14px -> 28px */
   font-weight: 500;
   white-space: nowrap;
   z-index: 1001;
@@ -101,17 +101,18 @@
   animation: fadeIn 0.2s ease forwards;
 }
 
+/* Triangle - 2x bigger */
 .tooltip::before {
   content: "";
   position: absolute;
-  left: -4px;
+  left: -8px; /* 2x original: -4px -> -8px */
   top: 50%;
   transform: translateY(-50%);
   width: 0;
   height: 0;
-  border-top: 4px solid transparent;
-  border-bottom: 4px solid transparent;
-  border-right: 4px solid #000000;
+  border-top: 8px solid transparent; /* 2x original: 4px -> 8px */
+  border-bottom: 8px solid transparent; /* 2x original: 4px -> 8px */
+  border-right: 8px solid #000000; /* 2x original: 4px -> 8px */
 }
 
 @keyframes fadeIn {
@@ -170,4 +171,5 @@
 /* CSS Variables (add these to your root CSS if not already present) */
 :root {
   --Container-Medium: #edf0f0;
+  --Foreground-Darkest: #141414;
 }
