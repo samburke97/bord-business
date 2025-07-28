@@ -2,7 +2,7 @@
 
 .container {
   position: relative;
-  min-height: calc(100vh - 80px); /* Account for topnav */
+  min-height: calc(100vh - 125px);
   background-color: var(--bg-standard);
   display: flex;
   align-items: center;
