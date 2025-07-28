@@ -1,7 +1,7 @@
 .container {
   display: flex;
-  width: 100%; /* Change from 600px to 100% */
-  max-width: 600px; /* Add this line */
+  width: 100%;
+  max-width: 600px;
   flex-direction: column;
   justify-content: center;
   align-items: flex-start;
