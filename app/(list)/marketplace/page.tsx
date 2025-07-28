@@ -23,12 +23,11 @@ export default function MarketplacePage() {
   const router = useRouter();
 
   const handleStartNow = () => {
-    // Navigate to business onboarding or business creation
-    router.push("/business/onboarding");
+    // Always go to marketplace setup
+    router.push("/marketplace/setup");
   };
 
   const handleLearnMore = () => {
-    // Navigate to about page or platform information
     router.push("/about");
   };
 
@@ -66,9 +65,8 @@ export default function MarketplacePage() {
 
           {/* Subtitle */}
           <p className={styles.description}>
-            Add your business to the new sports and activity platform to
-            <br />
-            attract players from all types of fields.
+            Finish setting up your business to create a listing on the
+            marketplace.
           </p>
 
           {/* Action Buttons */}
