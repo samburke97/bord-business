@@ -54,6 +54,9 @@ export default function EditAboutPage({
     logo: initialFormData?.logo || null,
   });
 
+  // Loading state for data fetching
+  const [isLoadingData, setIsLoadingData] = useState(false);
+
   // Update local form data when parent data changes
   useEffect(() => {
     if (isSetupMode && initialFormData) {
@@ -64,6 +67,45 @@ export default function EditAboutPage({
       });
     }
   }, [initialFormData, isSetupMode]);
+
+  // Fetch existing data in setup mode to prefill form
+  useEffect(() => {
+    const fetchExistingData = async () => {
+      if (!id || !isSetupMode) return;
+
+      try {
+        setIsLoadingData(true);
+
+        const response = await fetch(`/api/marketplace/${id}/about`, {
+          credentials: "include",
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+
+          // Always ensure we have exactly 3 highlight slots
+          const existingHighlights = data.highlights || [];
+          const paddedHighlights = [
+            existingHighlights[0] || "",
+            existingHighlights[1] || "",
+            existingHighlights[2] || "",
+          ];
+
+          setLocalFormData({
+            highlights: paddedHighlights,
+            description: data.description || "",
+            logo: data.logoUrl || null,
+          });
+        }
+      } catch (error) {
+        // Continue with empty form on error
+      } finally {
+        setIsLoadingData(false);
+      }
+    };
+
+    fetchExistingData();
+  }, [id, isSetupMode]);
 
   // Cloudinary configuration
   const cloudinaryProps = id
@@ -79,15 +121,14 @@ export default function EditAboutPage({
     type: "success" as "success" | "error",
   });
 
-  // ✅ NEW: Handle continue for setup mode (like business onboarding)
+  // Handle continue for setup mode
   const handleContinue = () => {
     if (isSetupMode && onContinue) {
-      console.log("🔄 About step: Passing data to parent for saving");
       onContinue(localFormData);
     }
   };
 
-  // ✅ NEW: Expose handleContinue to window for header button (like business onboarding)
+  // Expose handleContinue to window for header button
   useEffect(() => {
     if (isSetupMode) {
       // @ts-ignore
@@ -100,13 +141,12 @@ export default function EditAboutPage({
     }
   }, [localFormData, isSetupMode]);
 
-  // Legacy save function for standalone edit mode
+  // Save function for standalone edit mode
   const handleSave = async () => {
     if (!id || saving || isSetupMode) return;
 
     try {
       setSaving(true);
-      console.log("💾 Saving about data for center:", id);
 
       const payload = {
         highlights: localFormData.highlights.filter((h) => h.trim() !== ""),
@@ -114,10 +154,11 @@ export default function EditAboutPage({
         logoUrl: localFormData.logo,
       };
 
-      const response = await fetch(`/api/locations/${id}/about`, {
+      const response = await fetch(`/api/marketplace/${id}/about`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
+        credentials: "include",
       });
 
       if (!response.ok) {
@@ -132,10 +173,9 @@ export default function EditAboutPage({
 
       // Redirect after delay in standalone mode
       setTimeout(() => {
-        window.location.href = `/locations/${id}`;
+        window.location.href = `/marketplace/${id}`;
       }, 1500);
     } catch (error) {
-      console.error("❌ Error saving about data:", error);
       setToast({
         visible: true,
         message: "Failed to save about information",
@@ -163,12 +203,10 @@ export default function EditAboutPage({
   };
 
   const handleLogoUpload = (url: string) => {
-    console.log("📷 Logo uploaded successfully:", url);
     setLocalFormData({ ...localFormData, logo: url });
   };
 
   const handleLogoError = (error: string) => {
-    console.error("❌ Logo upload error:", error);
     setToast({
       visible: true,
       message: `Upload failed: ${error}`,
@@ -187,13 +225,24 @@ export default function EditAboutPage({
     );
   }
 
+  // Show loading while fetching existing data in setup mode
+  if (isSetupMode && isLoadingData) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.loadingContainer}>
+          <p>Loading existing data...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={styles.container}>
       {/* Only show ActionHeader in standalone edit mode */}
       {!isSetupMode && (
         <ActionHeader
           onSave={handleSave}
-          onCancel={() => (window.location.href = `/locations/${id}`)}
+          onCancel={() => (window.location.href = `/marketplace/${id}`)}
           isLoading={saving}
         />
       )}

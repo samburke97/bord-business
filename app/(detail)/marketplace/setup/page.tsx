@@ -32,11 +32,11 @@ function MarketplaceSetupContent() {
   const [error, setError] = useState<string | null>(null);
   const [centerId, setCenterId] = useState<string | null>(null);
 
-  // ✅ ADD: Prevent multiple initialization attempts
+  // Prevent multiple initialization attempts
   const [isInitializing, setIsInitializing] = useState(false);
   const initializationRef = useRef<boolean>(false);
 
-  // ✅ NEW: Parent manages all form data (like business onboarding)
+  // Parent manages all form data
   const [formData, setFormData] = useState({
     // About step data
     about: {
@@ -58,8 +58,6 @@ function MarketplaceSetupContent() {
     businessId: string
   ): Promise<string | null> => {
     try {
-      console.log("🔨 Calling create-center API for business:", businessId);
-
       const response = await fetch("/api/businesses/create-center", {
         method: "POST",
         headers: {
@@ -71,34 +69,26 @@ function MarketplaceSetupContent() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        console.error("❌ Create-center API error:", errorData);
         throw new Error(errorData.error || "Failed to create center");
       }
 
       const result = await response.json();
-      console.log("✅ Create-center API response:", result);
-
       return result.centerId;
     } catch (error) {
-      console.error("❌ Network error creating center:", error);
       return null;
     }
   };
 
-  // ✅ STRONGER: Initialize the flow with better race condition protection
+  // Initialize the flow with race condition protection
   useEffect(() => {
     const initializeSetup = async () => {
-      // ✅ CRITICAL: Multiple levels of protection
+      // Multiple levels of protection
       if (
         !session?.user?.id ||
         isInitializing ||
         initializationRef.current ||
         centerId
       ) {
-        // Don't run if we already have a center ID
-        console.log(
-          "🚫 Skipping initialization - already in progress or complete"
-        );
         return;
       }
 
@@ -107,7 +97,6 @@ function MarketplaceSetupContent() {
       initializationRef.current = true;
 
       try {
-        console.log("🚀 Initializing marketplace setup...");
         setIsLoading(true);
         setError(null);
 
@@ -121,78 +110,63 @@ function MarketplaceSetupContent() {
         }
 
         const data = await response.json();
-        console.log("📊 Business status:", data);
-        console.log("📊 Business centers:", data.business?.centers);
-        console.log("📊 Centers length:", data.business?.centers?.length);
 
         if (!data.business) {
           setError("No business found. Please complete business setup first.");
           return;
         }
 
-        // ✅ IMPROVED: Better center detection and creation logic
+        // Better center detection and creation logic
         let centerToUse = null;
 
         // Check if business already has a center
         if (data.business.centers && data.business.centers.length > 0) {
           // Use the most recent center
           centerToUse = data.business.centers[0].id;
-          console.log("✅ Using existing center:", centerToUse);
         } else {
-          console.log("🔨 No existing center found, creating new one...");
-          console.log("🔨 Business ID for center creation:", data.business.id);
-
           // Create center (API handles race conditions internally)
           const newCenterId = await createCenterFromBusiness(data.business.id);
 
           if (newCenterId) {
             centerToUse = newCenterId;
-            console.log("🆕 Created/Retrieved center:", centerToUse);
           } else {
             setError("Failed to create location for business setup.");
             return;
           }
         }
 
-        // ✅ CRITICAL: Set center ID only if we don't already have one
+        // Set center ID only if we don't already have one
         if (centerToUse && !centerId) {
           setCenterId(centerToUse);
-          console.log(
-            "✅ Setup initialization complete with center:",
-            centerToUse
-          );
         }
       } catch (error) {
-        console.error("❌ Error initializing setup:", error);
         setError("Failed to initialize marketplace setup. Please try again.");
       } finally {
         setIsLoading(false);
         setIsInitializing(false);
-        // DON'T reset initializationRef here - keep it true to prevent re-runs
       }
     };
 
     initializeSetup();
 
-    // ✅ ADD: Cleanup on unmount
+    // Cleanup on unmount
     return () => {
       initializationRef.current = false;
     };
-  }, [session?.user?.id]); // ✅ REMOVED centerId dependency to prevent loops
+  }, [session?.user?.id]);
 
-  // ✅ ADD: Reset initialization flag if user changes
+  // Reset initialization flag if user changes
   useEffect(() => {
     initializationRef.current = false;
     setIsInitializing(false);
   }, [session?.user?.id]);
 
-  // ✅ NEW: Handle continue with data persistence (like business onboarding + save to DB)
+  // Handle continue with data persistence
   const handleContinue = async (stepData: any) => {
     if (!centerId) return;
 
     try {
       setIsSaving(true);
-      console.log("💾 Saving step data:", stepData);
 
       // Update parent form data
       const updatedFormData = { ...formData };
@@ -213,11 +187,12 @@ function MarketplaceSetupContent() {
           };
 
           const aboutResponse = await fetch(
-            `/api/locations/${centerId}/about`,
+            `/api/marketplace/${centerId}/about`,
             {
               method: "PUT",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(aboutPayload),
+              credentials: "include",
             }
           );
 
@@ -225,7 +200,6 @@ function MarketplaceSetupContent() {
             throw new Error("Failed to save about information");
           }
 
-          console.log("✅ About data saved to database");
           break;
 
         case 1: // Gallery step
@@ -244,11 +218,12 @@ function MarketplaceSetupContent() {
           };
 
           const galleryResponse = await fetch(
-            `/api/locations/${centerId}/images`,
+            `/api/marketplace/${centerId}/images`,
             {
               method: "PUT",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(galleryPayload),
+              credentials: "include",
             }
           );
 
@@ -256,24 +231,10 @@ function MarketplaceSetupContent() {
             throw new Error("Failed to save gallery");
           }
 
-          console.log("✅ Gallery data saved to database");
           break;
 
         // TODO: Add cases for other steps (opening times, facilities, contact)
       }
-
-      // Show success toast
-      const stepNames = [
-        "About",
-        "Gallery",
-        "Opening Times",
-        "Facilities",
-        "Contact",
-      ];
-      // TODO: Create a proper toast system, for now just console log
-      console.log(
-        `✅ ${stepNames[currentStep]} information saved successfully!`
-      );
 
       // Advance to next step
       if (currentStep < steps.length - 1) {
@@ -283,7 +244,6 @@ function MarketplaceSetupContent() {
         setCurrentStep(steps.length);
       }
     } catch (error) {
-      console.error("❌ Error saving step data:", error);
       setError(
         `Failed to save ${steps[currentStep]} information. Please try again.`
       );
@@ -305,7 +265,7 @@ function MarketplaceSetupContent() {
     router.push("/marketplace");
   };
 
-  // ✅ NEW: Use window.handleStepContinue pattern (like business onboarding)
+  // Use window.handleStepContinue pattern
   const handleHeaderContinue = () => {
     if (typeof window !== "undefined") {
       // @ts-ignore
@@ -330,8 +290,6 @@ function MarketplaceSetupContent() {
     router.push("/marketplace");
   };
 
-  // ✅ REMOVED: OnboardingStepWrapper - no longer needed with new pattern
-
   const renderStep = () => {
     // Loading state while initializing
     if (isLoading || !centerId) {
@@ -345,7 +303,7 @@ function MarketplaceSetupContent() {
       );
     }
 
-    // ✅ NEW: Pass form data and onContinue to each step (like business onboarding)
+    // Pass form data and onContinue to each step
     switch (currentStep) {
       case 0:
         return (
