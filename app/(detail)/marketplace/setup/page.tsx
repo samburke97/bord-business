@@ -36,6 +36,21 @@ function MarketplaceSetupContent() {
   const [isInitializing, setIsInitializing] = useState(false);
   const initializationRef = useRef<boolean>(false);
 
+  // ✅ NEW: Parent manages all form data (like business onboarding)
+  const [formData, setFormData] = useState({
+    // About step data
+    about: {
+      highlights: ["", "", ""],
+      description: "",
+      logo: null as string | null,
+    },
+    // Gallery step data
+    gallery: {
+      images: [] as Array<{ id: string; imageUrl: string; order: number }>,
+    },
+    // Can add more steps here: openingTimes, facilities, contact
+  });
+
   const stepRef = useRef<HTMLDivElement>(null);
 
   // Helper function to create center from business
@@ -171,12 +186,109 @@ function MarketplaceSetupContent() {
     setIsInitializing(false);
   }, [session?.user?.id]);
 
-  const handleContinue = async () => {
-    if (currentStep < steps.length - 1) {
-      setCurrentStep((prev) => prev + 1);
-    } else {
-      // Final step - show congratulations
-      setCurrentStep(steps.length);
+  // ✅ NEW: Handle continue with data persistence (like business onboarding + save to DB)
+  const handleContinue = async (stepData: any) => {
+    if (!centerId) return;
+
+    try {
+      setIsSaving(true);
+      console.log("💾 Saving step data:", stepData);
+
+      // Update parent form data
+      const updatedFormData = { ...formData };
+
+      // Save based on current step
+      switch (currentStep) {
+        case 0: // About step
+          updatedFormData.about = { ...formData.about, ...stepData };
+          setFormData(updatedFormData);
+
+          // Save to database
+          const aboutPayload = {
+            highlights: updatedFormData.about.highlights.filter(
+              (h: string) => h.trim() !== ""
+            ),
+            description: updatedFormData.about.description.trim(),
+            logoUrl: updatedFormData.about.logo,
+          };
+
+          const aboutResponse = await fetch(
+            `/api/locations/${centerId}/about`,
+            {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(aboutPayload),
+            }
+          );
+
+          if (!aboutResponse.ok) {
+            throw new Error("Failed to save about information");
+          }
+
+          console.log("✅ About data saved to database");
+          break;
+
+        case 1: // Gallery step
+          updatedFormData.gallery = { ...formData.gallery, ...stepData };
+          setFormData(updatedFormData);
+
+          // Save to database
+          const galleryPayload = {
+            images: updatedFormData.gallery.images.map(
+              (img: any, index: number) => ({
+                id: img.id?.startsWith("temp-") ? undefined : img.id,
+                imageUrl: img.imageUrl,
+                order: index + 1,
+              })
+            ),
+          };
+
+          const galleryResponse = await fetch(
+            `/api/locations/${centerId}/images`,
+            {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(galleryPayload),
+            }
+          );
+
+          if (!galleryResponse.ok) {
+            throw new Error("Failed to save gallery");
+          }
+
+          console.log("✅ Gallery data saved to database");
+          break;
+
+        // TODO: Add cases for other steps (opening times, facilities, contact)
+      }
+
+      // Show success toast
+      const stepNames = [
+        "About",
+        "Gallery",
+        "Opening Times",
+        "Facilities",
+        "Contact",
+      ];
+      // TODO: Create a proper toast system, for now just console log
+      console.log(
+        `✅ ${stepNames[currentStep]} information saved successfully!`
+      );
+
+      // Advance to next step
+      if (currentStep < steps.length - 1) {
+        setCurrentStep((prev) => prev + 1);
+      } else {
+        // Final step - show congratulations
+        setCurrentStep(steps.length);
+      }
+    } catch (error) {
+      console.error("❌ Error saving step data:", error);
+      setError(
+        `Failed to save ${steps[currentStep]} information. Please try again.`
+      );
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -193,10 +305,15 @@ function MarketplaceSetupContent() {
     router.push("/marketplace");
   };
 
+  // ✅ NEW: Use window.handleStepContinue pattern (like business onboarding)
   const handleHeaderContinue = () => {
-    // Trigger save action in the current step component
-    const event = new CustomEvent("marketplaceSave");
-    window.dispatchEvent(event);
+    if (typeof window !== "undefined") {
+      // @ts-ignore
+      if (window.handleStepContinue) {
+        // @ts-ignore
+        window.handleStepContinue();
+      }
+    }
   };
 
   const handleViewProfile = () => {
@@ -213,57 +330,7 @@ function MarketplaceSetupContent() {
     router.push("/marketplace");
   };
 
-  // Component wrapper that makes existing components work in onboarding mode
-  const OnboardingStepWrapper = ({
-    children,
-    stepIndex,
-  }: {
-    children: React.ReactElement;
-    stepIndex: number;
-  }) => {
-    useEffect(() => {
-      // Set up navigation intercept for onboarding mode
-      const originalPush = router.push;
-
-      // Intercept router.push calls from child components
-      router.push = (url: string) => {
-        console.log("🔄 Intercepted navigation to:", url);
-
-        // If component tries to navigate to location page after saving, continue to next step
-        if (
-          url.includes(`/locations/${centerId}`) &&
-          !url.includes("/marketplace")
-        ) {
-          console.log("✅ Continuing to next step instead of navigating");
-          handleContinue();
-          return Promise.resolve(true);
-        }
-
-        // Allow other navigation
-        return originalPush(url);
-      };
-
-      // Expose continue function for header button
-      const handleSaveEvent = () => {
-        setIsSaving(true);
-        // Child component will handle the actual save and trigger navigation
-        setTimeout(() => setIsSaving(false), 1000); // Reset after expected save time
-      };
-
-      window.addEventListener("marketplaceSave", handleSaveEvent);
-
-      return () => {
-        router.push = originalPush;
-        window.removeEventListener("marketplaceSave", handleSaveEvent);
-      };
-    }, [stepIndex]);
-
-    // Clone the component and pass the center ID and onboarding mode
-    return React.cloneElement(children, {
-      params: Promise.resolve({ id: centerId }),
-      onboardingMode: true,
-    });
-  };
+  // ✅ REMOVED: OnboardingStepWrapper - no longer needed with new pattern
 
   const renderStep = () => {
     // Loading state while initializing
@@ -278,46 +345,56 @@ function MarketplaceSetupContent() {
       );
     }
 
-    // Render current step using the FIXED consolidated components
+    // ✅ NEW: Pass form data and onContinue to each step (like business onboarding)
     switch (currentStep) {
       case 0:
         return (
           <div ref={stepRef} className={styles.stepWrapper}>
-            <OnboardingStepWrapper stepIndex={0}>
-              <EditAboutPage />
-            </OnboardingStepWrapper>
+            <EditAboutPage
+              centerId={centerId}
+              formData={formData.about}
+              onContinue={handleContinue}
+            />
           </div>
         );
       case 1:
         return (
           <div ref={stepRef} className={styles.stepWrapper}>
-            <OnboardingStepWrapper stepIndex={1}>
-              <GalleryEditPage />
-            </OnboardingStepWrapper>
+            <GalleryEditPage
+              centerId={centerId}
+              formData={formData.gallery}
+              onContinue={handleContinue}
+            />
           </div>
         );
       case 2:
         return (
           <div ref={stepRef} className={styles.stepWrapper}>
-            <OnboardingStepWrapper stepIndex={2}>
-              <OpeningTimesEditPage />
-            </OnboardingStepWrapper>
+            <OpeningTimesEditPage
+              centerId={centerId}
+              formData={{}} // TODO: Add opening times form data
+              onContinue={handleContinue}
+            />
           </div>
         );
       case 3:
         return (
           <div ref={stepRef} className={styles.stepWrapper}>
-            <OnboardingStepWrapper stepIndex={3}>
-              <FacilitiesEditPage />
-            </OnboardingStepWrapper>
+            <FacilitiesEditPage
+              centerId={centerId}
+              formData={{}} // TODO: Add facilities form data
+              onContinue={handleContinue}
+            />
           </div>
         );
       case 4:
         return (
           <div ref={stepRef} className={styles.stepWrapper}>
-            <OnboardingStepWrapper stepIndex={4}>
-              <ContactEditPage />
-            </OnboardingStepWrapper>
+            <ContactEditPage
+              centerId={centerId}
+              formData={{}} // TODO: Add contact form data
+              onContinue={handleContinue}
+            />
           </div>
         );
       case steps.length:
