@@ -1,28 +1,29 @@
-/* app/(detail)/marketplace/setup/page.module.css */
+/* app/(detail)/marketplace/setup/page.module.css - FIXED GRID LAYOUT */
 
 .container {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+  height: 100vh;
+  display: grid;
+  grid-template-rows: auto 1fr; /* Header takes needed space, main takes remaining */
   background: var(--bg-standard);
+  overflow: hidden; /* Prevent container from scrolling */
 }
 
 .main {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  margin-top: 80px; /* Account for header height */
+  overflow-y: auto; /* Only the main content scrolls */
+  overflow-x: hidden;
+  padding: 0; /* Remove padding - let individual steps handle their own spacing */
 }
 
 .content {
-  flex: 1;
   width: 100%;
+  height: 100%; /* Take full height of main area */
 }
 
 /* Step wrapper for consistent layout */
 .stepWrapper {
   width: 100%;
   height: 100%;
+  min-height: 0; /* Allow flex items to shrink below content size */
 }
 
 /* Loading States */
@@ -30,7 +31,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 60vh;
+  height: 100%;
+  padding: 2rem;
 }
 
 .loadingContent {
@@ -98,122 +100,10 @@
   background: var(--primary-green-dark, #16a34a);
 }
 
-/* Congratulations Step */
-.congratulationsContainer {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 60vh;
-  padding: 2rem;
-}
-
-.congratulationsContent {
-  max-width: 600px;
-  text-align: center;
-}
-
-.successIcon {
-  width: 80px;
-  height: 80px;
-  margin: 0 auto 2rem;
-  background: var(--primary-green-light, #dcfce7);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.congratulationsTitle {
-  font-size: 2.5rem;
-  font-weight: 700;
-  color: var(--for-darkest);
-  margin-bottom: 1rem;
-  font-family: var(--font-family-heading);
-}
-
-.congratulationsDescription {
-  font-size: 1.125rem;
-  color: var(--for-medium);
-  line-height: 1.6;
-  margin-bottom: 2rem;
-}
-
-.congratulationsButton {
-  background: var(--primary-green);
-  color: white;
-  border: none;
-  padding: 16px 32px;
-  border-radius: 12px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  margin-bottom: 2rem;
-}
-
-.congratulationsButton:hover {
-  background: var(--primary-green-dark, #16a34a);
-  transform: translateY(-1px);
-}
-
-.featuresContainer {
-  text-align: left;
-  background: var(--bg-secondary, #f9fafb);
-  padding: 1.5rem;
-  border-radius: 12px;
-  margin-top: 1rem;
-}
-
-.featuresContainer h3 {
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: var(--for-darkest);
-  margin-bottom: 1rem;
-}
-
-.featuresContainer ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.featuresContainer li {
-  padding: 0.5rem 0;
-  position: relative;
-  padding-left: 1.5rem;
-  color: var(--for-medium);
-  line-height: 1.5;
-}
-
-.featuresContainer li::before {
-  content: "✓";
-  position: absolute;
-  left: 0;
-  color: var(--primary-green);
-  font-weight: bold;
-}
+/* Congratulations step now uses components/ui/Congratulations */
 
 /* Mobile Responsiveness */
-@media (max-width: 1023px) {
-  .main {
-    margin-top: 75px; /* Slightly reduced for mobile */
-    padding-bottom: 6rem; /* Account for mobile continue button */
-  }
-}
-
 @media (max-width: 768px) {
-  .main {
-    margin-top: 70px;
-  }
-
-  .congratulationsTitle {
-    font-size: 2rem;
-  }
-
-  .congratulationsContainer {
-    padding: 1rem;
-  }
-
   .errorContainer {
     margin: 1rem;
     padding: 1.5rem;
@@ -221,14 +111,6 @@
 }
 
 @media (max-width: 480px) {
-  .main {
-    margin-top: 65px;
-  }
-
-  .congratulationsTitle {
-    font-size: 1.75rem;
-  }
-
   .loadingContent p {
     font-size: 0.9rem;
   }

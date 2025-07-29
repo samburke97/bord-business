@@ -1,10 +1,11 @@
-// app/(detail)/marketplace/setup/page.tsx - UPDATED FOR CONSOLIDATED APPROACH
+// app/(detail)/marketplace/setup/page.tsx - UPDATED TO USE EXISTING CONGRATULATIONS
 "use client";
 
 import React, { useState, useRef, Suspense, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import LocationDetailsHeader from "@/components/layouts/headers/LocationDetailsHeader";
+import Congratulations from "@/components/ui/Congratulations";
 import styles from "./page.module.css";
 
 // Import the FIXED consolidated components
@@ -21,41 +22,6 @@ const steps = [
   "Facilities",
   "Contact & Socials",
 ];
-
-// Congratulations component
-function CongratulationsStep({ onContinue }: { onContinue: () => void }) {
-  return (
-    <div className={styles.congratulationsContainer}>
-      <div className={styles.congratulationsContent}>
-        <div className={styles.successIcon}>
-          <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-            <path
-              d="M20 32L12 24L14.83 21.17L20 26.34L33.17 13.17L36 16L20 32Z"
-              fill="#22C55E"
-            />
-          </svg>
-        </div>
-        <h1 className={styles.congratulationsTitle}>Congratulations!</h1>
-        <p className={styles.congratulationsDescription}>
-          Your marketplace profile is now complete and ready to go live.
-          Customers can now discover and book with your business.
-        </p>
-        <button onClick={onContinue} className={styles.congratulationsButton}>
-          View My Profile
-        </button>
-        <div className={styles.featuresContainer}>
-          <h3>What's next?</h3>
-          <ul>
-            <li>Your profile is now live on the marketplace</li>
-            <li>Customers can find and book with you</li>
-            <li>You can manage bookings from your dashboard</li>
-            <li>Update your profile anytime from the marketplace section</li>
-          </ul>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function MarketplaceSetupContent() {
   const router = useRouter();
@@ -181,13 +147,18 @@ function MarketplaceSetupContent() {
     window.dispatchEvent(event);
   };
 
-  const handleFinalContinue = () => {
+  const handleViewProfile = () => {
     // Navigate to the location detail page to show the completed profile
     if (centerId) {
       router.push(`/locations/${centerId}`);
     } else {
       router.push("/marketplace");
     }
+  };
+
+  const handleRemindLater = () => {
+    // For now, just go back to marketplace
+    router.push("/marketplace");
   };
 
   // Component wrapper that makes existing components work in onboarding mode
@@ -300,7 +271,14 @@ function MarketplaceSetupContent() {
       case steps.length:
         return (
           <div ref={stepRef}>
-            <CongratulationsStep onContinue={handleFinalContinue} />
+            <Congratulations
+              title="Congratulations!"
+              description="Your marketplace profile is now complete and ready to go live. Customers can now discover and book with your business."
+              primaryButtonText="View My Profile"
+              secondaryButtonText="Back to Marketplace"
+              onContinue={handleViewProfile}
+              onRemindLater={handleRemindLater}
+            />
           </div>
         );
       default:

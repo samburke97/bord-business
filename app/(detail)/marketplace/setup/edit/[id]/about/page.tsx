@@ -83,10 +83,13 @@ export default function EditAboutPage({
       `🔧 Setting up About page - Mode: ${onboardingMode ? "ONBOARDING" : "EDIT"}`
     );
 
+    // ✅ FIXED: ALWAYS fetch existing data first (both modes)
+    console.log("📡 Fetching existing data (if any)");
+    fetchLocationData();
+
     if (onboardingMode) {
-      // ONBOARDING MODE: Start with empty data, NO FETCHING
-      console.log("✅ Onboarding mode: Starting with empty form");
-      setLoading(false);
+      // ONBOARDING MODE: Also set up event listener for save
+      console.log("✅ Onboarding mode: Setting up save listener");
 
       const handleOnboardingSave = () => {
         console.log("🔄 Onboarding save triggered from header");
@@ -97,23 +100,11 @@ export default function EditAboutPage({
       window.removeEventListener("marketplaceSave", handleOnboardingSave);
       window.addEventListener("marketplaceSave", handleOnboardingSave);
 
-      // ✅ ADD: Debug initial toast state in onboarding mode
-      console.log("🔍 Initial toast state in onboarding:", toast);
-
-      // ✅ ENSURE: Toast is definitely false on setup
-      if (toast.visible) {
-        console.log("🔍 Clearing visible toast on onboarding setup");
-        setToast({ visible: false, message: "", type: "success" });
-      }
-
       return () => {
         window.removeEventListener("marketplaceSave", handleOnboardingSave);
       };
-    } else {
-      // EDIT MODE: Fetch existing data
-      console.log("📡 Edit mode: Fetching existing data");
-      fetchLocationData();
     }
+    // EDIT MODE: Just fetch data (already done above)
   }, [id, onboardingMode, isInitialized]);
 
   const fetchLocationData = async () => {
@@ -124,28 +115,41 @@ export default function EditAboutPage({
       setError(null);
 
       console.log("📡 Fetching about data for center:", id);
+      const response = await fetch(`/api/locations/${id}/about`);
 
-      const aboutResponse = await fetch(`/api/locations/${id}/about`);
-      if (!aboutResponse.ok) {
-        throw new Error("Failed to fetch location about data");
+      if (response.status === 404) {
+        // No about data exists yet - this is fine for onboarding
+        console.log(
+          "📝 No existing about data found - starting with empty form"
+        );
+        setFormData({
+          highlights: ["", "", ""],
+          description: "",
+          logo: null,
+        });
+        return;
       }
-      const aboutData = await aboutResponse.json();
 
-      console.log("📊 Fetched about data:", aboutData);
+      if (!response.ok) {
+        throw new Error("Failed to fetch about data");
+      }
+
+      const data = await response.json();
+      console.log("📊 Fetched about data:", data);
 
       // Handle highlights safely
       let highlightsArray: string[] = ["", "", ""];
 
-      if (aboutData.highlights) {
-        if (Array.isArray(aboutData.highlights)) {
-          highlightsArray = aboutData.highlights
+      if (data.highlights) {
+        if (Array.isArray(data.highlights)) {
+          highlightsArray = data.highlights
             .slice(0, 3)
             .map((h) => String(h || ""));
         } else if (
-          typeof aboutData.highlights === "object" &&
-          aboutData.highlights !== null
+          typeof data.highlights === "object" &&
+          data.highlights !== null
         ) {
-          const values = Object.values(aboutData.highlights);
+          const values = Object.values(data.highlights);
           highlightsArray = values.slice(0, 3).map((h) => String(h || ""));
         }
 
@@ -155,49 +159,47 @@ export default function EditAboutPage({
         }
       }
 
+      // ✅ POPULATE form with existing data
       setFormData({
         highlights: highlightsArray,
-        description: aboutData.description || "",
-        logo: aboutData.logoUrl || null,
+        description: data.description || "",
+        logo: data.logoUrl || null,
       });
+
+      console.log("✅ Form populated with existing data");
     } catch (error) {
       console.error("❌ Error fetching about data:", error);
-      setError("Failed to load about information");
+
+      // ✅ GRACEFUL FALLBACK: Don't show error in onboarding mode, just use empty form
+      if (onboardingMode) {
+        console.log("🔄 Onboarding mode: Using empty form as fallback");
+        setFormData({
+          highlights: ["", "", ""],
+          description: "",
+          logo: null,
+        });
+      } else {
+        setError("Failed to load about information");
+      }
     } finally {
       setLoading(false);
     }
   };
 
   const handleSave = async () => {
-    if (!id) {
-      console.error("❌ Cannot save: No center ID available");
-      setToast({
-        visible: true,
-        message: "Error: No center ID available",
-        type: "error",
-      });
-      return;
-    }
+    if (!id || saving) return;
 
     try {
       setSaving(true);
-      setError(null);
-
       console.log("💾 Saving about data for center:", id);
-      console.log("📤 Form data being saved:", formData);
-
-      // Filter out empty highlights
-      const nonEmptyHighlights = formData.highlights.filter(
-        (h) => h.trim() !== ""
-      );
 
       const payload = {
-        highlights: nonEmptyHighlights,
+        highlights: formData.highlights.filter((h) => h.trim() !== ""),
         description: formData.description.trim(),
-        logoUrl: formData.logo,
+        logo: formData.logo,
       };
 
-      console.log("📤 API payload:", payload);
+      console.log("📤 Saving payload:", payload);
 
       const response = await fetch(`/api/locations/${id}/about`, {
         method: "PUT",
@@ -212,18 +214,21 @@ export default function EditAboutPage({
         throw new Error(errorData.error || "Failed to save about information");
       }
 
-      const result = await response.json();
-      console.log("✅ Save successful:", result);
+      console.log("✅ About data saved successfully");
 
-      // Show success message
+      // Show success toast
       setToast({
         visible: true,
         message: "About information saved successfully!",
         type: "success",
       });
 
-      // In onboarding mode, parent handles navigation
-      if (!onboardingMode) {
+      // ✅ FIXED: In onboarding mode, trigger navigation by calling router.push
+      if (onboardingMode) {
+        // This will be intercepted by OnboardingStepWrapper and advance to next step
+        console.log("🔄 Onboarding mode: Triggering navigation to next step");
+        router.push(`/locations/${id}`);
+      } else {
         // In edit mode, redirect after delay
         setTimeout(() => {
           router.push(`/locations/${id}`);
