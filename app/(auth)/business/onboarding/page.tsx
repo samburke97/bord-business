@@ -4,12 +4,12 @@ import { useState, useRef, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import LocationDetailsHeader from "@/components/layouts/headers/LocationDetailsHeader";
-import BusinessNameStep from "@/components/locations/BusinessNameStep";
-import BusinessCategoryStep from "@/components/locations/BusinessCategoryStep";
-import SetLocationStep from "@/components/locations/SetLocationStep";
-import ConfirmAddressStep from "@/components/locations/ConfirmAddressStep";
-import ConfirmMapLocationStep from "@/components/locations/ConfirmMapLocationStep";
-import BusinessCongratulationsStep from "@/components/locations/BusinessCongratulationsStep";
+import BusinessNameStep from "@/components/marketplace/BusinessNameStep";
+import BusinessCategoryStep from "@/components/marketplace/BusinessCategoryStep";
+import SetLocationStep from "@/components/marketplace/SetLocationStep";
+import ConfirmAddressStep from "@/components/marketplace/ConfirmAddressStep";
+import ConfirmMapLocationStep from "@/components/marketplace/ConfirmMapLocationStep";
+import BusinessCongratulationsStep from "@/components/marketplace/BusinessCongratulationsStep";
 import styles from "./page.module.css";
 
 // Define the business form data structure

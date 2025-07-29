@@ -1,3 +1,4 @@
+// app/(detail)/marketplace/setup/edit/[id]/about/page.tsx - ONBOARDING MODE FIXED
 "use client";
 
 import { useState, useEffect } from "react";
@@ -12,146 +13,182 @@ import styles from "./page.module.css";
 import { getCenterLogoProps } from "@/lib/cloudinary/upload-helpers";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 
-export default function EditAboutPage({
-  onboardingMode = false,
-}: {
+interface EditAboutPageProps {
+  params?: Promise<{ id: string }>;
   onboardingMode?: boolean;
-}) {
-  const params = useParams();
+}
+
+export default function EditAboutPage({
+  params,
+  onboardingMode = false,
+}: EditAboutPageProps) {
+  const routerParams = useParams();
   const router = useRouter();
-  const id = params.id as string;
 
-  // Get the appropriate folder and preset for center logo uploads
-  const { folder, preset } = getCenterLogoProps(id);
+  // Handle both direct params and useParams
+  const [id, setId] = useState<string | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
 
-  const [loading, setLoading] = useState(!onboardingMode); // Skip loading in onboarding mode
+  // Initialize ID from params
+  useEffect(() => {
+    const getId = async () => {
+      if (params) {
+        const resolvedParams = await params;
+        setId(resolvedParams.id);
+      } else if (routerParams?.id) {
+        setId(routerParams.id as string);
+      }
+      setIsInitialized(true);
+    };
+    getId();
+  }, [params, routerParams]);
+
+  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [toast, setToast] = useState<{
-    visible: boolean;
-    message: string;
-    type: "success" | "error";
-  }>({
+  const [toast, setToast] = useState({
     visible: false,
     message: "",
-    type: "success",
+    type: "success" as "success" | "error",
   });
 
+  // Always start with empty form data
   const [formData, setFormData] = useState({
     highlights: ["", "", ""],
     description: "",
     logo: null as string | null,
   });
 
+  // Get Cloudinary props only when ID is available
+  const cloudinaryProps = id
+    ? getCenterLogoProps(id)
+    : { folder: "", preset: "" };
+  const { folder, preset } = cloudinaryProps;
+
+  // Auto-hide toast after 3 seconds
   useEffect(() => {
+    if (toast.visible) {
+      const timer = setTimeout(() => {
+        setToast((prev) => ({ ...prev, visible: false }));
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast.visible]);
+
+  // Setup based on mode
+  useEffect(() => {
+    if (!isInitialized || !id) return;
+
+    console.log(
+      `🔧 Setting up About page - Mode: ${onboardingMode ? "ONBOARDING" : "EDIT"}`
+    );
+
     if (onboardingMode) {
-      // In onboarding mode, start with empty data and listen for save events
+      // ONBOARDING MODE: Start with empty data, NO FETCHING
+      console.log("✅ Onboarding mode: Starting with empty form");
       setLoading(false);
 
       const handleOnboardingSave = () => {
+        console.log("🔄 Onboarding save triggered from header");
         handleSave();
       };
 
+      // Clean up any existing listeners
+      window.removeEventListener("marketplaceSave", handleOnboardingSave);
       window.addEventListener("marketplaceSave", handleOnboardingSave);
 
       return () => {
         window.removeEventListener("marketplaceSave", handleOnboardingSave);
       };
-    }
-
-    // Only fetch existing data in edit mode
-    const fetchLocationData = async () => {
-      try {
-        setLoading(true);
-
-        // Fetch about data
-        const aboutResponse = await fetch(`/api/locations/${id}/about`);
-        if (!aboutResponse.ok) {
-          throw new Error("Failed to fetch location about data");
-        }
-        const aboutData = await aboutResponse.json();
-
-        // Format the data for our form
-        setFormData({
-          highlights: aboutData.highlights?.length
-            ? aboutData.highlights.slice(0, 3)
-            : ["", "", ""],
-          description: aboutData.description || "",
-          logo: aboutData.logoUrl || null,
-        });
-      } catch (err) {
-        setError((err as Error).message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (id) {
+    } else {
+      // EDIT MODE: Fetch existing data
+      console.log("📡 Edit mode: Fetching existing data");
       fetchLocationData();
     }
-  }, [id, onboardingMode]);
+  }, [id, onboardingMode, isInitialized]);
 
-  // Handle input changes for highlights
-  const handleHighlightChange = (index: number, value: string) => {
-    const updatedHighlights = [...formData.highlights];
-    updatedHighlights[index] = value;
-    setFormData({ ...formData, highlights: updatedHighlights });
+  const fetchLocationData = async () => {
+    if (!id) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      console.log("📡 Fetching about data for center:", id);
+
+      const aboutResponse = await fetch(`/api/locations/${id}/about`);
+      if (!aboutResponse.ok) {
+        throw new Error("Failed to fetch location about data");
+      }
+      const aboutData = await aboutResponse.json();
+
+      console.log("📊 Fetched about data:", aboutData);
+
+      // Handle highlights safely
+      let highlightsArray: string[] = ["", "", ""];
+
+      if (aboutData.highlights) {
+        if (Array.isArray(aboutData.highlights)) {
+          highlightsArray = aboutData.highlights
+            .slice(0, 3)
+            .map((h) => String(h || ""));
+        } else if (
+          typeof aboutData.highlights === "object" &&
+          aboutData.highlights !== null
+        ) {
+          const values = Object.values(aboutData.highlights);
+          highlightsArray = values.slice(0, 3).map((h) => String(h || ""));
+        }
+
+        // Ensure exactly 3 elements
+        while (highlightsArray.length < 3) {
+          highlightsArray.push("");
+        }
+      }
+
+      setFormData({
+        highlights: highlightsArray,
+        description: aboutData.description || "",
+        logo: aboutData.logoUrl || null,
+      });
+    } catch (error) {
+      console.error("❌ Error fetching about data:", error);
+      setError("Failed to load about information");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Handle description change
-  const handleDescriptionChange = (
-    e: React.ChangeEvent<HTMLTextAreaElement>
-  ) => {
-    setFormData({ ...formData, description: e.target.value });
-  };
-
-  // Handle successful logo upload
-  const handleLogoUploaded = (url: string) => {
-    setFormData({ ...formData, logo: url });
-    setToast({
-      visible: true,
-      message: "Logo uploaded successfully",
-      type: "success",
-    });
-    setTimeout(() => {
-      setToast((prev) => ({ ...prev, visible: false }));
-    }, 3000);
-  };
-
-  // Handle logo upload error
-  const handleLogoUploadError = (errorMessage: string) => {
-    setToast({
-      visible: true,
-      message: `Error uploading logo: ${errorMessage}`,
-      type: "error",
-    });
-    setTimeout(() => {
-      setToast((prev) => ({ ...prev, visible: false }));
-    }, 3000);
-  };
-
-  const handleLogoDelete = () => {
-    setFormData({ ...formData, logo: null });
-  };
-
-  const handleClose = () => {
-    router.push(`/locations/${id}`);
-  };
-
-  // Handle save
   const handleSave = async () => {
+    if (!id) {
+      console.error("❌ Cannot save: No center ID available");
+      setToast({
+        visible: true,
+        message: "Error: No center ID available",
+        type: "error",
+      });
+      return;
+    }
+
     try {
       setSaving(true);
+      setError(null);
+
+      console.log("💾 Saving about data for center:", id);
+      console.log("📤 Form data being saved:", formData);
+
       // Filter out empty highlights
-      const filteredHighlights = formData.highlights.filter(
-        (h) => h.trim().length > 0
+      const nonEmptyHighlights = formData.highlights.filter(
+        (h) => h.trim() !== ""
       );
 
       const payload = {
-        highlights: filteredHighlights,
-        description: formData.description,
+        highlights: nonEmptyHighlights,
+        description: formData.description.trim(),
         logoUrl: formData.logo,
       };
+
+      console.log("📤 API payload:", payload);
 
       const response = await fetch(`/api/locations/${id}/about`, {
         method: "PUT",
@@ -163,27 +200,34 @@ export default function EditAboutPage({
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.error || "Failed to update about information"
-        );
+        throw new Error(errorData.error || "Failed to save about information");
       }
 
+      const result = await response.json();
+      console.log("✅ Save successful:", result);
+
+      // Show success message
       setToast({
         visible: true,
-        message: "About information updated successfully",
+        message: "About information saved successfully!",
         type: "success",
       });
 
-      // Only navigate in edit mode, not onboarding mode
+      // In onboarding mode, parent handles navigation
       if (!onboardingMode) {
+        // In edit mode, redirect after delay
         setTimeout(() => {
           router.push(`/locations/${id}`);
         }, 1500);
       }
-    } catch (err) {
+    } catch (error) {
+      console.error("❌ Error saving about data:", error);
       setToast({
         visible: true,
-        message: (err as Error).message || "Failed to update about information",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to save about information",
         type: "error",
       });
     } finally {
@@ -191,106 +235,154 @@ export default function EditAboutPage({
     }
   };
 
-  if (loading) {
-    return <LoadingSpinner />;
+  const handleHighlightChange = (index: number, value: string) => {
+    const newHighlights = [...formData.highlights];
+    newHighlights[index] = value;
+    setFormData({ ...formData, highlights: newHighlights });
+  };
+
+  const handleDescriptionChange = (value: string) => {
+    setFormData({ ...formData, description: value });
+  };
+
+  const handleLogoUpload = (url: string) => {
+    console.log("📷 Logo uploaded successfully:", url);
+    setFormData({ ...formData, logo: url });
+    // Don't show toast - will show when saved
+  };
+
+  const handleLogoError = (error: string) => {
+    console.error("❌ Logo upload error:", error);
+    setToast({
+      visible: true,
+      message: `Upload failed: ${error}`,
+      type: "error",
+    });
+  };
+
+  // Show loading if not initialized
+  if (!isInitialized) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.loadingContainer}>
+          <LoadingSpinner />
+          <p>Initializing...</p>
+        </div>
+      </div>
+    );
   }
 
-  if (error) {
+  // Show loading during data fetch (edit mode only)
+  if (loading && !onboardingMode) {
     return (
-      <div className={styles.errorContainer}>
-        <p>Error loading about information: {error}</p>
-        <button
-          onClick={() => router.push(`/locations/${id}`)}
-          className={styles.backButton}
-        >
-          Go Back
-        </button>
+      <div className={styles.container}>
+        <div className={styles.loadingContainer}>
+          <LoadingSpinner />
+          <p>Loading about information...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state (edit mode only)
+  if (error && !onboardingMode) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.errorContainer}>
+          <p>{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className={styles.retryButton}
+          >
+            Try Again
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <>
-      {/* Only show ActionHeader when NOT in onboarding mode */}
+    <div className={styles.container}>
+      {/* Only show ActionHeader in edit mode */}
       {!onboardingMode && (
         <ActionHeader
-          primaryAction={handleSave}
-          secondaryAction={handleClose}
-          primaryLabel="Save"
-          secondaryLabel="Close"
-          isProcessing={saving}
+          onSave={handleSave}
+          onCancel={() => router.push(`/locations/${id}`)}
+          isLoading={saving}
         />
       )}
 
-      <div className={styles.container}>
-        <div className={styles.content}>
-          <TitleDescription
-            title="About"
-            description="Please add the locations highlights and description."
+      <div className={styles.formContainer}>
+        <TitleDescription
+          title="About"
+          description="Please include your business description, key facility highlights, and your logo."
+        />
+
+        {/* Description */}
+        <div className={styles.section}>
+          <label className={styles.label}>Description*</label>
+          <TextArea
+            placeholder="Enter description."
+            value={formData.description}
+            onChange={handleDescriptionChange}
+            maxLength={500}
+            showCharCount={true}
           />
+        </div>
 
-          <div className={styles.section}>
-            <h2 className={styles.sectionTitle}>Highlights</h2>
-            <div className={styles.highlightsContainer}>
-              {formData.highlights.map((highlight, index) => (
-                <TextInput
-                  key={`highlight-${index}`}
-                  id={`highlight-${index}`}
-                  value={highlight}
-                  onChange={(e) => handleHighlightChange(index, e.target.value)}
-                  placeholder={`Highlight #${index + 1}`}
-                  maxLength={20}
-                  showCharCount
-                />
-              ))}
-            </div>
-          </div>
-
-          <div className={styles.section}>
-            <h2 className={styles.sectionTitle}>Description</h2>
-            <TextArea
-              id="description"
-              value={formData.description}
-              onChange={handleDescriptionChange}
-              placeholder="Enter description."
-              maxLength={500}
-              showCharCount
-              rows={6}
-            />
-          </div>
-
-          <div className={styles.section}>
-            <h2 className={styles.sectionTitle}>
-              {formData.logo ? "Location Logo" : "Add Logo"}
-            </h2>
-
-            <div className={styles.logoContainer}>
-              <div className={styles.logoWrapper}>
-                <ImageUploader
-                  imageUrl={formData.logo}
-                  onImageUpload={handleLogoUploaded}
-                  onError={handleLogoUploadError}
-                  folder={folder}
-                  preset={preset}
-                  size="xl"
-                  alt="Location Logo"
-                  className={styles.logoUploader}
-                  showDeleteButton={true}
-                  onImageDelete={handleLogoDelete}
-                />
-              </div>
-            </div>
+        {/* Highlights */}
+        <div className={styles.section}>
+          <label className={styles.label}>Highlights</label>
+          <div className={styles.highlightsContainer}>
+            {formData.highlights.map((highlight, index) => (
+              <TextInput
+                key={`highlight-${index}`}
+                placeholder={`Highlight #${index + 1}`}
+                value={highlight}
+                onChange={(value) => handleHighlightChange(index, value)}
+                maxLength={20}
+                showCharCount={true}
+              />
+            ))}
           </div>
         </div>
 
-        {toast.visible && (
-          <Toast
-            message={toast.message}
-            type={toast.type}
-            onClose={() => setToast((prev) => ({ ...prev, visible: false }))}
-          />
-        )}
+        {/* Logo Upload */}
+        <div className={styles.section}>
+          <label className={styles.label}>Logo (Optional)</label>
+          {folder && preset ? (
+            <ImageUploader
+              imageUrl={formData.logo}
+              onImageUpload={handleLogoUpload}
+              onError={handleLogoError}
+              folder={folder}
+              preset={preset}
+              alt="Center logo"
+              label="Upload Logo"
+            />
+          ) : (
+            <div
+              style={{
+                padding: "1rem",
+                background: "#f3f4f6",
+                borderRadius: "8px",
+                textAlign: "center",
+                color: "#6b7280",
+              }}
+            >
+              Logo upload initializing...
+            </div>
+          )}
+        </div>
       </div>
-    </>
+
+      {/* Toast Notification */}
+      <Toast
+        visible={toast.visible}
+        message={toast.message}
+        type={toast.type}
+        onClose={() => setToast((prev) => ({ ...prev, visible: false }))}
+      />
+    </div>
   );
 }

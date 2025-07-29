@@ -1,3 +1,4 @@
+// lib/middleware/SecurityHeaders.ts - FIXED with Cloudinary support
 import { NextResponse } from "next/server";
 
 export class SecurityHeaders {
@@ -12,14 +13,14 @@ export class SecurityHeaders {
       "camera=(), microphone=(), geolocation=(), payment=()"
     );
 
-    // FIXED CSP with all required domains for reCAPTCHA and Mapbox
+    // FIXED CSP with Cloudinary support added
     const csp = [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://connect.facebook.net https://www.facebook.com https://www.google.com https://www.gstatic.com https://www.recaptcha.net https://recaptcha.google.com https://api.mapbox.com",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://www.google.com https://www.gstatic.com https://api.mapbox.com",
       "font-src 'self' https://fonts.gstatic.com data:",
-      "img-src 'self' data: https: blob: https://api.mapbox.com https://*.tiles.mapbox.com",
-      "connect-src 'self' https://accounts.google.com https://www.facebook.com https://graph.facebook.com https://www.google.com https://www.recaptcha.net https://api.mapbox.com https://*.tiles.mapbox.com https://events.mapbox.com",
+      "img-src 'self' data: https: blob: https://api.mapbox.com https://*.tiles.mapbox.com https://res.cloudinary.com",
+      "connect-src 'self' https://accounts.google.com https://www.facebook.com https://graph.facebook.com https://www.google.com https://www.recaptcha.net https://api.mapbox.com https://*.tiles.mapbox.com https://events.mapbox.com https://api.cloudinary.com",
       "frame-src 'self' https://accounts.google.com https://www.facebook.com https://www.google.com https://www.recaptcha.net https://recaptcha.google.com",
       "worker-src 'self' blob:",
       "object-src 'none'",

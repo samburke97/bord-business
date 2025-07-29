@@ -3,9 +3,9 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useParams } from "next/navigation";
-import SetLocationStep from "@/components/locations/SetLocationStep";
-import ConfirmAddressStep from "@/components/locations/ConfirmAddressStep";
-import ConfirmMapLocationStep from "@/components/locations/ConfirmMapLocationStep";
+import SetLocationStep from "@/components/marketplace/SetLocationStep";
+import ConfirmAddressStep from "@/components/marketplace/ConfirmAddressStep";
+import ConfirmMapLocationStep from "@/components/marketplace/ConfirmMapLocationStep";
 import LocationDetailsHeader from "@/components/layouts/headers/LocationDetailsHeader";
 import Toast from "@/components/ui/Toast";
 import styles from "./page.module.css";

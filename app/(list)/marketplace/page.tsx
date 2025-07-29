@@ -1,7 +1,9 @@
+// app/(list)/marketplace/page.tsx
 "use client";
 
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import SecondarySidebar from "@/components/layouts/SecondarySidebar";
 import Button from "@/components/ui/Button";
 import styles from "./page.module.css";
@@ -21,10 +23,41 @@ const marketplaceNavItems = [
 export default function MarketplacePage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleStartNow = () => {
-    // Always go to marketplace setup
-    router.push("/marketplace/setup");
+  const handleStartNow = async () => {
+    try {
+      setIsLoading(true);
+
+      // Check if user needs business setup first
+      const response = await fetch("/api/user/business-status", {
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log("📊 Business status for marketplace:", data);
+
+        // If user needs business setup, redirect there first
+        if (data.needsSetup) {
+          console.log(
+            "🔄 User needs business setup, redirecting to onboarding"
+          );
+          router.push("/business/onboarding");
+          return;
+        }
+      }
+
+      // Always go to marketplace setup - let the setup flow handle existing centers
+      console.log("🚀 Starting marketplace setup flow");
+      router.push("/marketplace/setup");
+    } catch (error) {
+      console.error("❌ Error checking business status:", error);
+      // Fallback to setup flow anyway
+      router.push("/marketplace/setup");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleLearnMore = () => {
@@ -75,14 +108,16 @@ export default function MarketplacePage() {
               variant="primary-green"
               onClick={handleStartNow}
               className={styles.primaryButton}
+              disabled={isLoading}
             >
-              Start Now
+              {isLoading ? "Loading..." : "Start Now"}
             </Button>
 
             <Button
               variant="secondary"
               onClick={handleLearnMore}
               className={styles.secondaryButton}
+              disabled={isLoading}
             >
               Learn More
             </Button>

@@ -1,6 +1,6 @@
 import { Metadata } from "next";
 import { use } from "react";
-import ActivityFormPage from "@/components/locations/details/ActvityFormPage";
+import ActivityFormPage from "@/components/marketplace/details/ActvityFormPage";
 
 interface EditActivityPageProps {
   params: Promise<{

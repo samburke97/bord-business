@@ -1,4 +1,4 @@
-import LocationDetailPage from "@/components/locations/details/LocationDetailPage";
+import LocationDetailPage from "@/components/marketplace/details/LocationDetailPage";
 
 export default async function LocationPage({
   params,

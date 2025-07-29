@@ -1,57 +1,51 @@
 /* app/(detail)/marketplace/setup/page.module.css */
 
 .container {
-  width: 100%;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background-color: var(--white);
+  background: var(--bg-standard);
 }
 
 .main {
   flex: 1;
   display: flex;
   flex-direction: column;
-  width: 100%;
+  margin-top: 80px; /* Account for header height */
 }
 
 .content {
   flex: 1;
-  display: flex;
-  flex-direction: column;
   width: 100%;
 }
 
+/* Step wrapper for consistent layout */
 .stepWrapper {
   width: 100%;
+  height: 100%;
 }
 
-/* Hide ActionHeader from existing components in onboarding mode */
-.stepWrapper :global(.actionHeader) {
-  display: none !important;
-}
-
+/* Loading States */
 .loading {
   display: flex;
   align-items: center;
   justify-content: center;
   height: 60vh;
-  font-size: 16px;
-  color: var(--text-secondary);
 }
 
 .loadingContent {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
+  gap: 1rem;
+  text-align: center;
 }
 
 .loadingSpinner {
-  width: 32px;
-  height: 32px;
-  border: 3px solid var(--grey-200);
-  border-top: 3px solid var(--primary-500);
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f4f6;
+  border-top: 4px solid var(--primary-green);
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
@@ -65,138 +59,177 @@
   }
 }
 
+/* Error States */
 .errorContainer {
-  background-color: var(--error-50);
-  border: 1px solid var(--error-200);
-  border-radius: 8px;
-  padding: 16px;
-  margin: 20px auto;
-  color: var(--error-700);
-  font-size: 14px;
-  max-width: 800px;
+  max-width: 500px;
+  margin: 2rem auto;
+  padding: 2rem;
+  background: var(--red-wine-100, #fef2f2);
+  border: 1px solid var(--red-wine-200, #fecdd3);
+  border-radius: 12px;
+  text-align: center;
 }
 
-/* Congratulations Step Styles */
+.errorContainer h2 {
+  color: var(--red-wine-300, #ef4444);
+  margin-bottom: 1rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.errorContainer p {
+  color: var(--red-wine-300, #dc2626);
+  margin-bottom: 1.5rem;
+  line-height: 1.5;
+}
+
+.errorButton {
+  background: var(--primary-green);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.errorButton:hover {
+  background: var(--primary-green-dark, #16a34a);
+}
+
+/* Congratulations Step */
 .congratulationsContainer {
-  width: 100%;
-  min-height: 80vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 40px 20px;
+  min-height: 60vh;
+  padding: 2rem;
 }
 
 .congratulationsContent {
-  max-width: 500px;
+  max-width: 600px;
   text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 32px;
 }
 
 .successIcon {
   width: 80px;
   height: 80px;
-  background-color: var(--success-50, #f0f9ff);
+  margin: 0 auto 2rem;
+  background: var(--primary-green-light, #dcfce7);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 2px solid var(--success-200, #bfdbfe);
 }
 
 .congratulationsTitle {
-  font-size: 32px;
+  font-size: 2.5rem;
   font-weight: 700;
-  color: var(--text-color);
-  margin: 0;
+  color: var(--for-darkest);
+  margin-bottom: 1rem;
+  font-family: var(--font-family-heading);
 }
 
 .congratulationsDescription {
-  font-size: 16px;
-  color: var(--text-secondary);
-  line-height: 1.5;
-  margin: 0;
+  font-size: 1.125rem;
+  color: var(--for-medium);
+  line-height: 1.6;
+  margin-bottom: 2rem;
 }
 
 .congratulationsButton {
-  width: 100%;
-  max-width: 300px;
-  padding: 16px 24px;
-  font-size: 16px;
-  font-weight: 600;
-  background-color: var(--primary-500, #10b981);
+  background: var(--primary-green);
   color: white;
   border: none;
-  border-radius: 8px;
+  padding: 16px 32px;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: all 0.2s;
+  margin-bottom: 2rem;
 }
 
 .congratulationsButton:hover {
-  background-color: var(--primary-600, #059669);
+  background: var(--primary-green-dark, #16a34a);
+  transform: translateY(-1px);
 }
 
 .featuresContainer {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
   text-align: left;
-  width: 100%;
+  background: var(--bg-secondary, #f9fafb);
+  padding: 1.5rem;
+  border-radius: 12px;
+  margin-top: 1rem;
 }
 
 .featuresContainer h3 {
-  font-size: 18px;
+  font-size: 1.125rem;
   font-weight: 600;
-  color: var(--text-color);
-  margin: 0;
-  text-align: center;
+  color: var(--for-darkest);
+  margin-bottom: 1rem;
 }
 
 .featuresContainer ul {
   list-style: none;
   padding: 0;
   margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
 }
 
 .featuresContainer li {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: 14px;
-  color: var(--text-secondary);
+  padding: 0.5rem 0;
   position: relative;
-  padding-left: 24px;
+  padding-left: 1.5rem;
+  color: var(--for-medium);
+  line-height: 1.5;
 }
 
 .featuresContainer li::before {
   content: "✓";
   position: absolute;
   left: 0;
-  color: var(--success-500, #10b981);
-  font-weight: 600;
+  color: var(--primary-green);
+  font-weight: bold;
 }
 
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .congratulationsContainer {
-    padding: 20px;
-    min-height: 70vh;
+/* Mobile Responsiveness */
+@media (max-width: 1023px) {
+  .main {
+    margin-top: 75px; /* Slightly reduced for mobile */
+    padding-bottom: 6rem; /* Account for mobile continue button */
   }
+}
 
-  .congratulationsContent {
-    gap: 24px;
+@media (max-width: 768px) {
+  .main {
+    margin-top: 70px;
   }
 
   .congratulationsTitle {
-    font-size: 28px;
+    font-size: 2rem;
   }
 
-  .congratulationsDescription {
-    font-size: 15px;
+  .congratulationsContainer {
+    padding: 1rem;
+  }
+
+  .errorContainer {
+    margin: 1rem;
+    padding: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .main {
+    margin-top: 65px;
+  }
+
+  .congratulationsTitle {
+    font-size: 1.75rem;
+  }
+
+  .loadingContent p {
+    font-size: 0.9rem;
   }
 }

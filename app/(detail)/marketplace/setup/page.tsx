@@ -7,8 +7,9 @@ import { useSession } from "next-auth/react";
 import LocationDetailsHeader from "@/components/layouts/headers/LocationDetailsHeader";
 import styles from "./page.module.css";
 
-// Import your existing page components
+// Import existing page components - these will be made context-aware
 import EditAboutPage from "./edit/[id]/about/page";
+import AboutOnboarding from "@/components/marketplace/onboarding/AboutOnboarding";
 import GalleryEditPage from "./edit/[id]/gallery/page";
 import OpeningTimesEditPage from "./edit/[id]/opening-times/page";
 import FacilitiesEditPage from "./edit/[id]/facilities/page";
@@ -61,17 +62,53 @@ function MarketplaceSetupContent() {
   const router = useRouter();
   const { data: session } = useSession();
   const [currentStep, setCurrentStep] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true); // Start with loading
+  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [centerId, setCenterId] = useState<string | null>(null); // This will hold the center ID for location APIs
+  const [centerId, setCenterId] = useState<string | null>(null);
 
   const stepRef = useRef<HTMLDivElement>(null);
 
-  // Get user's business ID
+  // Helper function to create center from business
+  const createCenterFromBusiness = async (
+    businessId: string
+  ): Promise<string | null> => {
+    try {
+      const response = await fetch("/api/businesses/create-center", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ businessId }),
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to create center");
+      }
+
+      const result = await response.json();
+      return result.centerId;
+    } catch (error) {
+      console.error("Error creating center:", error);
+      return null;
+    }
+  };
+
+  // Initialize the flow - get business and create/get center
   useEffect(() => {
-    const getUserBusinessId = async () => {
+    const initializeSetup = async () => {
+      if (!session?.user?.id) {
+        return; // Wait for session
+      }
+
       try {
-        console.log("🔍 Fetching business status...");
+        console.log("🚀 Initializing marketplace setup...");
+        setIsLoading(true);
+        setError(null);
+
+        // Get user's business status
         const response = await fetch("/api/user/business-status", {
           credentials: "include",
         });
@@ -81,44 +118,41 @@ function MarketplaceSetupContent() {
         }
 
         const data = await response.json();
-        console.log("📊 Business status data:", JSON.stringify(data, null, 2));
+        console.log("📊 Business status:", data);
 
         if (!data.business) {
-          console.log("❌ No business found in response");
           setError("No business found. Please complete business setup first.");
           return;
         }
 
-        console.log(
-          "🏢 Business found:",
-          data.business.name,
-          "ID:",
-          data.business.id
-        );
-
         // Check if business already has a center
         if (data.business.centers && data.business.centers.length > 0) {
           console.log("✅ Using existing center:", data.business.centers[0].id);
-          setBusinessId(data.business.centers[0].id); // Use center ID, not business ID
+          setCenterId(data.business.centers[0].id);
         } else {
           console.log("🔨 Creating new center from business...");
-          // Auto-create a center from business data
-          const centerId = await createCenterFromBusiness(data.business.id);
-          console.log("🆕 Created center ID:", centerId);
-          if (centerId) {
-            setBusinessId(centerId); // Use the newly created center ID
+          const newCenterId = await createCenterFromBusiness(data.business.id);
+
+          if (newCenterId) {
+            console.log("🆕 Created center:", newCenterId);
+            setCenterId(newCenterId);
           } else {
             setError("Failed to create location for business setup.");
+            return;
           }
         }
+
+        console.log("✅ Setup initialization complete");
       } catch (error) {
-        console.error("❌ Error getting business ID:", error);
-        setError("Failed to load business information");
+        console.error("❌ Error initializing setup:", error);
+        setError("Failed to initialize marketplace setup. Please try again.");
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    getUserBusinessId();
-  }, []);
+    initializeSetup();
+  }, [session?.user?.id]);
 
   const handleContinue = async () => {
     if (currentStep < steps.length - 1) {
@@ -134,7 +168,7 @@ function MarketplaceSetupContent() {
       setCurrentStep((prev) => prev - 1);
     } else {
       // If we're at step 0, close and go back to marketplace
-      handleClose();
+      router.push("/marketplace");
     }
   };
 
@@ -143,22 +177,21 @@ function MarketplaceSetupContent() {
   };
 
   const handleHeaderContinue = () => {
-    // This will trigger the save action in the current step component
-    if (typeof window !== "undefined") {
-      // @ts-ignore
-      if (window.marketplaceStepContinue) {
-        // @ts-ignore
-        window.marketplaceStepContinue();
-      }
+    // Trigger save action in the current step component
+    const event = new CustomEvent("marketplaceSave");
+    window.dispatchEvent(event);
+  };
+
+  const handleFinalContinue = () => {
+    // Navigate to the location detail page to show the completed profile
+    if (centerId) {
+      router.push(`/locations/${centerId}`);
+    } else {
+      router.push("/marketplace");
     }
   };
 
-  // Handle final redirect to marketplace after setup completion
-  const handleFinalContinue = () => {
-    router.push("/marketplace");
-  };
-
-  // Enhanced component wrapper that modifies behavior for onboarding
+  // Component wrapper that makes existing components work in onboarding mode
   const OnboardingStepWrapper = ({
     children,
     stepIndex,
@@ -167,79 +200,68 @@ function MarketplaceSetupContent() {
     stepIndex: number;
   }) => {
     useEffect(() => {
-      // Override the navigation behavior for onboarding
+      // Set up navigation intercept for onboarding mode
       const originalPush = router.push;
-      const originalBack = router.back;
 
-      // Intercept navigation and redirect to next step instead
+      // Intercept router.push calls from child components
       router.push = (url: string) => {
         console.log("🔄 Intercepted navigation to:", url);
-        // If component tries to navigate away after saving, continue to next step
-        if (url.includes("/locations/") && !url.includes("/marketplace")) {
-          console.log("✅ Continuing to next step");
+
+        // If component tries to navigate to location page after saving, continue to next step
+        if (
+          url.includes(`/locations/${centerId}`) &&
+          !url.includes("/marketplace")
+        ) {
+          console.log("✅ Continuing to next step instead of navigating");
           handleContinue();
           return Promise.resolve(true);
         }
-        console.log("🔄 Allowing navigation to:", url);
+
+        // Allow other navigation
         return originalPush(url);
       };
 
-      router.back = () => {
-        handleBack();
+      // Expose continue function for header button
+      const handleSaveEvent = () => {
+        setIsSaving(true);
+        // Child component will handle the actual save and trigger navigation
+        setTimeout(() => setIsSaving(false), 1000); // Reset after expected save time
       };
 
-      // Expose continue function for header
-      // @ts-ignore
-      window.marketplaceStepContinue = () => {
-        // Trigger the save action of the current component
-        const event = new CustomEvent("marketplaceSave");
-        window.dispatchEvent(event);
-      };
+      window.addEventListener("marketplaceSave", handleSaveEvent);
 
       return () => {
         router.push = originalPush;
-        router.back = originalBack;
-        // @ts-ignore
-        delete window.marketplaceStepContinue;
+        window.removeEventListener("marketplaceSave", handleSaveEvent);
       };
     }, [stepIndex]);
 
-    // Clone the component and pass the center ID to use location APIs
-    console.log("🎯 Cloning component with center ID:", centerId);
+    // Clone the component and pass the center ID and onboarding mode
     return React.cloneElement(children, {
       params: Promise.resolve({ id: centerId }),
-      // Add onboarding mode prop to modify component behavior
       onboardingMode: true,
     });
   };
 
   const renderStep = () => {
-    if (!centerId) {
+    // Loading state while initializing
+    if (isLoading || !centerId) {
       return (
         <div className={styles.loading}>
           <div className={styles.loadingContent}>
-            {isLoading ? (
-              <>
-                <div className={styles.loadingSpinner}></div>
-                <p>Setting up your first location...</p>
-              </>
-            ) : (
-              <p>Loading marketplace setup...</p>
-            )}
+            <div className={styles.loadingSpinner}></div>
+            <p>Setting up your marketplace profile...</p>
           </div>
         </div>
       );
     }
 
-    console.log("🎯 Rendering step", currentStep, "with center ID:", centerId);
-
+    // Render current step
     switch (currentStep) {
       case 0:
         return (
           <div ref={stepRef} className={styles.stepWrapper}>
-            <OnboardingStepWrapper stepIndex={0}>
-              <EditAboutPage />
-            </OnboardingStepWrapper>
+            <AboutOnboarding centerId={centerId} />
           </div>
         );
       case 1:
@@ -285,6 +307,26 @@ function MarketplaceSetupContent() {
     }
   };
 
+  // Show error state
+  if (error) {
+    return (
+      <div className={styles.container}>
+        <main className={styles.main}>
+          <div className={styles.errorContainer}>
+            <h2>Setup Error</h2>
+            <p>{error}</p>
+            <button
+              onClick={() => router.push("/marketplace")}
+              className={styles.errorButton}
+            >
+              Back to Marketplace
+            </button>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className={styles.container}>
       {/* Header - shows for all steps except congratulations */}
@@ -297,18 +339,11 @@ function MarketplaceSetupContent() {
           onBack={currentStep > 0 ? handleBack : undefined}
           onContinue={handleHeaderContinue}
           showContinue={true}
-          isLoading={isLoading}
+          isLoading={isSaving}
         />
       )}
 
       <main className={styles.main}>
-        {/* Error Display */}
-        {error && (
-          <div className={styles.errorContainer}>
-            <p>{error}</p>
-          </div>
-        )}
-
         {/* Step Content */}
         <div className={styles.content}>{renderStep()}</div>
       </main>
@@ -318,7 +353,13 @@ function MarketplaceSetupContent() {
 
 export default function MarketplaceSetupPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+        </div>
+      }
+    >
       <MarketplaceSetupContent />
     </Suspense>
   );
