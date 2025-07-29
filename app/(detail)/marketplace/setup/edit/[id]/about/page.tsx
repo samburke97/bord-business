@@ -1,4 +1,4 @@
-// app/(detail)/marketplace/setup/edit/[id]/about/page.tsx - ONBOARDING MODE FIXED
+// app/(detail)/marketplace/setup/edit/[id]/about/page.tsx - FIXED CONSOLIDATED APPROACH
 "use client";
 
 import { useState, useEffect } from "react";
@@ -93,9 +93,18 @@ export default function EditAboutPage({
         handleSave();
       };
 
-      // Clean up any existing listeners
+      // Clean up any existing listeners first
       window.removeEventListener("marketplaceSave", handleOnboardingSave);
       window.addEventListener("marketplaceSave", handleOnboardingSave);
+
+      // ✅ ADD: Debug initial toast state in onboarding mode
+      console.log("🔍 Initial toast state in onboarding:", toast);
+
+      // ✅ ENSURE: Toast is definitely false on setup
+      if (toast.visible) {
+        console.log("🔍 Clearing visible toast on onboarding setup");
+        setToast({ visible: false, message: "", type: "success" });
+      }
 
       return () => {
         window.removeEventListener("marketplaceSave", handleOnboardingSave);
@@ -235,30 +244,46 @@ export default function EditAboutPage({
     }
   };
 
-  const handleHighlightChange = (index: number, value: string) => {
+  // ✅ FIXED: Proper event handler signatures
+  const handleHighlightChange = (
+    index: number,
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const newHighlights = [...formData.highlights];
-    newHighlights[index] = value;
+    newHighlights[index] = e.target.value; // Extract value from event
     setFormData({ ...formData, highlights: newHighlights });
   };
 
-  const handleDescriptionChange = (value: string) => {
-    setFormData({ ...formData, description: value });
+  const handleDescriptionChange = (
+    e: React.ChangeEvent<HTMLTextAreaElement>
+  ) => {
+    setFormData({ ...formData, description: e.target.value }); // Extract value from event
   };
 
   const handleLogoUpload = (url: string) => {
     console.log("📷 Logo uploaded successfully:", url);
     setFormData({ ...formData, logo: url });
-    // Don't show toast - will show when saved
+    // ✅ REMOVED: Don't show any immediate toast for upload
+    console.log("🔍 Logo upload - NOT showing toast");
   };
 
   const handleLogoError = (error: string) => {
     console.error("❌ Logo upload error:", error);
+    console.log("🔍 Logo upload error - showing error toast");
     setToast({
       visible: true,
       message: `Upload failed: ${error}`,
       type: "error",
     });
   };
+
+  // ✅ ADD: Debug toast state changes
+  useEffect(() => {
+    if (toast.visible) {
+      console.log("🔍 TOAST VISIBLE:", toast.message, "Type:", toast.type);
+      console.trace("Toast triggered from:");
+    }
+  }, [toast.visible]);
 
   // Show loading if not initialized
   if (!isInitialized) {
@@ -322,9 +347,10 @@ export default function EditAboutPage({
         <div className={styles.section}>
           <label className={styles.label}>Description*</label>
           <TextArea
+            id="description"
             placeholder="Enter description."
             value={formData.description}
-            onChange={handleDescriptionChange}
+            onChange={handleDescriptionChange} // ✅ FIXED: Pass event directly
             maxLength={500}
             showCharCount={true}
           />
@@ -337,9 +363,10 @@ export default function EditAboutPage({
             {formData.highlights.map((highlight, index) => (
               <TextInput
                 key={`highlight-${index}`}
+                id={`highlight-${index}`}
                 placeholder={`Highlight #${index + 1}`}
                 value={highlight}
-                onChange={(value) => handleHighlightChange(index, value)}
+                onChange={(e) => handleHighlightChange(index, e)} // ✅ FIXED: Pass event object
                 maxLength={20}
                 showCharCount={true}
               />

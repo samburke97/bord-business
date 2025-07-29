@@ -1,4 +1,4 @@
-// app/(detail)/marketplace/setup/page.tsx
+// app/(detail)/marketplace/setup/page.tsx - UPDATED FOR CONSOLIDATED APPROACH
 "use client";
 
 import React, { useState, useRef, Suspense, useEffect } from "react";
@@ -7,9 +7,8 @@ import { useSession } from "next-auth/react";
 import LocationDetailsHeader from "@/components/layouts/headers/LocationDetailsHeader";
 import styles from "./page.module.css";
 
-// Import existing page components - these will be made context-aware
+// Import the FIXED consolidated components
 import EditAboutPage from "./edit/[id]/about/page";
-import AboutOnboarding from "@/components/marketplace/onboarding/AboutOnboarding";
 import GalleryEditPage from "./edit/[id]/gallery/page";
 import OpeningTimesEditPage from "./edit/[id]/opening-times/page";
 import FacilitiesEditPage from "./edit/[id]/facilities/page";
@@ -256,12 +255,14 @@ function MarketplaceSetupContent() {
       );
     }
 
-    // Render current step
+    // Render current step using the FIXED consolidated components
     switch (currentStep) {
       case 0:
         return (
           <div ref={stepRef} className={styles.stepWrapper}>
-            <AboutOnboarding centerId={centerId} />
+            <OnboardingStepWrapper stepIndex={0}>
+              <EditAboutPage />
+            </OnboardingStepWrapper>
           </div>
         );
       case 1:
