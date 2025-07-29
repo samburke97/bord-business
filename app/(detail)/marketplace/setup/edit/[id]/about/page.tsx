@@ -277,14 +277,6 @@ export default function EditAboutPage({
     });
   };
 
-  // ✅ ADD: Debug toast state changes
-  useEffect(() => {
-    if (toast.visible) {
-      console.log("🔍 TOAST VISIBLE:", toast.message, "Type:", toast.type);
-      console.trace("Toast triggered from:");
-    }
-  }, [toast.visible]);
-
   // Show loading if not initialized
   if (!isInitialized) {
     return (
@@ -404,12 +396,13 @@ export default function EditAboutPage({
       </div>
 
       {/* Toast Notification */}
-      <Toast
-        visible={toast.visible}
-        message={toast.message}
-        type={toast.type}
-        onClose={() => setToast((prev) => ({ ...prev, visible: false }))}
-      />
+      {toast.visible && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast((prev) => ({ ...prev, visible: false }))}
+        />
+      )}
     </div>
   );
 }
