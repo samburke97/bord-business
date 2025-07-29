@@ -1,4 +1,4 @@
-// app/api/businesses/create-center/route.ts
+// app/api/businesses/create-center/route.ts - FIXED TO PREVENT DUPLICATES
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
@@ -27,62 +27,69 @@ export async function POST(request: NextRequest) {
       session.user.id
     );
 
-    // Verify user owns this business and get business data
-    const business = await prisma.business.findFirst({
-      where: {
-        id: businessId,
-        ownerId: session.user.id,
-      },
-      include: {
-        centers: {
-          where: {
-            isDeleted: false,
+    // ✅ FIXED: Use a transaction to prevent race conditions
+    const result = await prisma.$transaction(async (tx) => {
+      // Verify user owns this business and get business data
+      const business = await tx.business.findFirst({
+        where: {
+          id: businessId,
+          ownerId: session.user.id,
+        },
+        include: {
+          centers: {
+            where: {
+              isDeleted: false,
+            },
+            orderBy: {
+              createdAt: "desc",
+            },
+          },
+          sports: {
+            include: {
+              sport: true,
+            },
           },
         },
-        sports: {
-          include: {
-            sport: true,
-          },
-        },
-      },
-    });
-
-    if (!business) {
-      console.log(
-        "❌ Business not found or unauthorized for business:",
-        businessId
-      );
-      return NextResponse.json(
-        { error: "Business not found or unauthorized" },
-        { status: 404 }
-      );
-    }
-
-    console.log(
-      "✅ Found business:",
-      business.name,
-      "with",
-      business.centers.length,
-      "existing centers"
-    );
-
-    // Check if center already exists
-    if (business.centers.length > 0) {
-      console.log(
-        "ℹ️ Center already exists, returning existing center:",
-        business.centers[0].id
-      );
-      return NextResponse.json({
-        success: true,
-        centerId: business.centers[0].id,
-        message: "Using existing location",
       });
-    }
 
-    console.log("🔨 Creating new center from business data...");
+      if (!business) {
+        console.log(
+          "❌ Business not found or unauthorized for business:",
+          businessId
+        );
+        throw new Error("Business not found or unauthorized");
+      }
 
-    // Create center from business data using Fresha's approach
-    const center = await prisma.$transaction(async (tx) => {
+      console.log(
+        "✅ Found business:",
+        business.name,
+        "with",
+        business.centers.length,
+        "existing centers"
+      );
+
+      // ✅ CRITICAL: Check if center already exists (race condition protection)
+      if (business.centers.length > 0) {
+        const existingCenter = business.centers[0];
+        console.log(
+          "ℹ️ Center already exists, returning existing center:",
+          existingCenter.id
+        );
+        return {
+          success: true,
+          centerId: existingCenter.id,
+          message: "Using existing location",
+          isNew: false,
+          center: {
+            id: existingCenter.id,
+            name: existingCenter.name,
+            businessId: existingCenter.businessId,
+          },
+        };
+      }
+
+      console.log("🔨 Creating new center from business data...");
+
       // Create the center with inherited business data
       const newCenter = await tx.center.create({
         data: {
@@ -119,23 +126,66 @@ export async function POST(request: NextRequest) {
         console.log("ℹ️ No sports to copy from business");
       }
 
-      return newCenter;
+      return {
+        success: true,
+        centerId: newCenter.id,
+        message: "First location created successfully",
+        isNew: true,
+        center: {
+          id: newCenter.id,
+          name: newCenter.name,
+          businessId: newCenter.businessId,
+        },
+      };
     });
 
-    console.log("🎉 Center creation completed successfully");
-
-    return NextResponse.json({
-      success: true,
-      centerId: center.id,
-      message: "First location created successfully",
-      center: {
-        id: center.id,
-        name: center.name,
-        businessId: center.businessId,
-      },
-    });
+    console.log("🎉 Center creation/retrieval completed successfully");
+    return NextResponse.json(result);
   } catch (error) {
     console.error("❌ Error creating center from business:", error);
+
+    // ✅ IMPROVED: Handle specific database errors
+    if (error instanceof Error) {
+      // Handle unique constraint violations gracefully
+      if (
+        error.message.includes("Unique constraint") ||
+        error.message.includes("unique_violation")
+      ) {
+        // If there's a unique constraint error, fetch the existing center
+        try {
+          const { businessId } = await request.json();
+          const business = await prisma.business.findFirst({
+            where: {
+              id: businessId,
+              ownerId: session?.user?.id,
+            },
+            include: {
+              centers: {
+                where: { isDeleted: false },
+                orderBy: { createdAt: "desc" },
+                take: 1,
+              },
+            },
+          });
+
+          if (business?.centers[0]) {
+            console.log(
+              "🔄 Returning existing center after constraint error:",
+              business.centers[0].id
+            );
+            return NextResponse.json({
+              success: true,
+              centerId: business.centers[0].id,
+              message: "Using existing location",
+              isNew: false,
+            });
+          }
+        } catch (fetchError) {
+          console.error("Failed to fetch existing center:", fetchError);
+        }
+      }
+    }
+
     return NextResponse.json(
       {
         error: "Failed to create location",

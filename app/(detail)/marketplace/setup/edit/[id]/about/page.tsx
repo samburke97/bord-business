@@ -186,8 +186,19 @@ export default function EditAboutPage({
     }
   };
 
+  // Add these debug logs to your About page's handleSave function:
+
   const handleSave = async () => {
-    if (!id || saving) return;
+    console.log("🔥 HANDLEAVE CALLED - START");
+    console.log("🔥 About page ID:", id);
+    console.log("🔥 Saving state:", saving);
+    console.log("🔥 Onboarding mode:", onboardingMode);
+    console.log("🔥 Form data:", formData);
+
+    if (!id || saving) {
+      console.log("🔥 EARLY RETURN - no ID or already saving");
+      return;
+    }
 
     try {
       setSaving(true);
@@ -209,10 +220,17 @@ export default function EditAboutPage({
         body: JSON.stringify(payload),
       });
 
+      console.log("📡 API Response status:", response.status);
+      console.log("📡 API Response ok:", response.ok);
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
+        console.log("❌ API Error data:", errorData);
         throw new Error(errorData.error || "Failed to save about information");
       }
+
+      const responseData = await response.json();
+      console.log("✅ API Success response:", responseData);
 
       console.log("✅ About data saved successfully");
 
@@ -246,6 +264,7 @@ export default function EditAboutPage({
       });
     } finally {
       setSaving(false);
+      console.log("🔥 HANDLEAVE CALLED - END");
     }
   };
 
