@@ -13,7 +13,6 @@ import Toast from "@/components/ui/Toast";
 import styles from "./page.module.css";
 import ActionHeader from "@/components/layouts/headers/ActionHeader";
 import TitleDescription from "@/components/ui/TitleDescription";
-// Import the helper function for center gallery images
 import { getCenterGalleryImageProps } from "@/lib/cloudinary/upload-helpers";
 
 interface LocationImage {
@@ -22,19 +21,57 @@ interface LocationImage {
   order?: number;
 }
 
-export default function GalleryEditPage() {
-  // Use the hooks pattern for params in the App Router
-  const params = useParams();
-  const id = params.id as string;
+interface GalleryEditPageProps {
+  centerId?: string;
+  formData?: {
+    images: Array<{ id: string; imageUrl: string; order: number }>;
+  };
+  onContinue?: (data: any) => void;
+  // Legacy props for standalone edit mode
+  params?: Promise<{ id: string }>;
+}
+
+export default function GalleryEditPage({
+  centerId,
+  formData: initialFormData,
+  onContinue,
+  params,
+}: GalleryEditPageProps) {
+  // Determine if we're in setup mode (parent manages data) or standalone edit mode
+  const isSetupMode = !!centerId && !!onContinue;
+
+  // For standalone mode, we need to get ID from params
+  const [standaloneId, setStandaloneId] = useState<string | null>(null);
+  const id = isSetupMode ? centerId : standaloneId;
+
   const router = useRouter();
+
+  // Initialize standalone mode ID
+  useEffect(() => {
+    if (!isSetupMode && params) {
+      const getId = async () => {
+        const resolvedParams = await params;
+        setStandaloneId(resolvedParams.id);
+      };
+      getId();
+    }
+  }, [params, isSetupMode]);
 
   // Reference to the ImageUploader component
   const uploaderRef = useRef<ButtonImageUploaderRef>(null);
 
   // Get the appropriate folder and preset for center gallery images
-  const { folder, preset } = getCenterGalleryImageProps(id);
+  const { folder, preset } = id
+    ? getCenterGalleryImageProps(id)
+    : { folder: "", preset: "" };
 
-  const [images, setImages] = useState<LocationImage[]>([]);
+  // Form state - initialized from parent data in setup mode
+  const [images, setImages] = useState<LocationImage[]>(
+    initialFormData?.images || []
+  );
+
+  // Loading state for data fetching
+  const [isLoadingData, setIsLoadingData] = useState(false);
   const [loading, setLoading] = useState(true);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
@@ -54,13 +91,57 @@ export default function GalleryEditPage() {
   const [draggedImage, setDraggedImage] = useState<LocationImage | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
-  // Fetch the images for this location
+  // Update local form data when parent data changes
+  useEffect(() => {
+    if (isSetupMode && initialFormData) {
+      setImages(initialFormData.images);
+    }
+  }, [initialFormData, isSetupMode]);
+
+  // Fetch existing data in setup mode to prefill form
+  useEffect(() => {
+    const fetchExistingData = async () => {
+      if (!id || !isSetupMode) return;
+
+      try {
+        setIsLoadingData(true);
+
+        const response = await fetch(`/api/marketplace/${id}/images`, {
+          credentials: "include",
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+
+          // Ensure each image has a numerical index for ordering
+          const imagesWithOrder = data.map(
+            (img: LocationImage, index: number) => ({
+              ...img,
+              order: index + 1,
+            })
+          );
+
+          setImages(imagesWithOrder);
+        }
+      } catch (error) {
+        // Continue with empty gallery on error
+      } finally {
+        setIsLoadingData(false);
+      }
+    };
+
+    fetchExistingData();
+  }, [id, isSetupMode]);
+
+  // Fetch the images for standalone mode
   const fetchImages = useCallback(async () => {
-    if (!id) return;
+    if (!id || isSetupMode) return;
 
     try {
       setLoading(true);
-      const response = await fetch(`/api/locations/${id}/images`);
+      const response = await fetch(`/api/marketplace/${id}/images`, {
+        credentials: "include",
+      });
 
       if (!response.ok) {
         throw new Error("Failed to fetch images");
@@ -76,18 +157,37 @@ export default function GalleryEditPage() {
 
       setImages(imagesWithOrder);
     } catch (err) {
-      console.error("Error fetching images:", err);
       setError((err as Error).message);
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, isSetupMode]);
 
   useEffect(() => {
-    if (id) {
+    if (id && !isSetupMode) {
       fetchImages();
     }
-  }, [fetchImages, id]);
+  }, [fetchImages, id, isSetupMode]);
+
+  // Handle continue for setup mode
+  const handleContinue = () => {
+    if (isSetupMode && onContinue) {
+      onContinue({ images });
+    }
+  };
+
+  // Expose handleContinue to window for header button
+  useEffect(() => {
+    if (isSetupMode) {
+      // @ts-ignore
+      window.handleStepContinue = handleContinue;
+
+      return () => {
+        // @ts-ignore
+        delete window.handleStepContinue;
+      };
+    }
+  }, [images, isSetupMode]);
 
   // Handle progress updates during upload
   const handleProgressChange = (progress: number) => {
@@ -105,12 +205,13 @@ export default function GalleryEditPage() {
   // Handle image upload
   const handleImageUpload = async (imageUrl: string) => {
     try {
-      const response = await fetch(`/api/locations/${id}/images`, {
+      const response = await fetch(`/api/marketplace/${id}/images`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ imageUrl }),
+        credentials: "include",
       });
 
       if (!response.ok) {
@@ -133,7 +234,6 @@ export default function GalleryEditPage() {
         type: "success",
       });
     } catch (err) {
-      console.error("Error uploading image:", err);
       setToast({
         visible: true,
         message: (err as Error).message,
@@ -155,30 +255,24 @@ export default function GalleryEditPage() {
   // Handle image deletion
   const handleImageDelete = async (imageId: string) => {
     try {
-      const response = await fetch(`/api/locations/${id}/images/${imageId}`, {
+      const response = await fetch(`/api/marketplace/${id}/images/${imageId}`, {
         method: "DELETE",
+        credentials: "include",
       });
 
       if (!response.ok) {
         throw new Error("Failed to delete image");
       }
 
-      // Remove the image from the list and re-number remaining images
-      setImages((prevImages) => {
-        const filteredImages = prevImages.filter((img) => img.id !== imageId);
-        return filteredImages.map((img, index) => ({
-          ...img,
-          order: index + 1,
-        }));
-      });
+      // Remove the image from the state
+      setImages((prevImages) => prevImages.filter((img) => img.id !== imageId));
 
       setToast({
         visible: true,
-        message: "Image removed",
+        message: "Image deleted",
         type: "success",
       });
     } catch (err) {
-      console.error("Error deleting image:", err);
       setToast({
         visible: true,
         message: (err as Error).message,
@@ -188,23 +282,15 @@ export default function GalleryEditPage() {
   };
 
   // Handle drag start
-  const handleDragStart = (
-    e: React.DragEvent,
-    image: LocationImage,
-    index: number
-  ) => {
+  const handleDragStart = (e: React.DragEvent, image: LocationImage) => {
     setIsDragging(true);
     setDraggedImage(image);
-    // Store the index in the dataTransfer
-    e.dataTransfer.setData("text/plain", index.toString());
-    // Set effectAllowed to move
     e.dataTransfer.effectAllowed = "move";
   };
 
   // Handle drag over
   const handleDragOver = (e: React.DragEvent, index: number) => {
     e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
     setDragOverIndex(index);
   };
 
@@ -214,21 +300,25 @@ export default function GalleryEditPage() {
 
     if (!draggedImage) return;
 
-    const dragIndex = parseInt(e.dataTransfer.getData("text/plain"));
+    const draggedIndex = images.findIndex((img) => img.id === draggedImage.id);
 
-    if (dragIndex === dropIndex) return;
+    if (draggedIndex === dropIndex) {
+      handleDragEnd();
+      return;
+    }
 
-    const items = Array.from(images);
-    const [removed] = items.splice(dragIndex, 1);
-    items.splice(dropIndex, 0, removed);
+    // Create a new array with the item moved
+    const updatedImages = [...images];
+    const [removed] = updatedImages.splice(draggedIndex, 1);
+    updatedImages.splice(dropIndex, 0, removed);
 
-    // Update the order property for each image
-    const updatedImages = items.map((item, index) => ({
+    // Update the order field for all images
+    const reorderedImages = updatedImages.map((item, index) => ({
       ...item,
       order: index + 1,
     }));
 
-    setImages(updatedImages);
+    setImages(reorderedImages);
     setIsDragging(false);
     setDraggedImage(null);
     setDragOverIndex(null);
@@ -241,16 +331,19 @@ export default function GalleryEditPage() {
     setDragOverIndex(null);
   };
 
-  // Handle save button click
+  // Save function for standalone edit mode
   const handleSave = async () => {
+    if (!id || isSetupMode) return;
+
     try {
       // Update the order of images in the database
-      const response = await fetch(`/api/locations/${id}/images/reorder`, {
+      const response = await fetch(`/api/marketplace/${id}/images/reorder`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ images }),
+        credentials: "include",
       });
 
       if (!response.ok) {
@@ -265,10 +358,9 @@ export default function GalleryEditPage() {
 
       // Navigate back to the location detail page after a brief delay
       setTimeout(() => {
-        router.push(`/locations/${id}`);
+        router.push(`/marketplace/${id}`);
       }, 1500);
     } catch (err) {
-      console.error("Error saving changes:", err);
       setToast({
         visible: true,
         message: (err as Error).message,
@@ -278,22 +370,48 @@ export default function GalleryEditPage() {
   };
 
   const handleClose = () => {
-    router.push(`/locations/${id}`);
+    router.push(`/marketplace/${id}`);
   };
 
   const closeToast = () => {
     setToast((prev) => ({ ...prev, visible: false }));
   };
 
+  // Don't render until we have an ID
+  if (!id) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.loadingContainer}>
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading while fetching existing data in setup mode
+  if (isSetupMode && isLoadingData) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.loadingContainer}>
+          <p>Loading existing data...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
-      <ActionHeader
-        primaryAction={handleSave}
-        secondaryAction={handleClose}
-        primaryLabel="Save"
-        secondaryLabel="Close"
-        variant="edit"
-      />
+      {/* Only show ActionHeader in standalone edit mode */}
+      {!isSetupMode && (
+        <ActionHeader
+          primaryAction={handleSave}
+          secondaryAction={handleClose}
+          primaryLabel="Save"
+          secondaryLabel="Close"
+          variant="edit"
+        />
+      )}
+
       <div className={styles.container}>
         <div className={styles.subheader}>
           <TitleDescription
@@ -322,14 +440,22 @@ export default function GalleryEditPage() {
               type: "error",
             })
           }
-          folder={folder} // Use the folder from getCenterGalleryImageProps
-          preset={preset} // Use the preset from getCenterGalleryImageProps
+          folder={folder}
+          preset={preset}
         />
 
-        {loading ? (
+        {loading && !isSetupMode ? (
           <div className={styles.loadingContainer}>Loading images...</div>
         ) : error ? (
-          <div className={styles.errorContainer}>{error}</div>
+          <div className={styles.errorContainer}>
+            <p>Error: {error}</p>
+            <Button
+              variant="secondary"
+              onClick={() => window.location.reload()}
+            >
+              Retry
+            </Button>
+          </div>
         ) : (
           <div className={styles.galleryGrid}>
             {/* Show uploading placeholder while image is being uploaded */}
@@ -350,16 +476,16 @@ export default function GalleryEditPage() {
               images.map((image, index) => (
                 <div
                   key={image.id}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, image, index)}
-                  onDragOver={(e) => handleDragOver(e, index)}
-                  onDrop={(e) => handleDrop(e, index)}
-                  onDragEnd={handleDragEnd}
                   className={`${styles.imageContainer} ${
                     isDragging && draggedImage?.id === image.id
                       ? styles.dragging
                       : ""
                   } ${dragOverIndex === index ? styles.dragOver : ""}`}
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, image)}
+                  onDragOver={(e) => handleDragOver(e, index)}
+                  onDrop={(e) => handleDrop(e, index)}
+                  onDragEnd={handleDragEnd}
                 >
                   <div className={styles.imageNumber}>{index + 1}</div>
                   <button
@@ -373,20 +499,29 @@ export default function GalleryEditPage() {
                     <Image
                       src={image.imageUrl}
                       alt={`Gallery image ${index + 1}`}
-                      width={300}
-                      height={300}
-                      sizes="(max-width: 768px) 100vw, 300px"
+                      fill
                       className={styles.image}
+                      sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
                     />
                   </div>
                 </div>
               ))
             ) : !isUploading ? (
-              <div className={styles.emptyState}>No images found</div>
+              <div className={styles.emptyState}>
+                <p>No images uploaded yet</p>
+                <Button
+                  variant="primary"
+                  onClick={handleUploadClick}
+                  iconPath="/icons/utility-outline/import"
+                >
+                  Upload First Image
+                </Button>
+              </div>
             ) : null}
           </div>
         )}
 
+        {/* Only render Toast when visible */}
         {toast.visible && (
           <Toast
             message={toast.message}

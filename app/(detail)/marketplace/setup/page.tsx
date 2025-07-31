@@ -206,30 +206,36 @@ function MarketplaceSetupContent() {
           updatedFormData.gallery = { ...formData.gallery, ...stepData };
           setFormData(updatedFormData);
 
-          // Save to database
-          const galleryPayload = {
-            images: updatedFormData.gallery.images.map(
-              (img: any, index: number) => ({
-                id: img.id?.startsWith("temp-") ? undefined : img.id,
-                imageUrl: img.imageUrl,
-                order: index + 1,
-              })
-            ),
-          };
+          // Save to database using reorder endpoint (since images are already uploaded individually)
+          if (
+            updatedFormData.gallery.images &&
+            updatedFormData.gallery.images.length > 0
+          ) {
+            const galleryPayload = {
+              images: updatedFormData.gallery.images.map(
+                (img: any, index: number) => ({
+                  id: img.id,
+                  imageUrl: img.imageUrl,
+                  order: index + 1,
+                })
+              ),
+            };
 
-          const galleryResponse = await fetch(
-            `/api/marketplace/${centerId}/images`,
-            {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(galleryPayload),
-              credentials: "include",
+            const galleryResponse = await fetch(
+              `/api/marketplace/${centerId}/images/reorder`, // Fixed: Use reorder endpoint
+              {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(galleryPayload),
+                credentials: "include",
+              }
+            );
+
+            if (!galleryResponse.ok) {
+              throw new Error("Failed to save gallery");
             }
-          );
-
-          if (!galleryResponse.ok) {
-            throw new Error("Failed to save gallery");
           }
+          // If no images, just continue without API call
 
           break;
 
