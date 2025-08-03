@@ -295,7 +295,7 @@ export default function FacilitiesPage({
       <div className={styles.container}>
         <TitleDescription
           title="Facilities"
-          description="Please add all your business's facilities."
+          description="Add facilities to help customers know what to expect. You can skip this step if needed."
         />
 
         <div className={styles.facilitiesSection}>

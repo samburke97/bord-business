@@ -73,6 +73,14 @@ export default function OpeningTimesEditPage({
     label: time,
   }));
 
+  // NEW: Add validation function
+  const validateOpeningTimesForm = (): boolean => {
+    // Check if at least one day has opening hours set
+    return Object.values(openingHours).some(
+      (daySlots) => daySlots && daySlots.length > 0
+    );
+  };
+
   // Fetch existing data in setup mode to prefill form
   useEffect(() => {
     const fetchExistingData = async () => {
@@ -141,22 +149,44 @@ export default function OpeningTimesEditPage({
     }
   }, [loading, isLoadingData, openingHours]);
 
-  // Handle continue for setup mode
+  // UPDATED: Handle continue for setup mode with validation
   const handleContinue = () => {
     if (isSetupMode && onContinue) {
+      if (!validateOpeningTimesForm()) {
+        setToast({
+          visible: true,
+          message: "Please set opening hours for at least one day",
+          type: "error",
+        });
+        return;
+      }
       onContinue({ openingHours });
     }
   };
 
-  // Expose handleContinue to window for header button
+  // UPDATED: Expose handleContinue to window for header button with validation
   useEffect(() => {
     if (isSetupMode) {
       // @ts-ignore
-      window.handleStepContinue = handleContinue;
+      window.marketplaceSetup = window.marketplaceSetup || {};
+      // @ts-ignore
+      window.marketplaceSetup.handleStepContinue = () => {
+        if (!validateOpeningTimesForm()) {
+          setToast({
+            visible: true,
+            message: "Please set opening hours for at least one day",
+            type: "error",
+          });
+          return;
+        }
+        handleContinue();
+      };
 
       return () => {
         // @ts-ignore
-        delete window.handleStepContinue;
+        if (window.marketplaceSetup) {
+          delete window.marketplaceSetup.handleStepContinue;
+        }
       };
     }
   }, [openingHours, isSetupMode]);
@@ -472,7 +502,7 @@ export default function OpeningTimesEditPage({
       <div className={styles.container}>
         <TitleDescription
           title="Opening Times"
-          description="Please add and review your details before continuing."
+          description="Please set your opening hours. At least one day must be configured to continue."
         />
 
         <div className={styles.openingHoursForm}>

@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import TitleDescription from "@/components/ui/TitleDescription";
 import TextInput from "@/components/ui/TextInput";
 import TextArea from "@/components/ui/TextArea";
@@ -36,6 +37,8 @@ export default function EditAboutPage({
   const [standaloneId, setStandaloneId] = useState<string | null>(null);
   const id = isSetupMode ? centerId : standaloneId;
 
+  const router = useRouter();
+
   // Initialize standalone mode ID
   useEffect(() => {
     if (!isSetupMode && params) {
@@ -56,6 +59,12 @@ export default function EditAboutPage({
 
   // Loading state for data fetching
   const [isLoadingData, setIsLoadingData] = useState(false);
+
+  // NEW: Add validation state
+  const [validationAttempted, setValidationAttempted] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<{
+    description?: string;
+  }>({});
 
   // Update local form data when parent data changes
   useEffect(() => {
@@ -121,22 +130,70 @@ export default function EditAboutPage({
     type: "success" as "success" | "error",
   });
 
-  // Handle continue for setup mode
+  // NEW: Real-time validation function
+  const validateField = (fieldName: string, value: any) => {
+    const errors = { ...fieldErrors };
+
+    switch (fieldName) {
+      case "description":
+        if (!value || !value.trim()) {
+          errors.description = "Description is required";
+        } else if (value.trim().length < 10) {
+          errors.description = "Description must be at least 10 characters";
+        } else {
+          delete errors.description;
+        }
+        break;
+    }
+
+    setFieldErrors(errors);
+    return !errors[fieldName];
+  };
+
+  // NEW: Enhanced validation function for continue
+  const validateAboutForm = (): boolean => {
+    setValidationAttempted(true);
+
+    const errors: typeof fieldErrors = {};
+
+    if (!localFormData.description.trim()) {
+      errors.description = "Description is required";
+    } else if (localFormData.description.trim().length < 10) {
+      errors.description = "Description must be at least 10 characters";
+    }
+
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  // UPDATED: Handle continue for setup mode with field validation
   const handleContinue = () => {
     if (isSetupMode && onContinue) {
+      if (!validateAboutForm()) {
+        return; // Don't show toast, let field errors handle it
+      }
       onContinue(localFormData);
     }
   };
 
-  // Expose handleContinue to window for header button
+  // UPDATED: Expose handleContinue to window for header button with validation
   useEffect(() => {
     if (isSetupMode) {
       // @ts-ignore
-      window.handleStepContinue = handleContinue;
+      window.marketplaceSetup = window.marketplaceSetup || {};
+      // @ts-ignore
+      window.marketplaceSetup.handleStepContinue = () => {
+        if (!validateAboutForm()) {
+          return; // Don't show toast, let field errors handle it
+        }
+        handleContinue();
+      };
 
       return () => {
         // @ts-ignore
-        delete window.handleStepContinue;
+        if (window.marketplaceSetup) {
+          delete window.marketplaceSetup.handleStepContinue;
+        }
       };
     }
   }, [localFormData, isSetupMode]);
@@ -196,10 +253,17 @@ export default function EditAboutPage({
     setLocalFormData({ ...localFormData, highlights: newHighlights });
   };
 
+  // UPDATED: Description change handler with real-time validation
   const handleDescriptionChange = (
     e: React.ChangeEvent<HTMLTextAreaElement>
   ) => {
-    setLocalFormData({ ...localFormData, description: e.target.value });
+    const value = e.target.value;
+    setLocalFormData({ ...localFormData, description: value });
+
+    // Real-time validation after first attempt
+    if (validationAttempted) {
+      validateField("description", value);
+    }
   };
 
   const handleLogoUpload = (url: string) => {
@@ -242,7 +306,7 @@ export default function EditAboutPage({
       {!isSetupMode && (
         <ActionHeader
           onSave={handleSave}
-          onCancel={() => (router.push("/marketplace"))}
+          onCancel={() => router.push("/marketplace")}
           isLoading={saving}
         />
       )}
@@ -253,16 +317,18 @@ export default function EditAboutPage({
           description="Please include your business description, key facility highlights, and your logo."
         />
 
-        {/* Description */}
+        {/* Description - UPDATED with error prop */}
         <div className={styles.section}>
           <label className={styles.label}>Description*</label>
           <TextArea
             id="description"
-            placeholder="Enter description."
+            placeholder="Enter description (minimum 10 characters)."
             value={localFormData.description}
             onChange={handleDescriptionChange}
             maxLength={500}
             showCharCount={true}
+            required
+            error={fieldErrors.description}
           />
         </div>
 

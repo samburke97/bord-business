@@ -91,6 +91,11 @@ export default function GalleryEditPage({
   const [draggedImage, setDraggedImage] = useState<LocationImage | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
+  // NEW: Add validation function
+  const validateGalleryForm = (): boolean => {
+    return images.length > 0;
+  };
+
   // Update local form data when parent data changes
   useEffect(() => {
     if (isSetupMode && initialFormData) {
@@ -169,22 +174,44 @@ export default function GalleryEditPage({
     }
   }, [fetchImages, id, isSetupMode]);
 
-  // Handle continue for setup mode
+  // UPDATED: Handle continue for setup mode with validation
   const handleContinue = () => {
     if (isSetupMode && onContinue) {
+      if (!validateGalleryForm()) {
+        setToast({
+          visible: true,
+          message: "Please upload at least one image to continue",
+          type: "error",
+        });
+        return;
+      }
       onContinue({ images });
     }
   };
 
-  // Expose handleContinue to window for header button
+  // UPDATED: Expose handleContinue to window for header button with validation
   useEffect(() => {
     if (isSetupMode) {
       // @ts-ignore
-      window.handleStepContinue = handleContinue;
+      window.marketplaceSetup = window.marketplaceSetup || {};
+      // @ts-ignore
+      window.marketplaceSetup.handleStepContinue = () => {
+        if (!validateGalleryForm()) {
+          setToast({
+            visible: true,
+            message: "Please upload at least one image to continue",
+            type: "error",
+          });
+          return;
+        }
+        handleContinue();
+      };
 
       return () => {
         // @ts-ignore
-        delete window.handleStepContinue;
+        if (window.marketplaceSetup) {
+          delete window.marketplaceSetup.handleStepContinue;
+        }
       };
     }
   }, [images, isSetupMode]);
@@ -416,7 +443,7 @@ export default function GalleryEditPage({
         <div className={styles.subheader}>
           <TitleDescription
             title="Gallery"
-            description="Add videos and photos of your venue, in addition to selecting your top picks."
+            description="Please upload at least one image of your facility. This is required to complete your profile."
           />
 
           <Button

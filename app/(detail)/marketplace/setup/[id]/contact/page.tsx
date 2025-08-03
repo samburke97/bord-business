@@ -93,6 +93,11 @@ export default function ContactEditPage({
 
   const [formErrors, setFormErrors] = useState<FormErrors>({});
 
+  // NEW: Add validation function
+  const validateContactForm = (): boolean => {
+    return !!(formData.website && formData.website.trim());
+  };
+
   // Fetch existing data in setup mode to prefill form
   useEffect(() => {
     const fetchExistingData = async () => {
@@ -292,22 +297,44 @@ export default function ContactEditPage({
     }
   }, [id, isSetupMode]);
 
-  // Handle continue for setup mode
+  // UPDATED: Handle continue for setup mode with validation
   const handleContinue = () => {
     if (isSetupMode && onContinue) {
+      if (!validateContactForm()) {
+        setToast({
+          visible: true,
+          message: "Website URL is required to complete your profile",
+          type: "error",
+        });
+        return;
+      }
       onContinue({ contact: formData });
     }
   };
 
-  // Expose handleContinue to window for header button
+  // UPDATED: Expose handleContinue to window for header button with validation
   useEffect(() => {
     if (isSetupMode) {
       // @ts-ignore
-      window.handleStepContinue = handleContinue;
+      window.marketplaceSetup = window.marketplaceSetup || {};
+      // @ts-ignore
+      window.marketplaceSetup.handleStepContinue = () => {
+        if (!validateContactForm()) {
+          setToast({
+            visible: true,
+            message: "Website URL is required to complete your profile",
+            type: "error",
+          });
+          return;
+        }
+        handleContinue();
+      };
 
       return () => {
         // @ts-ignore
-        delete window.handleStepContinue;
+        if (window.marketplaceSetup) {
+          delete window.marketplaceSetup.handleStepContinue;
+        }
       };
     }
   }, [formData, isSetupMode]);
@@ -531,15 +558,18 @@ export default function ContactEditPage({
             error={formSubmitted ? formErrors.email : null}
           />
 
-          {/* Website Input */}
+          {/* Website Input - REQUIRED */}
           <TextInput
             id="website"
             name="website"
-            label="Website"
+            label="Website*"
             value={formData.website}
             onChange={handleInputChange}
-            placeholder="Paste your website link"
-            error={formSubmitted ? formErrors.website : null}
+            placeholder="https://your-website.com"
+            required
+            error={
+              !formData.website.trim() ? "Website URL is required" : undefined
+            }
           />
 
           {/* Social Media Inputs */}
