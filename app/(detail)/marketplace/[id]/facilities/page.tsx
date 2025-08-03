@@ -1,6 +1,6 @@
 "use client";
 
-import FacilitiesEditPage from "../../setup/edit/[id]/facilities/page";
+import FacilitiesEditPage from "../../setup/[id]/facilities/page";
 
 interface FacilitiesPageProps {
   params: Promise<{ id: string }>;

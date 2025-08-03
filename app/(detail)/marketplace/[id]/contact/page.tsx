@@ -1,6 +1,6 @@
 "use client";
 
-import ContactEditPage from "../../setup/edit/[id]/contact/page";
+import ContactEditPage from "../../setup/[id]/contact/page";
 
 interface ContactPageProps {
   params: Promise<{ id: string }>;

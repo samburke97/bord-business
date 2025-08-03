@@ -1,6 +1,6 @@
 "use client";
 
-import EditAboutPage from "../../setup/edit/[id]/about/page";
+import EditAboutPage from "../../setup/[id]/about/page";
 
 interface AboutPageProps {
   params: Promise<{ id: string }>;

@@ -1,6 +1,6 @@
 "use client";
 
-import GalleryEditPage from "../../setup/edit/[id]/gallery/page";
+import GalleryEditPage from "../../setup/[id]/gallery/page";
 
 interface GalleryPageProps {
   params: Promise<{ id: string }>;

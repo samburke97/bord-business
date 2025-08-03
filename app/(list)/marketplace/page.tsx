@@ -1,12 +1,11 @@
-// app/(list)/marketplace/page.tsx - Updated to check for existing centers
+// app/(list)/marketplace/page.tsx
 "use client";
 
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import SecondarySidebar from "@/components/layouts/SecondarySidebar";
 import Button from "@/components/ui/Button";
-import LocationDetailPage from "@/components/marketplace/details/LocationDetailPage";
 import styles from "./page.module.css";
 
 // Define the sub-navigation items for marketplace
@@ -24,66 +23,11 @@ const marketplaceNavItems = [
 export default function MarketplacePage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(true);
-  const [isStartLoading, setIsStartLoading] = useState(false);
-  const [hasCenter, setHasCenter] = useState(false);
-  const [centerId, setCenterId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  // Check if user has existing center on page load
-  useEffect(() => {
-    const checkCenterStatus = async () => {
-      if (!session?.user?.id) {
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        setIsLoading(true);
-        setError(null);
-
-        // Check user's business status and centers
-        const response = await fetch("/api/user/business-status", {
-          credentials: "include",
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          console.log("📊 Business status for marketplace:", data);
-
-          // If user needs business setup, they definitely don't have centers
-          if (data.needsSetup) {
-            setHasCenter(false);
-            setIsLoading(false);
-            return;
-          }
-
-          // Check if business has centers
-          if (data.business?.centers && data.business.centers.length > 0) {
-            setHasCenter(true);
-            setCenterId(data.business.centers[0].id); // Use the first center
-          } else {
-            setHasCenter(false);
-          }
-        } else {
-          console.error("Failed to fetch business status");
-          setHasCenter(false);
-        }
-      } catch (error) {
-        console.error("❌ Error checking center status:", error);
-        setError("Failed to load marketplace status");
-        setHasCenter(false);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    checkCenterStatus();
-  }, [session?.user?.id]);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleStartNow = async () => {
     try {
-      setIsStartLoading(true);
+      setIsLoading(true);
 
       // Check if user needs business setup first
       const response = await fetch("/api/user/business-status", {
@@ -112,7 +56,7 @@ export default function MarketplacePage() {
       // Fallback to setup flow anyway
       router.push("/marketplace/setup");
     } finally {
-      setIsStartLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -120,69 +64,6 @@ export default function MarketplacePage() {
     router.push("/about");
   };
 
-  // Show loading state
-  if (isLoading) {
-    return (
-      <>
-        <SecondarySidebar
-          title="Online Profile"
-          items={marketplaceNavItems}
-          basePath="/marketplace"
-        />
-        <div className={styles.container}>
-          <div className={styles.content}>
-            <div className={styles.loadingState}>
-              <div className={styles.spinner}></div>
-              <p>Loading marketplace...</p>
-            </div>
-          </div>
-        </div>
-      </>
-    );
-  }
-
-  // Show error state
-  if (error) {
-    return (
-      <>
-        <SecondarySidebar
-          title="Online Profile"
-          items={marketplaceNavItems}
-          basePath="/marketplace"
-        />
-        <div className={styles.container}>
-          <div className={styles.content}>
-            <div className={styles.errorState}>
-              <h2>Error</h2>
-              <p>{error}</p>
-              <Button
-                onClick={() => window.location.reload()}
-                variant="primary"
-              >
-                Retry
-              </Button>
-            </div>
-          </div>
-        </div>
-      </>
-    );
-  }
-
-  // If user has a center, show the location detail page
-  if (hasCenter && centerId) {
-    return (
-      <>
-        <SecondarySidebar
-          title="Online Profile"
-          items={marketplaceNavItems}
-          basePath="/marketplace"
-        />
-        <LocationDetailPage params={{ id: centerId }} />
-      </>
-    );
-  }
-
-  // If user doesn't have a center, show the onboarding page
   return (
     <>
       <SecondarySidebar
@@ -227,16 +108,16 @@ export default function MarketplacePage() {
               variant="primary-green"
               onClick={handleStartNow}
               className={styles.primaryButton}
-              disabled={isStartLoading}
+              disabled={isLoading}
             >
-              {isStartLoading ? "Loading..." : "Start Now"}
+              {isLoading ? "Loading..." : "Start Now"}
             </Button>
 
             <Button
               variant="secondary"
               onClick={handleLearnMore}
               className={styles.secondaryButton}
-              disabled={isStartLoading}
+              disabled={isLoading}
             >
               Learn More
             </Button>
