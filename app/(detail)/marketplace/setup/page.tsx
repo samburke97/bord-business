@@ -551,7 +551,10 @@ function MarketplaceSetupContent() {
           currentStep={currentStep}
           totalSteps={steps.length}
           steps={steps}
+          // FIXED: Step 1 (index 0) should show close button ('x')
           onClose={currentStep === 0 ? handleClose : undefined}
+          // FIXED: All other steps (index > 0) should show back button
+          // BUG WAS HERE: onBack was incorrectly set to handleClose instead of handleBack
           onBack={currentStep > 0 ? handleBack : undefined}
           onContinue={handleHeaderContinue}
           showContinue={true}
