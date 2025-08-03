@@ -365,12 +365,10 @@ function MarketplaceSetupContent() {
         return (
           <div ref={stepRef}>
             <Congratulations
-              title="Congratulations!"
-              description="Your marketplace profile is now complete and ready to go live. Customers can now discover and book with your business."
-              primaryButtonText="View My Profile"
-              secondaryButtonText="Back to Marketplace"
-              onContinue={handleViewProfile}
-              onRemindLater={handleRemindLater}
+              title="Congratulations"
+              primaryButtonText="Continue"
+              onContinue={() => router.push("/marketplace")}
+              onRemindLater={() => router.push("/marketplace")}
             />
           </div>
         );

@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Button from "@/components/ui/Button";
-import LocationHeader from "@/components/layouts/headers/LocationHeader";
 import DetailsCard from "./cards/DetailsCard";
 import AddressCard from "./cards/AddressCard";
 import GalleryCard from "./cards/GalleryCard";
@@ -81,8 +80,8 @@ export default function LocationDetailPage({
         setIsLoading(true);
         setError(null);
 
-        // Log to confirm the API route
-        const apiUrl = `/api/locations/${id}`;
+        // Updated: Use marketplace API endpoint instead of locations
+        const apiUrl = `/api/marketplace/${id}`;
 
         const response = await fetch(apiUrl);
 
@@ -125,13 +124,15 @@ export default function LocationDetailPage({
     }
   }, [id, updateActivationStatus]);
 
+  // Also update the delete endpoint:
   const handleDeleteLocation = async () => {
     if (!location) return;
 
     try {
       setIsDeleting(true);
 
-      const response = await fetch(`/api/locations/${id}`, {
+      // Updated: Use marketplace API endpoint for deletion as well
+      const response = await fetch(`/api/marketplace/${id}`, {
         method: "DELETE",
       });
 
@@ -140,8 +141,8 @@ export default function LocationDetailPage({
         throw new Error(`Failed to delete location: ${errorText}`);
       }
 
-      // Redirect to locations page after successful deletion
-      router.push("/locations");
+      // Redirect to marketplace page after successful deletion
+      router.push("/marketplace");
     } catch (error) {
       console.error("Error deleting location:", error);
       // You could show an error toast or message here
@@ -169,12 +170,6 @@ export default function LocationDetailPage({
 
   return (
     <div className={styles.pageContainer}>
-      <LocationHeader
-        isActive={locationStatus}
-        locationId={location.id}
-        onToggleActive={handleStatusChange}
-      />
-
       <div className={styles.content}>
         <div className={styles.viewLinkContainer}>
           <h1 className={styles.title}>{location.name}</h1>

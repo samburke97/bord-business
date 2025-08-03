@@ -9,7 +9,7 @@ export async function checkActivationStatus(locationId: string): Promise<{
 }> {
   try {
     const response = await fetch(
-      `/api/locations/${locationId}/activation-status`
+      `/api/marketplace/${locationId}/activation-status`
     );
 
     if (!response.ok) {
