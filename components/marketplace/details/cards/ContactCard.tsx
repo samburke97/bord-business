@@ -50,7 +50,7 @@ export default function ContactCard({
   return (
     <BaseCard
       title="Contact"
-      editHref={`/marketplace/edit/${locationId}/contact`}
+      editHref={`/marketplace/setup/edit/${locationId}/contact`}
       hasData={hasData}
       emptyStateText="No details found"
       locationId={locationId}

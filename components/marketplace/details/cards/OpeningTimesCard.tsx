@@ -109,7 +109,9 @@ export default function OpeningTimesCard({
     <BaseCard
       title="Opening Times"
       editHref={
-        isAdmin ? `/locations/edit/${locationId}/opening-times` : undefined
+        isAdmin
+          ? `/marketplace/setup/edit/${locationId}/opening-times`
+          : undefined
       }
       hasData={hasData}
       emptyStateText="No opening times found"

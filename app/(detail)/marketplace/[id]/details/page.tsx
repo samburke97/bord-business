@@ -107,7 +107,7 @@ export default function EditLocationDetailsPage() {
         setNameError(null);
 
         // Fetch location data
-        const locationResponse = await fetch(`/api/locations/${id}`);
+        const locationResponse = await fetch(`/api/marketplace/${id}`);
         if (!locationResponse.ok) {
           throw new Error("Failed to fetch location data");
         }
@@ -214,7 +214,7 @@ export default function EditLocationDetailsPage() {
   };
 
   const handleClose = () => {
-    router.push(`/locations/${id}`);
+    router.push(`/marketplace`);
   };
 
   const validateForm = (): boolean => {
@@ -244,7 +244,7 @@ export default function EditLocationDetailsPage() {
         sportsIds: selectedSports.map((sport) => sport.id), // These are Sport IDs
       };
 
-      const response = await fetch(`/api/locations/${id}/details`, {
+      const response = await fetch(`/api/marketplace/${id}/details`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -271,7 +271,7 @@ export default function EditLocationDetailsPage() {
 
       // Navigate back after a short delay
       setTimeout(() => {
-        router.push(`/locations/${id}`);
+        router.push(`/marketplace`);
       }, 1500);
     } catch (error) {
       console.error("Error updating location details:", error);
@@ -312,7 +312,7 @@ export default function EditLocationDetailsPage() {
       <div className={styles.errorContainer}>
         <p>Error loading location details: {error || "Unknown error"}</p>
         <button
-          onClick={() => router.push(`/locations/${id}`)}
+          onClick={() => router.push(`/marketplace`)}
           className={styles.backButton}
         >
           Go Back

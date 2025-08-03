@@ -9,11 +9,11 @@ import Congratulations from "@/components/ui/Congratulations";
 import styles from "./page.module.css";
 
 // Import the FIXED consolidated components
-import EditAboutPage from "./edit/[id]/about/page";
-import GalleryEditPage from "./edit/[id]/gallery/page";
-import OpeningTimesEditPage from "./edit/[id]/opening-times/page";
-import FacilitiesEditPage from "./edit/[id]/facilities/page";
-import ContactEditPage from "./edit/[id]/contact/page";
+import EditAboutPage from "../[id]/about/page";
+import GalleryEditPage from "../[id]/gallery/page";
+import OpeningTimesEditPage from "../[id]/opening-times/page";
+import FacilitiesEditPage from "../[id]/facilities/page";
+import ContactEditPage from "../[id]/contact/page";
 
 const steps = [
   "About",
