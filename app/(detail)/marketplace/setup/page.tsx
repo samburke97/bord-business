@@ -1,4 +1,4 @@
-// app/(detail)/marketplace/setup/page.tsx - COMPLETE FIXED VERSION
+// app/(detail)/marketplace/setup/page.tsx - COMPLETELY FIXED VERSION
 "use client";
 
 import React, { useState, useRef, Suspense, useEffect } from "react";
@@ -27,7 +27,7 @@ function MarketplaceSetupContent() {
   const router = useRouter();
   const { data: session } = useSession();
 
-  // Add step persistence using sessionStorage
+  // FIXED: Step persistence without clearing on page unload
   const [currentStep, setCurrentStep] = useState(() => {
     // Initialize currentStep from sessionStorage if available
     if (typeof window !== "undefined") {
@@ -78,32 +78,21 @@ function MarketplaceSetupContent() {
 
   const stepRef = useRef<HTMLDivElement>(null);
 
-  // Save step to sessionStorage whenever it changes
+  // FIXED: Save step to sessionStorage whenever it changes (no clearing on unload)
   useEffect(() => {
     if (typeof window !== "undefined") {
       sessionStorage.setItem("marketplace-setup-step", currentStep.toString());
     }
   }, [currentStep]);
 
-  // Clear step persistence when setup is completed
+  // FIXED: Only clear step persistence when setup is actually completed (not on refresh)
   useEffect(() => {
-    const clearStepPersistence = () => {
+    // Clear when reaching congratulations step ONLY
+    if (currentStep >= steps.length) {
       if (typeof window !== "undefined") {
         sessionStorage.removeItem("marketplace-setup-step");
       }
-    };
-
-    // Clear when reaching congratulations step
-    if (currentStep >= steps.length) {
-      clearStepPersistence();
     }
-
-    // Clear on page unload
-    window.addEventListener("beforeunload", clearStepPersistence);
-
-    return () => {
-      window.removeEventListener("beforeunload", clearStepPersistence);
-    };
   }, [currentStep]);
 
   // Helper function to create center from business
@@ -214,9 +203,11 @@ function MarketplaceSetupContent() {
     setIsInitializing(false);
   }, [session?.user?.id]);
 
-  // Handle continue with data persistence AND step validation
+  // FIXED: Handle continue with proper data structure handling
   const handleContinue = async (stepData: any) => {
     if (!centerId) return;
+
+    console.log("handleContinue called with stepData:", stepData);
 
     try {
       setIsSaving(true);
@@ -291,11 +282,16 @@ function MarketplaceSetupContent() {
           break;
 
         case 2: // Opening Times step
+          // FIXED: Handle opening times data structure correctly
+          // stepData comes as { openingHours: {...} } from component
           updatedFormData.openingTimes = {
-            ...formData.openingTimes,
-            ...stepData,
+            openingHours: stepData.openingHours,
           };
           setFormData(updatedFormData);
+
+          console.log("Saving opening times:", {
+            openingHours: stepData.openingHours,
+          });
 
           // Save opening times
           const openingTimesResponse = await fetch(
@@ -303,26 +299,32 @@ function MarketplaceSetupContent() {
             {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(updatedFormData.openingTimes),
+              body: JSON.stringify({ openingHours: stepData.openingHours }),
               credentials: "include",
             }
           );
 
           if (!openingTimesResponse.ok) {
+            const errorText = await openingTimesResponse.text();
+            console.error("Opening times save failed:", errorText);
             throw new Error("Failed to save opening times");
           }
           break;
 
         case 3: // Facilities step
-          updatedFormData.facilities = { ...formData.facilities, ...stepData };
+          // FIXED: Handle facilities data structure correctly
+          // stepData comes as { facilities: [...] } from component
+          updatedFormData.facilities = {
+            facilities: stepData.facilities || [],
+          };
           setFormData(updatedFormData);
 
+          console.log("Saving facilities:", stepData.facilities);
+
           // Save facilities (if any selected)
-          if (updatedFormData.facilities.facilities.length > 0) {
+          if (stepData.facilities && stepData.facilities.length > 0) {
             const facilitiesPayload = {
-              facilities: updatedFormData.facilities.facilities.map(
-                (f) => f.id
-              ),
+              facilities: stepData.facilities.map((f: any) => f.id),
             };
 
             const facilitiesResponse = await fetch(
@@ -336,35 +338,41 @@ function MarketplaceSetupContent() {
             );
 
             if (!facilitiesResponse.ok) {
+              const errorText = await facilitiesResponse.text();
+              console.error("Facilities save failed:", errorText);
               throw new Error("Failed to save facilities");
             }
           }
           break;
 
         case 4: // Contact step
+          // FIXED: Handle contact data structure correctly
+          // stepData comes as { contact: {...} } from component
           updatedFormData.contact = {
             ...formData.contact,
             ...stepData.contact,
           };
           setFormData(updatedFormData);
 
+          console.log("Saving contact:", stepData.contact);
+
           // Format phone number
           let formattedPhone = null;
-          if (updatedFormData.contact.phone.trim()) {
-            const cleanedPhoneNumber = updatedFormData.contact.phone.trim();
+          if (stepData.contact.phone && stepData.contact.phone.trim()) {
+            const cleanedPhoneNumber = stepData.contact.phone.trim();
             formattedPhone = cleanedPhoneNumber.startsWith("+")
               ? cleanedPhoneNumber
-              : `${updatedFormData.contact.countryCode} ${cleanedPhoneNumber}`;
+              : `${stepData.contact.countryCode} ${cleanedPhoneNumber}`;
           }
 
           // Save contact information
           const contactPayload = {
             phone: formattedPhone,
-            email: updatedFormData.contact.email || null,
-            website: updatedFormData.contact.website || null,
-            socials: updatedFormData.contact.socials
-              .filter((social) => social.url?.trim())
-              .map((social) => ({
+            email: stepData.contact.email || null,
+            website: stepData.contact.website || null,
+            socials: (stepData.contact.socials || [])
+              .filter((social: any) => social.url?.trim())
+              .map((social: any) => ({
                 platform: social.platform,
                 url: social.url.trim(),
               })),
@@ -381,6 +389,8 @@ function MarketplaceSetupContent() {
           );
 
           if (!contactResponse.ok) {
+            const errorText = await contactResponse.text();
+            console.error("Contact save failed:", errorText);
             throw new Error("Failed to save contact information");
           }
           break;
@@ -397,6 +407,7 @@ function MarketplaceSetupContent() {
         }
       }
     } catch (error) {
+      console.error("Save error:", error);
       setError(
         `Failed to save ${steps[currentStep]} information. Please try again.`
       );
