@@ -160,15 +160,19 @@ export default function FacilitiesPage({
     }
   };
 
-  // Expose handleContinue to window for header button
+  // FIXED: Expose handleContinue to window for header button using new pattern
   useEffect(() => {
     if (isSetupMode) {
       // @ts-ignore
-      window.handleStepContinue = handleContinue;
+      window.marketplaceSetup = window.marketplaceSetup || {};
+      // @ts-ignore
+      window.marketplaceSetup.handleStepContinue = handleContinue;
 
       return () => {
         // @ts-ignore
-        delete window.handleStepContinue;
+        if (window.marketplaceSetup) {
+          delete window.marketplaceSetup.handleStepContinue;
+        }
       };
     }
   }, [selectedFacilities, isSetupMode]);

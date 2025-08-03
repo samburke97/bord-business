@@ -26,7 +26,17 @@ const steps = [
 function MarketplaceSetupContent() {
   const router = useRouter();
   const { data: session } = useSession();
-  const [currentStep, setCurrentStep] = useState(0);
+
+  // Add step persistence using sessionStorage
+  const [currentStep, setCurrentStep] = useState(() => {
+    // Initialize currentStep from sessionStorage if available
+    if (typeof window !== "undefined") {
+      const savedStep = sessionStorage.getItem("marketplace-setup-step");
+      return savedStep ? parseInt(savedStep, 10) : 0;
+    }
+    return 0;
+  });
+
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,10 +58,53 @@ function MarketplaceSetupContent() {
     gallery: {
       images: [] as Array<{ id: string; imageUrl: string; order: number }>,
     },
-    // Can add more steps here: openingTimes, facilities, contact
+    // Opening times step data
+    openingTimes: {
+      openingHours: {} as any,
+    },
+    // Facilities step data
+    facilities: {
+      facilities: [] as Array<{ id: string; name: string }>,
+    },
+    // Contact step data
+    contact: {
+      phone: "",
+      countryCode: "+44",
+      email: "",
+      website: "",
+      socials: [] as Array<{ platform: string; url: string }>,
+    },
   });
 
   const stepRef = useRef<HTMLDivElement>(null);
+
+  // Save step to sessionStorage whenever it changes
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("marketplace-setup-step", currentStep.toString());
+    }
+  }, [currentStep]);
+
+  // Clear step persistence when setup is completed
+  useEffect(() => {
+    const clearStepPersistence = () => {
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem("marketplace-setup-step");
+      }
+    };
+
+    // Clear when reaching congratulations step
+    if (currentStep >= steps.length) {
+      clearStepPersistence();
+    }
+
+    // Clear on page unload
+    window.addEventListener("beforeunload", clearStepPersistence);
+
+    return () => {
+      window.removeEventListener("beforeunload", clearStepPersistence);
+    };
+  }, [currentStep]);
 
   // Helper function to create center from business
   const createCenterFromBusiness = async (
@@ -161,7 +214,7 @@ function MarketplaceSetupContent() {
     setIsInitializing(false);
   }, [session?.user?.id]);
 
-  // Handle continue with data persistence
+  // Handle continue with data persistence AND step validation
   const handleContinue = async (stepData: any) => {
     if (!centerId) return;
 
@@ -222,7 +275,7 @@ function MarketplaceSetupContent() {
             };
 
             const galleryResponse = await fetch(
-              `/api/marketplace/${centerId}/images/reorder`, // Fixed: Use reorder endpoint
+              `/api/marketplace/${centerId}/images/reorder`,
               {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
@@ -235,19 +288,113 @@ function MarketplaceSetupContent() {
               throw new Error("Failed to save gallery");
             }
           }
-          // If no images, just continue without API call
-
           break;
 
-        // TODO: Add cases for other steps (opening times, facilities, contact)
+        case 2: // Opening Times step
+          updatedFormData.openingTimes = {
+            ...formData.openingTimes,
+            ...stepData,
+          };
+          setFormData(updatedFormData);
+
+          // Save opening times
+          const openingTimesResponse = await fetch(
+            `/api/marketplace/${centerId}/opening-times`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(updatedFormData.openingTimes),
+              credentials: "include",
+            }
+          );
+
+          if (!openingTimesResponse.ok) {
+            throw new Error("Failed to save opening times");
+          }
+          break;
+
+        case 3: // Facilities step
+          updatedFormData.facilities = { ...formData.facilities, ...stepData };
+          setFormData(updatedFormData);
+
+          // Save facilities (if any selected)
+          if (updatedFormData.facilities.facilities.length > 0) {
+            const facilitiesPayload = {
+              facilities: updatedFormData.facilities.facilities.map(
+                (f) => f.id
+              ),
+            };
+
+            const facilitiesResponse = await fetch(
+              `/api/marketplace/${centerId}/facilities`,
+              {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(facilitiesPayload),
+                credentials: "include",
+              }
+            );
+
+            if (!facilitiesResponse.ok) {
+              throw new Error("Failed to save facilities");
+            }
+          }
+          break;
+
+        case 4: // Contact step
+          updatedFormData.contact = {
+            ...formData.contact,
+            ...stepData.contact,
+          };
+          setFormData(updatedFormData);
+
+          // Format phone number
+          let formattedPhone = null;
+          if (updatedFormData.contact.phone.trim()) {
+            const cleanedPhoneNumber = updatedFormData.contact.phone.trim();
+            formattedPhone = cleanedPhoneNumber.startsWith("+")
+              ? cleanedPhoneNumber
+              : `${updatedFormData.contact.countryCode} ${cleanedPhoneNumber}`;
+          }
+
+          // Save contact information
+          const contactPayload = {
+            phone: formattedPhone,
+            email: updatedFormData.contact.email || null,
+            website: updatedFormData.contact.website || null,
+            socials: updatedFormData.contact.socials
+              .filter((social) => social.url?.trim())
+              .map((social) => ({
+                platform: social.platform,
+                url: social.url.trim(),
+              })),
+          };
+
+          const contactResponse = await fetch(
+            `/api/marketplace/${centerId}/contact`,
+            {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(contactPayload),
+              credentials: "include",
+            }
+          );
+
+          if (!contactResponse.ok) {
+            throw new Error("Failed to save contact information");
+          }
+          break;
       }
 
       // Advance to next step
       if (currentStep < steps.length - 1) {
         setCurrentStep((prev) => prev + 1);
       } else {
-        // Final step - show congratulations
+        // Final step - show congratulations and clear persistence
         setCurrentStep(steps.length);
+        if (typeof window !== "undefined") {
+          sessionStorage.removeItem("marketplace-setup-step");
+        }
       }
     } catch (error) {
       setError(
@@ -271,29 +418,17 @@ function MarketplaceSetupContent() {
     router.push("/marketplace");
   };
 
-  // Use window.handleStepContinue pattern
   const handleHeaderContinue = () => {
     if (typeof window !== "undefined") {
       // @ts-ignore
-      if (window.handleStepContinue) {
+      if (
+        window.marketplaceSetup &&
+        window.marketplaceSetup.handleStepContinue
+      ) {
         // @ts-ignore
-        window.handleStepContinue();
+        window.marketplaceSetup.handleStepContinue();
       }
     }
-  };
-
-  const handleViewProfile = () => {
-    // Navigate to the location detail page to show the completed profile
-    if (centerId) {
-      router.push(`/locations/${centerId}`);
-    } else {
-      router.push("/marketplace");
-    }
-  };
-
-  const handleRemindLater = () => {
-    // For now, just go back to marketplace
-    router.push("/marketplace");
   };
 
   const renderStep = () => {
@@ -336,7 +471,7 @@ function MarketplaceSetupContent() {
           <div ref={stepRef} className={styles.stepWrapper}>
             <OpeningTimesEditPage
               centerId={centerId}
-              formData={{}} // TODO: Add opening times form data
+              formData={formData.openingTimes}
               onContinue={handleContinue}
             />
           </div>
@@ -346,7 +481,7 @@ function MarketplaceSetupContent() {
           <div ref={stepRef} className={styles.stepWrapper}>
             <FacilitiesEditPage
               centerId={centerId}
-              formData={{}} // TODO: Add facilities form data
+              formData={formData.facilities}
               onContinue={handleContinue}
             />
           </div>
@@ -356,7 +491,7 @@ function MarketplaceSetupContent() {
           <div ref={stepRef} className={styles.stepWrapper}>
             <ContactEditPage
               centerId={centerId}
-              formData={{}} // TODO: Add contact form data
+              formData={formData.contact}
               onContinue={handleContinue}
             />
           </div>

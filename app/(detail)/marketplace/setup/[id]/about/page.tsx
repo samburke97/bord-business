@@ -1,4 +1,4 @@
-// app/(detail)/marketplace/setup/edit/[id]/about/page.tsx - NEW PATTERN
+// app/(detail)/marketplace/setup/[id]/about/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -60,11 +60,8 @@ export default function EditAboutPage({
   // Loading state for data fetching
   const [isLoadingData, setIsLoadingData] = useState(false);
 
-  // NEW: Add validation state
-  const [validationAttempted, setValidationAttempted] = useState(false);
-  const [fieldErrors, setFieldErrors] = useState<{
-    description?: string;
-  }>({});
+  // Track if validation was attempted and description error
+  const [showDescriptionError, setShowDescriptionError] = useState(false);
 
   // Update local form data when parent data changes
   useEffect(() => {
@@ -130,64 +127,33 @@ export default function EditAboutPage({
     type: "success" as "success" | "error",
   });
 
-  // NEW: Real-time validation function
-  const validateField = (fieldName: string, value: any) => {
-    const errors = { ...fieldErrors };
-
-    switch (fieldName) {
-      case "description":
-        if (!value || !value.trim()) {
-          errors.description = "Description is required";
-        } else if (value.trim().length < 10) {
-          errors.description = "Description must be at least 10 characters";
-        } else {
-          delete errors.description;
-        }
-        break;
-    }
-
-    setFieldErrors(errors);
-    return !errors[fieldName];
+  // Check if description is valid
+  const isDescriptionValid = () => {
+    return localFormData.description.trim().length >= 10;
   };
 
-  // NEW: Enhanced validation function for continue
-  const validateAboutForm = (): boolean => {
-    setValidationAttempted(true);
-
-    const errors: typeof fieldErrors = {};
-
-    if (!localFormData.description.trim()) {
-      errors.description = "Description is required";
-    } else if (localFormData.description.trim().length < 10) {
-      errors.description = "Description must be at least 10 characters";
-    }
-
-    setFieldErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  // UPDATED: Handle continue for setup mode with field validation
+  // Handle continue with basic validation
   const handleContinue = () => {
     if (isSetupMode && onContinue) {
-      if (!validateAboutForm()) {
-        return; // Don't show toast, let field errors handle it
+      // Check if description is valid
+      if (!isDescriptionValid()) {
+        setShowDescriptionError(true);
+        return; // Don't continue
       }
+
+      // Clear error and continue
+      setShowDescriptionError(false);
       onContinue(localFormData);
     }
   };
 
-  // UPDATED: Expose handleContinue to window for header button with validation
+  // Set up window function for continue button
   useEffect(() => {
     if (isSetupMode) {
       // @ts-ignore
       window.marketplaceSetup = window.marketplaceSetup || {};
       // @ts-ignore
-      window.marketplaceSetup.handleStepContinue = () => {
-        if (!validateAboutForm()) {
-          return; // Don't show toast, let field errors handle it
-        }
-        handleContinue();
-      };
+      window.marketplaceSetup.handleStepContinue = handleContinue;
 
       return () => {
         // @ts-ignore
@@ -253,16 +219,16 @@ export default function EditAboutPage({
     setLocalFormData({ ...localFormData, highlights: newHighlights });
   };
 
-  // UPDATED: Description change handler with real-time validation
+  // Description change handler that clears error when valid
   const handleDescriptionChange = (
     e: React.ChangeEvent<HTMLTextAreaElement>
   ) => {
     const value = e.target.value;
     setLocalFormData({ ...localFormData, description: value });
 
-    // Real-time validation after first attempt
-    if (validationAttempted) {
-      validateField("description", value);
+    // Clear error if description becomes valid
+    if (showDescriptionError && value.trim().length >= 10) {
+      setShowDescriptionError(false);
     }
   };
 
@@ -300,6 +266,21 @@ export default function EditAboutPage({
     );
   }
 
+  // Get error message for description
+  const getDescriptionError = () => {
+    if (!showDescriptionError) return null;
+
+    if (localFormData.description.trim().length === 0) {
+      return "Description is required";
+    }
+
+    if (localFormData.description.trim().length < 10) {
+      return "Description must be at least 10 characters";
+    }
+
+    return null;
+  };
+
   return (
     <div className={styles.container}>
       {/* Only show ActionHeader in standalone edit mode */}
@@ -317,7 +298,7 @@ export default function EditAboutPage({
           description="Please include your business description, key facility highlights, and your logo."
         />
 
-        {/* Description - UPDATED with error prop */}
+        {/* Description - Show error when showDescriptionError is true */}
         <div className={styles.section}>
           <label className={styles.label}>Description*</label>
           <TextArea
@@ -328,7 +309,7 @@ export default function EditAboutPage({
             maxLength={500}
             showCharCount={true}
             required
-            error={fieldErrors.description}
+            error={getDescriptionError()}
           />
         </div>
 
