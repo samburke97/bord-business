@@ -22,7 +22,7 @@ export default function GalleryCard({
   return (
     <BaseCard
       title="Gallery"
-      editHref={`/locations/edit/${locationId}/gallery`}
+      editHref={`/marketplace/edit/${locationId}/gallery`}
       hasData={hasData}
       contentClassName={styles.galleryContent}
       emptyStateText="No images found"

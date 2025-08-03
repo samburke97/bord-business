@@ -24,7 +24,7 @@ export default function ActivitiesCard({
   return (
     <BaseCard
       title="Activities"
-      editHref={`/locations/edit/${locationId}/activities`}
+      editHref={`/marketplace/edit/${locationId}/activities`}
       hasData={hasActivities}
       className={styles.activitiesCard}
       contentClassName={styles.activitiesContent}

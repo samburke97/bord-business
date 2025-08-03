@@ -19,7 +19,7 @@ export default function AboutCard({
   return (
     <BaseCard
       title="About"
-      editHref={`/locations/edit/${locationId}/about`}
+      editHref={`/marketplace/edit/${locationId}/about`}
       hasData={hasData}
       className={styles.aboutCard}
       contentClassName={styles.aboutContent}

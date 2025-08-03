@@ -40,7 +40,7 @@ export default function FacilitiesCard({
   return (
     <BaseCard
       title="Facilities"
-      editHref={`/locations/edit/${locationId}/facilities`}
+      editHref={`/marketplace/edit/${locationId}/facilities`}
       hasData={hasData}
       emptyStateText="No facilities found"
       locationId={locationId}

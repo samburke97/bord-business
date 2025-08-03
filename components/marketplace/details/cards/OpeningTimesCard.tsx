@@ -29,7 +29,7 @@ export default function OpeningTimesCard({
       try {
         setLoading(true);
         const response = await fetch(
-          `/api/locations/${locationId}/opening-times`
+          `/api/marketplace/${locationId}/opening-times`
         );
 
         if (!response.ok) {

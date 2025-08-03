@@ -30,7 +30,7 @@ export default function DetailsCard({
   return (
     <BaseCard
       title="Details"
-      editHref={`/locations/edit/${locationId}/details`}
+      editHref={`/marketplace/edit/${locationId}/details`}
       hasData={hasData}
       contentClassName={styles.detailsContent}
       emptyStateText="No details available"
