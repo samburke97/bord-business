@@ -17,13 +17,43 @@ import ActionHeader from "@/components/layouts/headers/ActionHeader";
 import TitleDescription from "@/components/ui/TitleDescription";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 
-export default function OpeningTimesEditPage() {
-  const params = useParams();
-  const id = params.id as string;
+interface OpeningTimesEditPageProps {
+  centerId?: string;
+  formData?: any; // TODO: Define proper opening times form data type
+  onContinue?: (data: any) => void;
+  // Legacy props for standalone edit mode
+  params?: Promise<{ id: string }>;
+}
+
+export default function OpeningTimesEditPage({
+  centerId,
+  formData: initialFormData,
+  onContinue,
+  params,
+}: OpeningTimesEditPageProps) {
+  // Determine if we're in setup mode (parent manages data) or standalone edit mode
+  const isSetupMode = !!centerId && !!onContinue;
+
+  // For standalone mode, we need to get ID from params
+  const [standaloneId, setStandaloneId] = useState<string | null>(null);
+  const id = isSetupMode ? centerId : standaloneId;
+
   const router = useRouter();
 
+  // Initialize standalone mode ID
+  useEffect(() => {
+    if (!isSetupMode && params) {
+      const getId = async () => {
+        const resolvedParams = await params;
+        setStandaloneId(resolvedParams.id);
+      };
+      getId();
+    }
+  }, [params, isSetupMode]);
+
   const [openingHours, setOpeningHours] = useState<OpeningHoursData>({});
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!isSetupMode); // Don't show loading in setup mode initially
+  const [isLoadingData, setIsLoadingData] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,9 +73,34 @@ export default function OpeningTimesEditPage() {
     label: time,
   }));
 
-  // Fetch opening hours for this location
+  // Fetch existing data in setup mode to prefill form
+  useEffect(() => {
+    const fetchExistingData = async () => {
+      if (!id || !isSetupMode) return;
+
+      try {
+        setIsLoadingData(true);
+        const response = await fetch(`/api/locations/${id}/opening-times`);
+
+        if (response.ok) {
+          const data = await response.json();
+          setOpeningHours(data);
+        }
+      } catch (error) {
+        // Continue with empty form on error
+      } finally {
+        setIsLoadingData(false);
+      }
+    };
+
+    fetchExistingData();
+  }, [id, isSetupMode]);
+
+  // Fetch opening hours for standalone mode
   useEffect(() => {
     const fetchOpeningHours = async () => {
+      if (!id || isSetupMode) return;
+
       try {
         setLoading(true);
         const response = await fetch(`/api/locations/${id}/opening-times`);
@@ -64,14 +119,14 @@ export default function OpeningTimesEditPage() {
       }
     };
 
-    if (id) {
+    if (id && !isSetupMode) {
       fetchOpeningHours();
     }
-  }, [id]);
+  }, [id, isSetupMode]);
 
   // Initialize empty opening hours if none exist
   useEffect(() => {
-    if (!loading && Object.keys(openingHours).length === 0) {
+    if (!loading && !isLoadingData && Object.keys(openingHours).length === 0) {
       const initialOpeningHours: OpeningHoursData = {};
 
       for (let i = 0; i < 7; i++) {
@@ -84,7 +139,27 @@ export default function OpeningTimesEditPage() {
 
       setOpeningHours(initialOpeningHours);
     }
-  }, [loading, openingHours]);
+  }, [loading, isLoadingData, openingHours]);
+
+  // Handle continue for setup mode
+  const handleContinue = () => {
+    if (isSetupMode && onContinue) {
+      onContinue({ openingHours });
+    }
+  };
+
+  // Expose handleContinue to window for header button
+  useEffect(() => {
+    if (isSetupMode) {
+      // @ts-ignore
+      window.handleStepContinue = handleContinue;
+
+      return () => {
+        // @ts-ignore
+        delete window.handleStepContinue;
+      };
+    }
+  }, [openingHours, isSetupMode]);
 
   // Toggle a day's active status
   const toggleDayActive = (dayIndex: number, isActive: boolean) => {
@@ -288,10 +363,10 @@ export default function OpeningTimesEditPage() {
     return openTimeIndex >= closeTimeIndex;
   };
 
-  // Rest of the component remains the same...
-
-  // Save opening hours
+  // Save opening hours (for standalone mode)
   const handleSave = async () => {
+    if (!id || saving || isSetupMode) return;
+
     // Set form submitted to trigger error states
     setFormSubmitted(true);
 
@@ -344,14 +419,38 @@ export default function OpeningTimesEditPage() {
     }
   };
 
-  // Handle close button click
+  // Handle close button click (for standalone mode)
   const handleClose = () => {
-    router.push(`/locations/${id}`);
+    if (!isSetupMode) {
+      router.push(`/locations/${id}`);
+    }
   };
 
   const closeToast = () => {
     setToast((prev) => ({ ...prev, visible: false }));
   };
+
+  // Don't render until we have an ID
+  if (!id) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.loadingContainer}>
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading while fetching existing data in setup mode
+  if (isSetupMode && isLoadingData) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.loadingContainer}>
+          <p>Loading existing data...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return <LoadingSpinner />;
@@ -359,13 +458,17 @@ export default function OpeningTimesEditPage() {
 
   return (
     <>
-      <ActionHeader
-        primaryAction={handleSave}
-        secondaryAction={handleClose}
-        primaryLabel="Save"
-        secondaryLabel="Close"
-        variant="edit"
-      />
+      {/* Only show ActionHeader in standalone edit mode */}
+      {!isSetupMode && (
+        <ActionHeader
+          primaryAction={handleSave}
+          secondaryAction={handleClose}
+          primaryLabel="Save"
+          secondaryLabel="Close"
+          variant="edit"
+        />
+      )}
+
       <div className={styles.container}>
         <TitleDescription
           title="Opening Times"

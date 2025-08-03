@@ -20,15 +20,40 @@ interface FacilityTag extends Facility {
   isSelected?: boolean;
 }
 
+interface FacilitiesPageProps {
+  centerId?: string;
+  formData?: any; // TODO: Define proper facilities form data type
+  onContinue?: (data: any) => void;
+  // Legacy props for standalone edit mode
+  params?: Promise<{ id: string }>;
+}
+
 export default function FacilitiesPage({
+  centerId,
+  formData: initialFormData,
+  onContinue,
   params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const resolvedParams = use(params);
-  const locationId = resolvedParams.id;
+}: FacilitiesPageProps) {
+  // Determine if we're in setup mode (parent manages data) or standalone edit mode
+  const isSetupMode = !!centerId && !!onContinue;
+
+  // For standalone mode, we need to get ID from params
+  const [standaloneId, setStandaloneId] = useState<string | null>(null);
+  const locationId = isSetupMode ? centerId : standaloneId;
 
   const router = useRouter();
+
+  // Initialize standalone mode ID
+  useEffect(() => {
+    if (!isSetupMode && params) {
+      const getId = async () => {
+        const resolvedParams = await params;
+        setStandaloneId(resolvedParams.id);
+      };
+      getId();
+    }
+  }, [params, isSetupMode]);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFacilities, setSelectedFacilities] = useState<Facility[]>([]);
   const [availableFacilities, setAvailableFacilities] = useState<Facility[]>(
@@ -36,22 +61,65 @@ export default function FacilitiesPage({
   );
   const [filteredFacilities, setFilteredFacilities] = useState<Facility[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!isSetupMode); // Don't show loading in setup mode initially
+  const [isLoadingData, setIsLoadingData] = useState(false);
   const [toast, setToast] = useState<{
     message: string;
     type: "success" | "error";
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Fetch existing data in setup mode to prefill form
+  useEffect(() => {
+    const fetchExistingData = async () => {
+      if (!locationId || !isSetupMode) return;
+
+      try {
+        setIsLoadingData(true);
+        setError(null);
+
+        // Fetch facility tags from the Facilities group
+        const tagsResponse = await fetch(
+          `/api/marketplace/${locationId}/facilities`
+        );
+
+        if (tagsResponse.ok) {
+          const tagsData: FacilityTag[] = await tagsResponse.json();
+          setAvailableFacilities(tagsData);
+          setFilteredFacilities(tagsData);
+
+          // Pre-select existing facilities
+          const selectedFacilitiesList = tagsData.filter(
+            (tag) => tag.isSelected
+          );
+          setSelectedFacilities(
+            selectedFacilitiesList.map(
+              ({ isSelected, ...rest }) => rest as Facility
+            )
+          );
+        }
+      } catch (error) {
+        // Continue with empty form on error
+      } finally {
+        setIsLoadingData(false);
+      }
+    };
+
+    fetchExistingData();
+  }, [locationId, isSetupMode]);
+
+  // Fetch data for standalone mode
   useEffect(() => {
     const fetchData = async () => {
+      if (!locationId || isSetupMode) return;
+
       try {
         setIsLoading(true);
         setError(null);
 
         // Fetch facility tags from the Facilities group
         const tagsResponse = await fetch(
-          `/api/locations/${locationId}/facilities`
+          `/api/marketplace/${locationId}/facilities`
         );
 
         if (!tagsResponse.ok) {
@@ -80,8 +148,30 @@ export default function FacilitiesPage({
       }
     };
 
-    fetchData();
-  }, [locationId]);
+    if (locationId && !isSetupMode) {
+      fetchData();
+    }
+  }, [locationId, isSetupMode]);
+
+  // Handle continue for setup mode
+  const handleContinue = () => {
+    if (isSetupMode && onContinue) {
+      onContinue({ facilities: selectedFacilities });
+    }
+  };
+
+  // Expose handleContinue to window for header button
+  useEffect(() => {
+    if (isSetupMode) {
+      // @ts-ignore
+      window.handleStepContinue = handleContinue;
+
+      return () => {
+        // @ts-ignore
+        delete window.handleStepContinue;
+      };
+    }
+  }, [selectedFacilities, isSetupMode]);
 
   // Filter facilities based on search query
   useEffect(() => {
@@ -121,19 +211,24 @@ export default function FacilitiesPage({
   };
 
   const handleSave = async () => {
+    if (!locationId || isSubmitting || isSetupMode) return;
+
     try {
       setIsSubmitting(true);
       setError(null);
 
-      const response = await fetch(`/api/locations/${locationId}/facilities`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          facilities: selectedFacilities.map((facility) => facility.id),
-        }),
-      });
+      const response = await fetch(
+        `/api/marketplace/${locationId}/facilities`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            facilities: selectedFacilities.map((facility) => facility.id),
+          }),
+        }
+      );
 
       if (!response.ok) {
         throw new Error("Failed to update facilities");
@@ -157,18 +252,46 @@ export default function FacilitiesPage({
   };
 
   const handleCancel = () => {
-    router.back();
+    if (!isSetupMode) {
+      router.back();
+    }
   };
+
+  // Don't render until we have an ID
+  if (!locationId) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.loadingContainer}>
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading while fetching existing data in setup mode
+  if (isSetupMode && isLoadingData) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.loadingContainer}>
+          <p>Loading existing data...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
-      <ActionHeader
-        primaryAction={handleSave}
-        secondaryAction={handleCancel}
-        primaryLabel="Save"
-        secondaryLabel="Close"
-        variant="edit"
-      />
+      {/* Only show ActionHeader in standalone edit mode */}
+      {!isSetupMode && (
+        <ActionHeader
+          primaryAction={handleSave}
+          secondaryAction={handleCancel}
+          primaryLabel="Save"
+          secondaryLabel="Close"
+          variant="edit"
+        />
+      )}
+
       <div className={styles.container}>
         <TitleDescription
           title="Facilities"
@@ -193,7 +316,7 @@ export default function FacilitiesPage({
               selected={selectedFacilities}
               onAdd={handleAddFacility}
               onRemove={handleRemoveFacility}
-              isLoading={isLoading}
+              isLoading={isLoading || isLoadingData}
               emptyMessage={
                 <div className={styles.emptyState}>
                   No facilities found. Add facility tags to the Facilities

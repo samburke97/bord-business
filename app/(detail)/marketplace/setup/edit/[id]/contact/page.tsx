@@ -29,12 +29,42 @@ interface FormErrors {
   socials?: string[];
 }
 
-export default function ContactEditPage() {
-  const params = useParams();
-  const id = params.id as string;
+interface ContactEditPageProps {
+  centerId?: string;
+  formData?: any; // TODO: Define proper contact form data type
+  onContinue?: (data: any) => void;
+  // Legacy props for standalone edit mode
+  params?: Promise<{ id: string }>;
+}
+
+export default function ContactEditPage({
+  centerId,
+  formData: initialFormData,
+  onContinue,
+  params,
+}: ContactEditPageProps) {
+  // Determine if we're in setup mode (parent manages data) or standalone edit mode
+  const isSetupMode = !!centerId && !!onContinue;
+
+  // For standalone mode, we need to get ID from params
+  const [standaloneId, setStandaloneId] = useState<string | null>(null);
+  const id = isSetupMode ? centerId : standaloneId;
+
   const router = useRouter();
 
-  const [isLoading, setIsLoading] = useState(true);
+  // Initialize standalone mode ID
+  useEffect(() => {
+    if (!isSetupMode && params) {
+      const getId = async () => {
+        const resolvedParams = await params;
+        setStandaloneId(resolvedParams.id);
+      };
+      getId();
+    }
+  }, [params, isSetupMode]);
+
+  const [isLoading, setIsLoading] = useState(!isSetupMode); // Don't show loading in setup mode initially
+  const [isLoadingData, setIsLoadingData] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [toast, setToast] = useState<{
@@ -63,9 +93,107 @@ export default function ContactEditPage() {
 
   const [formErrors, setFormErrors] = useState<FormErrors>({});
 
-  // Fetch existing contact data
+  // Fetch existing data in setup mode to prefill form
+  useEffect(() => {
+    const fetchExistingData = async () => {
+      if (!id || !isSetupMode) return;
+
+      try {
+        setIsLoadingData(true);
+        const response = await fetch(`/api/locations/${id}`);
+
+        if (response.ok) {
+          const data = await response.json();
+
+          // Parse phone number
+          if (data.phone) {
+            const cleanedPhone = data.phone.trim().replace(/\s+/g, " ");
+
+            const duplicatedCodeMatch = cleanedPhone.match(
+              /^\+(\d+)\s+\+?(\d+)\s+(.*)$/
+            );
+            if (
+              duplicatedCodeMatch &&
+              duplicatedCodeMatch[1] === duplicatedCodeMatch[2]
+            ) {
+              setFormData((prev) => ({
+                ...prev,
+                countryCode: `+${duplicatedCodeMatch[1]}`,
+                phone: duplicatedCodeMatch[3],
+              }));
+            } else {
+              const phoneMatch = cleanedPhone.match(/^\+(\d+)\s*(.*)$/);
+              if (phoneMatch) {
+                setFormData((prev) => ({
+                  ...prev,
+                  countryCode: `+${phoneMatch[1]}`,
+                  phone: phoneMatch[2],
+                }));
+              } else {
+                setFormData((prev) => ({
+                  ...prev,
+                  phone: cleanedPhone,
+                }));
+              }
+            }
+          }
+
+          if (data.email) {
+            setFormData((prev) => ({
+              ...prev,
+              email: data.email,
+            }));
+          }
+
+          if (data.links && data.links.length > 0) {
+            const websiteLink = data.links.find(
+              (link: any) =>
+                link.type?.toLowerCase() === "website" || !link.type
+            );
+
+            if (websiteLink && websiteLink.url) {
+              setFormData((prev) => ({
+                ...prev,
+                website: websiteLink.url,
+              }));
+            }
+          }
+
+          if (data.socials && data.socials.length > 0) {
+            const updatedSocials = [...formData.socials];
+
+            data.socials.forEach((social: any) => {
+              const platformIndex = updatedSocials.findIndex(
+                (s) =>
+                  s.platform.toLowerCase() === social.platform?.toLowerCase()
+              );
+
+              if (platformIndex !== -1 && social.url) {
+                updatedSocials[platformIndex].url = social.url;
+              }
+            });
+
+            setFormData((prev) => ({
+              ...prev,
+              socials: updatedSocials,
+            }));
+          }
+        }
+      } catch (error) {
+        // Continue with empty form on error
+      } finally {
+        setIsLoadingData(false);
+      }
+    };
+
+    fetchExistingData();
+  }, [id, isSetupMode]);
+
+  // Fetch existing contact data for standalone mode
   useEffect(() => {
     const fetchContactData = async () => {
+      if (!id || isSetupMode) return;
+
       try {
         setIsLoading(true);
         const response = await fetch(`/api/locations/${id}`);
@@ -159,10 +287,30 @@ export default function ContactEditPage() {
       }
     };
 
-    if (id) {
+    if (id && !isSetupMode) {
       fetchContactData();
     }
-  }, [id]);
+  }, [id, isSetupMode]);
+
+  // Handle continue for setup mode
+  const handleContinue = () => {
+    if (isSetupMode && onContinue) {
+      onContinue({ contact: formData });
+    }
+  };
+
+  // Expose handleContinue to window for header button
+  useEffect(() => {
+    if (isSetupMode) {
+      // @ts-ignore
+      window.handleStepContinue = handleContinue;
+
+      return () => {
+        // @ts-ignore
+        delete window.handleStepContinue;
+      };
+    }
+  }, [formData, isSetupMode]);
 
   const handleCountryCodeChange = (value: string) => {
     setFormData((prev) => ({
@@ -223,10 +371,14 @@ export default function ContactEditPage() {
   };
 
   const handleClose = () => {
-    router.push(`/locations/${id}`);
+    if (!isSetupMode) {
+      router.push(`/locations/${id}`);
+    }
   };
 
   const handleSubmit = async () => {
+    if (!id || isSaving || isSetupMode) return;
+
     setFormSubmitted(true);
 
     // Validate form before submission
@@ -301,19 +453,45 @@ export default function ContactEditPage() {
     setToast((prev) => ({ ...prev, visible: false }));
   };
 
+  // Don't render until we have an ID
+  if (!id) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.loadingContainer}>
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading while fetching existing data in setup mode
+  if (isSetupMode && isLoadingData) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.loadingContainer}>
+          <p>Loading existing data...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return <LoadingSpinner />;
   }
 
   return (
     <>
-      <ActionHeader
-        primaryAction={handleSubmit}
-        secondaryAction={handleClose}
-        primaryLabel="Save"
-        secondaryLabel="Close"
-        variant="edit"
-      />
+      {/* Only show ActionHeader in standalone edit mode */}
+      {!isSetupMode && (
+        <ActionHeader
+          primaryAction={handleSubmit}
+          secondaryAction={handleClose}
+          primaryLabel="Save"
+          secondaryLabel="Close"
+          variant="edit"
+        />
+      )}
+
       <div className={styles.container}>
         <TitleDescription
           title="Contact & Socials"
