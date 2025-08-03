@@ -173,7 +173,7 @@ export default function EditAboutPage({
 
       // Redirect after delay in standalone mode
       setTimeout(() => {
-        window.location.href = `/marketplace/${id}`;
+        router.push("/marketplace");
       }, 1500);
     } catch (error) {
       setToast({
@@ -242,7 +242,7 @@ export default function EditAboutPage({
       {!isSetupMode && (
         <ActionHeader
           onSave={handleSave}
-          onCancel={() => (window.location.href = `/marketplace/${id}`)}
+          onCancel={() => (router.push("/marketplace"))}
           isLoading={saving}
         />
       )}

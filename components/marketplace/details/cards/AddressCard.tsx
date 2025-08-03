@@ -55,7 +55,7 @@ export default function AddressCard({
   return (
     <BaseCard
       title="Address"
-      editHref={`/marketplace/edit/${locationId}/address`}
+      editHref={`/marketplace/${locationId}/address`}
       hasData={hasData}
       emptyStateText="No address provided"
       contentClassName="p-0"

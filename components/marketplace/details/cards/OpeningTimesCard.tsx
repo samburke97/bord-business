@@ -110,7 +110,7 @@ export default function OpeningTimesCard({
       title="Opening Times"
       editHref={
         isAdmin
-          ? `/marketplace/setup/edit/${locationId}/opening-times`
+          ? `/marketplace/${locationId}/opening-times`
           : undefined
       }
       hasData={hasData}

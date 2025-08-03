@@ -100,7 +100,7 @@ export default function ContactEditPage({
 
       try {
         setIsLoadingData(true);
-        const response = await fetch(`/api/locations/${id}`);
+        const response = await fetch(`/api/marketplace/${id}`);
 
         if (response.ok) {
           const data = await response.json();
@@ -196,7 +196,7 @@ export default function ContactEditPage({
 
       try {
         setIsLoading(true);
-        const response = await fetch(`/api/locations/${id}`);
+        const response = await fetch(`/api/marketplace/${id}`);
 
         if (!response.ok) {
           throw new Error("Failed to fetch location data");
@@ -372,7 +372,7 @@ export default function ContactEditPage({
 
   const handleClose = () => {
     if (!isSetupMode) {
-      router.push(`/locations/${id}`);
+      router.push("/marketplace");
     }
   };
 
@@ -415,7 +415,7 @@ export default function ContactEditPage({
       };
 
       // Send the update
-      const response = await fetch(`/api/locations/${id}/contact`, {
+      const response = await fetch(`/api/marketplace/${id}/contact`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -435,7 +435,7 @@ export default function ContactEditPage({
 
       // Navigate back to the location detail page after a short delay
       setTimeout(() => {
-        router.push(`/locations/${id}`);
+        router.push("/marketplace");
       }, 1500);
     } catch (error) {
       setToast({

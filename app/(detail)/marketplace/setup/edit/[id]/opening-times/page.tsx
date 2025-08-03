@@ -80,7 +80,7 @@ export default function OpeningTimesEditPage({
 
       try {
         setIsLoadingData(true);
-        const response = await fetch(`/api/locations/${id}/opening-times`);
+        const response = await fetch(`/api/marketplace/${id}/opening-times`);
 
         if (response.ok) {
           const data = await response.json();
@@ -103,7 +103,7 @@ export default function OpeningTimesEditPage({
 
       try {
         setLoading(true);
-        const response = await fetch(`/api/locations/${id}/opening-times`);
+        const response = await fetch(`/api/marketplace/${id}/opening-times`);
 
         if (!response.ok) {
           throw new Error("Failed to fetch opening hours");
@@ -384,7 +384,7 @@ export default function OpeningTimesEditPage({
 
       setSaving(true);
 
-      const response = await fetch(`/api/locations/${id}/opening-times`, {
+      const response = await fetch(`/api/marketplace/${id}/opening-times`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -75,7 +75,7 @@ export default function EditLocationAddressPage() {
     const fetchLocationData = async () => {
       try {
         setIsLoading(true);
-        const response = await fetch(`/api/locations/${id}`);
+        const response = await fetch(`/api/marketplace/${id}`);
 
         if (!response.ok) {
           throw new Error("Failed to fetch location data");
@@ -190,7 +190,7 @@ export default function EditLocationAddressPage() {
         longitude: data.longitude,
       };
 
-      const response = await fetch(`/api/locations/${id}/address`, {
+      const response = await fetch(`/api/marketplace/${id}/address`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

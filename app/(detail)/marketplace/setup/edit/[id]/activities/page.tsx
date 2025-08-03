@@ -50,7 +50,7 @@ export default function ActivitiesPage({ params }: ActivitiesPageProps) {
       setIsLoading(true);
       try {
         const response = await fetch(
-          `/api/locations/${locationId}/activities${
+          `/api/marketplace/${locationId}/activities${
             searchQuery ? `?query=${encodeURIComponent(searchQuery)}` : ""
           }`
         );
