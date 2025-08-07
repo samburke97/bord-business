@@ -81,15 +81,17 @@ export async function POST(request: NextRequest) {
           // Allow max 3 reset attempts per hour
           if (recentTokens.length >= 3) {
             // Log suspicious activity but still return success
-            await tx.securityEvent.create({
-              data: {
-                credentialsId: user.credentials.id,
-                eventType: "SUSPICIOUS_ACTIVITY",
-                description: "Excessive password reset attempts",
-                ipAddress: clientIP,
-                userAgent: userAgent,
-              },
-            });
+            if (user.credentials?.id) {
+              await tx.securityEvent.create({
+                data: {
+                  credentialsId: user.credentials.id,
+                  eventType: "SUSPICIOUS_ACTIVITY",
+                  description: "Excessive password reset attempts",
+                  ipAddress: clientIP,
+                  userAgent: userAgent,
+                },
+              });
+            }
             return; // Don't send email but don't reveal this to user
           }
 
@@ -110,15 +112,17 @@ export async function POST(request: NextRequest) {
           });
 
           // Log security event
-          await tx.securityEvent.create({
-            data: {
-              credentialsId: user.credentials.id,
-              eventType: "PASSWORD_RESET_REQUESTED",
-              description: "Password reset requested via email",
-              ipAddress: clientIP,
-              userAgent: userAgent,
-            },
-          });
+          if (user.credentials?.id) {
+            await tx.securityEvent.create({
+              data: {
+                credentialsId: user.credentials.id,
+                eventType: "PASSWORD_RESET_REQUESTED",
+                description: "Password reset requested via email",
+                ipAddress: clientIP,
+                userAgent: userAgent,
+              },
+            });
+          }
 
           // Create reset URL
           const resetUrl = `${process.env.NEXTAUTH_URL}/password/reset?token=${resetToken}&email=${encodeURIComponent(sanitizedEmail)}`;
@@ -208,25 +212,28 @@ Request ID: ${resetToken.substring(0, 8)}
             });
           } catch (emailError) {
             // Log email failure but don't expose to user
-            await tx.securityEvent.create({
-              data: {
-                credentialsId: user.credentials.id,
-                eventType: "SUSPICIOUS_ACTIVITY",
-                description: "Password reset email failed to send",
-                ipAddress: clientIP,
-                userAgent: userAgent,
-                metadata: {
-                  error:
-                    emailError instanceof Error
-                      ? emailError.message
-                      : "Unknown error",
-                  resendApiKey: process.env.RESEND_API_KEY
-                    ? "Present"
-                    : "Missing",
-                  fromEmail: process.env.FROM_EMAIL || "onboarding@resend.dev",
+            if (user.credentials?.id) {
+              await tx.securityEvent.create({
+                data: {
+                  credentialsId: user.credentials.id,
+                  eventType: "SUSPICIOUS_ACTIVITY",
+                  description: "Password reset email failed to send",
+                  ipAddress: clientIP,
+                  userAgent: userAgent,
+                  metadata: {
+                    error:
+                      emailError instanceof Error
+                        ? emailError.message
+                        : "Unknown error",
+                    resendApiKey: process.env.RESEND_API_KEY
+                      ? "Present"
+                      : "Missing",
+                    fromEmail:
+                      process.env.FROM_EMAIL || "onboarding@resend.dev",
+                  },
                 },
-              },
-            });
+              });
+            }
           }
         });
       } else {

@@ -68,6 +68,7 @@ export async function POST(request: NextRequest) {
           email,
           isVerified: false,
           isActive: true,
+          status: "PENDING",
         },
       });
     }

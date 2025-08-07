@@ -47,6 +47,12 @@ function ForgotPasswordContent() {
 
     try {
       // Generate reCAPTCHA token
+      if (!executeRecaptcha) {
+        setEmailError("Security verification not available. Please try again.");
+        setIsLoading(false);
+        return;
+      }
+
       const recaptchaToken = await executeRecaptcha("forgot_password");
 
       if (!recaptchaToken) {

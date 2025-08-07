@@ -289,7 +289,10 @@ function BusinessOnboardingContent() {
       case steps.length:
         return (
           <div ref={stepRef}>
-            <BusinessCongratulationsStep onContinue={handleFinalContinue} />
+            <BusinessCongratulationsStep
+              businessName={formData.businessName}
+              onContinue={handleFinalContinue}
+            />
           </div>
         );
       default:

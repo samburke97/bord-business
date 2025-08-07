@@ -118,7 +118,12 @@ export async function POST(request: NextRequest) {
     console.error("Activate profile error:", error);
 
     // Better error handling for different Prisma errors
-    if (error.code === "P2025") {
+    if (
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      error.code === "P2025"
+    ) {
       return NextResponse.json(
         {
           message: "User record not found. Please sign in again.",

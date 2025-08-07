@@ -142,8 +142,8 @@ export default function BusinessCategoryStep({
     setCategoryError(false);
   };
 
-  const handleSportsSearch = (value: string) => {
-    setSportsSearchQuery(value);
+  const handleSportsSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSportsSearchQuery(e.target.value);
   };
 
   const handleAddSport = (sport: Sport) => {

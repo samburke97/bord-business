@@ -8,7 +8,7 @@ import TextArea from "@/components/ui/TextArea";
 import ImageUploader from "@/lib/actions/ImageUploader";
 import ActionHeader from "@/components/layouts/headers/ActionHeader";
 import Toast from "@/components/ui/Toast";
-import styles from "./page.module.css";
+import styles from "./EditAboutPage.module.css";
 import { getCenterLogoProps } from "@/lib/cloudinary/upload-helpers";
 import { CloudinaryFolder, CloudinaryPreset } from "@/types/cloudinary";
 
@@ -20,7 +20,7 @@ interface EditAboutPageProps {
     logo: string | null;
   };
   onContinue?: (data: any) => void;
-  // Next.js page props
+  // Legacy props for standalone edit mode
   params?: Promise<{ id: string }>;
 }
 

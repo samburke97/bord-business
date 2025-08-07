@@ -101,6 +101,14 @@ export default function PasswordScreen({
 
       if (isNewUser) {
         // Generate reCAPTCHA token for password setup
+        if (!executeRecaptcha) {
+          setPasswordError(
+            "Security verification not available. Please try again."
+          );
+          setIsLoading(false);
+          return;
+        }
+
         const recaptchaToken = await executeRecaptcha("set_password");
 
         if (!recaptchaToken) {

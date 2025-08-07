@@ -84,6 +84,7 @@ export async function POST(request: NextRequest) {
               isVerified: true, // Mark as verified since they're setting password
               isActive: true,
               globalRole: "ADMIN", // Default role for business users
+              status: "ACTIVE",
             },
             include: {
               credentials: {
@@ -95,7 +96,7 @@ export async function POST(request: NextRequest) {
           });
         }
 
-        if (user.credentials) {
+        if (user && user.credentials) {
           // User already has credentials - update them
           await tx.userCredentials.update({
             where: { id: user.credentials.id },
@@ -111,7 +112,7 @@ export async function POST(request: NextRequest) {
               lastLoginUserAgent: userAgent,
             },
           });
-        } else {
+        } else if (user) {
           // Create new credentials
           await tx.userCredentials.create({
             data: {
@@ -129,7 +130,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Update user verification status
-        if (!user.isVerified) {
+        if (user && !user.isVerified) {
           await tx.user.update({
             where: { id: user.id },
             data: {
@@ -139,7 +140,7 @@ export async function POST(request: NextRequest) {
           });
         }
 
-        return { success: true, userId: user.id };
+        return { success: true, userId: user?.id };
       });
 
       // Ensure minimum response time

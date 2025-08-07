@@ -40,13 +40,16 @@ export async function POST(request: NextRequest) {
         isVerified: user.isVerified,
         isActive: user.isActive,
         status: user.status,
+        hasBusinessConnection: false, // Default value
+        isProfileComplete: false, // Default value
+        lastRefresh: Date.now(),
       },
       secret: process.env.NEXTAUTH_SECRET!,
       maxAge: 30 * 24 * 60 * 60, // 30 days
     });
 
     // Set the session cookie
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     cookieStore.set("next-auth.session-token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",

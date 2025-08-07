@@ -15,6 +15,7 @@ interface LocationDetailsHeaderProps {
   onContinue: () => void;
   showContinue?: boolean;
   isLoading?: boolean;
+  className?: string;
 }
 
 export default function LocationDetailsHeader({
@@ -26,13 +27,14 @@ export default function LocationDetailsHeader({
   onContinue,
   showContinue = true,
   isLoading = false,
+  className = "",
 }: LocationDetailsHeaderProps) {
   const isFirstStep = currentStep === 0;
 
   return (
     <>
       {/* Desktop Header */}
-      <header className={styles.header}>
+      <header className={`${styles.header} ${className}`}>
         <div className={styles.headerContent}>
           {/* Mobile Back Button (above progress bar on mobile) */}
           <div className={styles.mobileBackContainer}>

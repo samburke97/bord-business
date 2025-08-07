@@ -63,7 +63,7 @@ export default function GalleryEditPage({
   // Get the appropriate folder and preset for center gallery images
   const { folder, preset } = id
     ? getCenterGalleryImageProps(id)
-    : { folder: "", preset: "" };
+    : { folder: undefined, preset: undefined };
 
   // Form state - initialized from parent data in setup mode
   const [images, setImages] = useState<LocationImage[]>(

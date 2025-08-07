@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
       // 🔍 DEBUG: Try finding by email as fallback
       console.log("User not found by ID, trying email...");
       const userByEmail = await prisma.user.findUnique({
-        where: { email: session.user.email },
+        where: { email: session.user.email || undefined },
         include: {
           credentials: true,
           accounts: true,
@@ -66,7 +66,6 @@ export async function GET(request: NextRequest) {
         const isProfileComplete = !!(
           profileStatus.firstName &&
           profileStatus.lastName &&
-          
           profileStatus.phone &&
           profileStatus.dateOfBirth
         );
@@ -104,7 +103,6 @@ export async function GET(request: NextRequest) {
     const isProfileComplete = !!(
       profileStatus.firstName &&
       profileStatus.lastName &&
-      
       profileStatus.phone &&
       profileStatus.dateOfBirth
     );

@@ -75,6 +75,14 @@ function ResetPasswordContent() {
 
     try {
       // Generate reCAPTCHA token
+      if (!executeRecaptcha) {
+        setNewPasswordError(
+          "Security verification not available. Please try again."
+        );
+        setIsLoading(false);
+        return;
+      }
+
       const recaptchaToken = await executeRecaptcha("reset_password");
 
       if (!recaptchaToken) {

@@ -15,6 +15,7 @@ interface SearchInputProps {
   className?: string;
   labelClassName?: string;
   required?: boolean;
+  disabled?: boolean;
 }
 
 export default function SearchInput({
@@ -28,6 +29,7 @@ export default function SearchInput({
   className = "",
   labelClassName = "",
   required = false,
+  disabled = false,
 }: SearchInputProps) {
   const [internalValue, setInternalValue] = useState(externalValue || "");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -131,6 +133,7 @@ export default function SearchInput({
           placeholder={placeholder}
           className={styles.input}
           required={required}
+          disabled={disabled}
         />
         {currentValue && (
           <button

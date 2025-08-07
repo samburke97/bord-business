@@ -23,6 +23,7 @@ interface SearchDropDownProps {
   allowFreeInput?: boolean;
   error?: string | null;
   showClearButton?: boolean;
+  disabled?: boolean;
 }
 
 export default function SearchDropDown({
@@ -37,6 +38,7 @@ export default function SearchDropDown({
   required = false,
   error = null,
   showClearButton = true,
+  disabled = false,
 }: SearchDropDownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [displayValue, setDisplayValue] = useState("");
@@ -163,9 +165,9 @@ export default function SearchDropDown({
         <div
           className={`${styles.inputWrapper} ${isOpen ? styles.active : ""} ${
             error ? styles.hasError : ""
-          }`}
-          onClick={handleInputClick}
-          tabIndex={0}
+          } ${disabled ? styles.disabled : ""}`}
+          onClick={disabled ? undefined : handleInputClick}
+          tabIndex={disabled ? -1 : 0}
         >
           {!isOpen ? (
             // Display selection when closed
@@ -177,6 +179,7 @@ export default function SearchDropDown({
                 placeholder={placeholder}
                 className={styles.input}
                 readOnly
+                disabled={disabled}
               />
               {displayValue && showClearButton && (
                 <button
@@ -213,6 +216,7 @@ export default function SearchDropDown({
               placeholder="Search..."
               className={styles.input}
               autoComplete="off"
+              disabled={disabled}
             />
           )}
         </div>

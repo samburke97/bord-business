@@ -292,6 +292,7 @@ export default function EditLocationAddressPage() {
       <LocationDetailsHeader
         steps={STEPS}
         currentStep={currentStep}
+        totalSteps={STEPS.length}
         onBack={handleBack}
         onContinue={handleHeaderContinue}
         onClose={handleClose}
