@@ -172,13 +172,13 @@ export default function EditLocationAddressPage() {
       setCurrentStep(currentStep - 1);
     } else {
       // If we're at the first step, go back to the location details page
-      router.push(`/locations/${id}`);
+      router.push(`/marketplace`);
     }
   };
 
   // Handle closing the form and returning to location details
   const handleClose = () => {
-    router.push(`/locations/${id}`);
+    router.push(`/marketplace`);
   };
 
   // Submit the address updates
@@ -214,7 +214,7 @@ export default function EditLocationAddressPage() {
 
       // Navigate back to the location detail page after a short delay
       setTimeout(() => {
-        router.push(`/locations/${id}`);
+        router.push(`/marketplace`);
       }, 1500);
     } catch (error) {
       setToast({
@@ -278,7 +278,7 @@ export default function EditLocationAddressPage() {
       <div className={styles.errorContainer}>
         <p>Error loading location address: {error}</p>
         <button
-          onClick={() => router.push(`/locations/${id}`)}
+          onClick={() => router.push(`/marketplace`)}
           className={styles.backButton}
         >
           Go Back

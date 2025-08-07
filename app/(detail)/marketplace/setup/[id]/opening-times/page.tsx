@@ -435,7 +435,7 @@ export default function OpeningTimesEditPage({
 
       // Navigate back to the location detail page after a brief delay
       setTimeout(() => {
-        router.push(`/locations/${id}`);
+        router.push(`/marketplace`);
       }, 1500);
     } catch (err) {
       console.error("Error saving opening hours:", err);
@@ -452,7 +452,7 @@ export default function OpeningTimesEditPage({
   // Handle close button click (for standalone mode)
   const handleClose = () => {
     if (!isSetupMode) {
-      router.push(`/locations/${id}`);
+      router.push(`/marketplace`);
     }
   };
 

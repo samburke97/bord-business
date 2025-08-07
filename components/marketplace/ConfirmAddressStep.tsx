@@ -24,7 +24,6 @@ export default function ConfirmAddressStep({
   onContinue,
   onBack,
 }: ConfirmAddressStepProps) {
-  // State for form fields
   const [streetAddress, setStreetAddress] = useState(
     formData.streetAddress || ""
   );
@@ -33,9 +32,7 @@ export default function ConfirmAddressStep({
   const [postcode, setPostcode] = useState(formData.postcode || "");
   const [state, setState] = useState(formData.state || "");
 
-  // Handle form submission
   const handleContinue = () => {
-    // Continue to the next step with whatever data we have
     onContinue({
       streetAddress,
       aptSuite,
@@ -45,14 +42,13 @@ export default function ConfirmAddressStep({
     });
   };
 
-  // Expose the continue handler for the header button
   useEffect(() => {
     // @ts-ignore
-    window.handleStepContinue = handleContinue;
+    window.handleAddressContinue = handleContinue;
 
     return () => {
       // @ts-ignore
-      delete window.handleStepContinue;
+      delete window.handleAddressContinue;
     };
   }, [streetAddress, aptSuite, city, postcode, state]);
 
@@ -79,7 +75,7 @@ export default function ConfirmAddressStep({
           <div className={styles.stepInputGroup}>
             <TextInput
               id="aptSuite"
-              label="Apt/Suite (Optional)"
+              label="Apartment/Suite (Optional)"
               value={aptSuite}
               onChange={(e) => setAptSuite(e.target.value)}
               placeholder="Enter apartment or suite number"
@@ -108,17 +104,17 @@ export default function ConfirmAddressStep({
                 required
               />
             </div>
+          </div>
 
-            <div className={styles.stepInputGroup}>
-              <TextInput
-                id="postcode"
-                label="Postcode"
-                value={postcode}
-                onChange={(e) => setPostcode(e.target.value)}
-                placeholder="Enter postcode"
-                required
-              />
-            </div>
+          <div className={styles.stepInputGroup}>
+            <TextInput
+              id="postcode"
+              label="Postcode"
+              value={postcode}
+              onChange={(e) => setPostcode(e.target.value)}
+              placeholder="Enter postcode"
+              required
+            />
           </div>
         </div>
       </div>

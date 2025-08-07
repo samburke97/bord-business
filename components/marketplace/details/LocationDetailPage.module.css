@@ -44,22 +44,6 @@
   gap: 24px;
 }
 
-.rowWithActivities {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px;
-}
-
-.detailsColumn {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-.activitiesColumn {
-  height: 100%;
-}
-
 /* Loading and Error States */
 .loadingContainer {
   display: flex;
@@ -95,8 +79,7 @@
 
 /* Responsive Adjustments */
 @media (max-width: 768px) {
-  .rowColumns,
-  .rowWithActivities {
+  .rowColumns {
     grid-template-columns: 1fr;
   }
 

@@ -63,7 +63,7 @@ export default function ContactEditPage({
     }
   }, [params, isSetupMode]);
 
-  const [isLoading, setIsLoading] = useState(!isSetupMode); // Don't show loading in setup mode initially
+  const [isLoading, setIsLoading] = useState(!isSetupMode);
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [formSubmitted, setFormSubmitted] = useState(false);

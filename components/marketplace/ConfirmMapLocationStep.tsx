@@ -1,4 +1,3 @@
-// components/locations/ConfirmMapLocationStep.tsx - CONSISTENT VERSION
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -44,18 +43,15 @@ export default function ConfirmMapLocationStep({
   const [mapLoaded, setMapLoaded] = useState(false);
 
   useEffect(() => {
-    // Dynamically import mapbox-gl
     const initializeMap = async () => {
       const mapboxgl = await import("mapbox-gl");
       const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
       mapboxgl.default.accessToken = mapboxToken;
 
       if (!mapContainerRef.current) {
-        console.error("Map container ref is null");
         return;
       }
 
-      // Initialize the map
       const newMap = new mapboxgl.default.Map({
         container: mapContainerRef.current,
         style: "mapbox://styles/mapbox/streets-v11",
@@ -64,14 +60,11 @@ export default function ConfirmMapLocationStep({
         accessToken: mapboxToken,
       });
 
-      // Add navigation controls
       newMap.addControl(new mapboxgl.default.NavigationControl(), "top-right");
 
-      // Create the marker when the map loads
       newMap.on("load", () => {
         setMapLoaded(true);
 
-        // Create a draggable marker with a clear color
         const newMarker = new mapboxgl.default.Marker({
           draggable: true,
           color: "#000",
@@ -80,7 +73,6 @@ export default function ConfirmMapLocationStep({
           .setLngLat([currentPosition.lng, currentPosition.lat])
           .addTo(newMap);
 
-        // Update position when marker is dragged
         newMarker.on("dragend", () => {
           const lngLat = newMarker.getLngLat();
           setCurrentPosition({
@@ -94,7 +86,6 @@ export default function ConfirmMapLocationStep({
 
       setMap(newMap);
 
-      // Clean up on unmount
       return () => {
         if (newMap) newMap.remove();
       };
@@ -103,7 +94,6 @@ export default function ConfirmMapLocationStep({
     initializeMap();
   }, []);
 
-  // Update marker position if formData coordinates change
   useEffect(() => {
     if (marker && formData.latitude && formData.longitude) {
       marker.setLngLat([formData.longitude, formData.latitude]);
@@ -119,24 +109,17 @@ export default function ConfirmMapLocationStep({
 
       await onContinue(locationData);
     } catch (error) {
-      console.error(
-        `Error ${mode === "create" ? "creating" : "updating"} location:`,
-        error
-      );
+      // Handle error appropriately
     }
   };
 
-  // Expose the continue handler for the header button
   useEffect(() => {
-    // Detect if we're in business onboarding vs location management
     const isBusinessOnboarding = pathname?.includes("/business/onboarding");
 
     if (isBusinessOnboarding) {
-      // For business onboarding, use the standard step handler
       // @ts-ignore
       window.handleStepContinue = handleCreate;
     } else {
-      // For location management flows, use the specific map handler
       // @ts-ignore
       window.handleMapContinue = handleCreate;
     }

@@ -10,7 +10,6 @@ import AboutCard from "./cards/AboutCard";
 import OpeningTimesCard from "./cards/OpeningTimesCard";
 import FacilitiesCard from "./cards/FacilitiesCard";
 import ContactCard from "./cards/ContactCard";
-import ActivitiesCard from "./cards/ActvitiesCard";
 import ConfirmModal from "@/components/modals/ConfirmModal";
 import { checkActivationStatus } from "@/lib/services/locationEditService";
 import styles from "./LocationDetailPage.module.css";
@@ -175,16 +174,7 @@ export default function LocationDetailPage({
           <h1 className={styles.title}>{location.name}</h1>
           <div className={styles.actionButtons}>
             <Button
-              onClick={() => setShowDeleteModal(true)}
-              variant="danger"
-              iconPath="/icons/utility-outline/trash"
-              iconPosition="right"
-            >
-              Delete
-            </Button>
-
-            <Button
-              onClick={() => router.push(`/locations/${id}/view`)}
+              // onClick={() => router.push(`/locations/${id}/view`)}
               variant="secondary"
               iconPath="/icons/utility-outline/export"
               iconPosition="right"
@@ -194,25 +184,20 @@ export default function LocationDetailPage({
           </div>
         </div>
 
-        {/* Row 1: Details and Activities */}
-        <div className={styles.rowWithActivities}>
-          <div className={styles.detailsColumn}>
-            <DetailsCard
-              name={location.name}
-              establishment={location.establishment}
-              sports={location.sports}
-              locationId={id}
-            />
-            <AddressCard
-              address={location.address}
-              latitude={location.latitude}
-              longitude={location.longitude}
-              locationId={id}
-            />
-          </div>
-          <div className={styles.activitiesColumn}>
-            <ActivitiesCard locationId={id} activities={location.activities} />
-          </div>
+        {/* Row 1: Details and Location side by side */}
+        <div className={styles.rowColumns}>
+          <DetailsCard
+            name={location.name}
+            establishment={location.establishment}
+            sports={location.sports}
+            locationId={id}
+          />
+          <AddressCard
+            address={location.address}
+            latitude={location.latitude}
+            longitude={location.longitude}
+            locationId={id}
+          />
         </div>
 
         {/* Row 2: Gallery (Full Width) */}

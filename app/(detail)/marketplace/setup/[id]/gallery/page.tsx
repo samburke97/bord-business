@@ -385,7 +385,7 @@ export default function GalleryEditPage({
 
       // Navigate back to the location detail page after a brief delay
       setTimeout(() => {
-        router.push(`/marketplace/${id}`);
+        router.push(`/marketplace`);
       }, 1500);
     } catch (err) {
       setToast({
@@ -397,7 +397,7 @@ export default function GalleryEditPage({
   };
 
   const handleClose = () => {
-    router.push(`/marketplace/${id}`);
+    router.push(`/marketplace/`);
   };
 
   const closeToast = () => {

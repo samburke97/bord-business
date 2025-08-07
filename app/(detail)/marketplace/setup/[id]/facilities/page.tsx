@@ -242,7 +242,7 @@ export default function FacilitiesPage({
 
       // Navigate back to location detail page after a short delay
       setTimeout(() => {
-        router.push(`/locations/${locationId}`);
+        router.push(`/marketplace`);
       }, 1500);
     } catch (error) {
       console.error("Error saving facilities:", error);

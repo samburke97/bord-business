@@ -73,15 +73,15 @@ export default function ActivitiesPage({ params }: ActivitiesPageProps) {
   }, [locationId, searchQuery]);
 
   const getActivityUrl = (activity: Activity) => {
-    return `/locations/edit/${locationId}/activities/${activity.id}`;
+    return `/marketplace/edit/${locationId}/activities/${activity.id}`;
   };
 
   const handleCreateActivity = () => {
-    router.push(`/locations/edit/${locationId}/activities/create`);
+    router.push(`/marketplace/edit/${locationId}/activities/create`);
   };
 
   const handleGoBack = () => {
-    router.push(`/locations/${locationId}`);
+    router.push(`/marketplace`);
   };
 
   // Updated format price function to handle string or number values
@@ -187,7 +187,7 @@ export default function ActivitiesPage({ params }: ActivitiesPageProps) {
           {filteredActivities.length === 0 && !isLoading ? (
             <EmptyState
               message="No activities found for this location."
-              createNewLink={`/locations/edit/${locationId}/activities/create`}
+              createNewLink={`/marketplace/edit/${locationId}/activities/create`}
               createNewLabel="Create Activity"
             />
           ) : (

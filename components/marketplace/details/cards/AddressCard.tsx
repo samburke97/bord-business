@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import BaseCard from "./BaseCard";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
+import styles from "./AddressCard.module.css";
 
 interface AddressCardProps {
   locationId: string;
@@ -54,17 +55,29 @@ export default function AddressCard({
 
   return (
     <BaseCard
-      title="Address"
+      title="Location"
       editHref={`/marketplace/${locationId}/address`}
       hasData={hasData}
       emptyStateText="No address provided"
-      contentClassName="p-0"
+      contentClassName={styles.cardContent}
       locationId={locationId}
     >
       {hasData && (
-        <>
-          <div ref={mapContainerRef} className="w-full h-40 relative rounded" />
-        </>
+        <div className={styles.mapContainer}>
+          <div ref={mapContainerRef} className={styles.map} />
+          {address && (
+            <div className={styles.addressSection}>
+              <div className={styles.addressContent}>
+                <div className={styles.locationIcon}>
+                  <div className={styles.iconDot}></div>
+                </div>
+                <div className={styles.addressText}>
+                  <p>{address}</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       )}
     </BaseCard>
   );
