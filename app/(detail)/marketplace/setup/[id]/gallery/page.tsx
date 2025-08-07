@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { RiCloseLine } from "react-icons/ri";
 import Image from "next/image";
-import { useParams } from "next/navigation";
 import Button from "@/components/ui/Button";
 import ButtonImageUploader, {
   ButtonImageUploaderRef,
@@ -21,41 +20,25 @@ interface LocationImage {
   order?: number;
 }
 
+// FIXED: Only accept params as required by Next.js pages
 interface GalleryEditPageProps {
-  centerId?: string;
-  formData?: {
-    images: Array<{ id: string; imageUrl: string; order: number }>;
-  };
-  onContinue?: (data: any) => void;
-  // Legacy props for standalone edit mode
-  params?: Promise<{ id: string }>;
+  params: Promise<{ id: string }>;
 }
 
-export default function GalleryEditPage({
-  centerId,
-  formData: initialFormData,
-  onContinue,
-  params,
-}: GalleryEditPageProps) {
-  // Determine if we're in setup mode (parent manages data) or standalone edit mode
-  const isSetupMode = !!centerId && !!onContinue;
-
-  // For standalone mode, we need to get ID from params
-  const [standaloneId, setStandaloneId] = useState<string | null>(null);
-  const id = isSetupMode ? centerId : standaloneId;
-
+export default function GalleryEditPage({ params }: GalleryEditPageProps) {
   const router = useRouter();
 
-  // Initialize standalone mode ID
+  // Get the ID from params
+  const [id, setId] = useState<string | null>(null);
+
+  // Initialize ID from params
   useEffect(() => {
-    if (!isSetupMode && params) {
-      const getId = async () => {
-        const resolvedParams = await params;
-        setStandaloneId(resolvedParams.id);
-      };
-      getId();
-    }
-  }, [params, isSetupMode]);
+    const getId = async () => {
+      const resolvedParams = await params;
+      setId(resolvedParams.id);
+    };
+    getId();
+  }, [params]);
 
   // Reference to the ImageUploader component
   const uploaderRef = useRef<ButtonImageUploaderRef>(null);
@@ -65,13 +48,10 @@ export default function GalleryEditPage({
     ? getCenterGalleryImageProps(id)
     : { folder: undefined, preset: undefined };
 
-  // Form state - initialized from parent data in setup mode
-  const [images, setImages] = useState<LocationImage[]>(
-    initialFormData?.images || []
-  );
+  // Form state - default empty values
+  const [images, setImages] = useState<LocationImage[]>([]);
 
-  // Loading state for data fetching
-  const [isLoadingData, setIsLoadingData] = useState(false);
+  // Loading and UI state
   const [loading, setLoading] = useState(true);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
@@ -91,56 +71,9 @@ export default function GalleryEditPage({
   const [draggedImage, setDraggedImage] = useState<LocationImage | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
-  // NEW: Add validation function
-  const validateGalleryForm = (): boolean => {
-    return images.length > 0;
-  };
-
-  // Update local form data when parent data changes
-  useEffect(() => {
-    if (isSetupMode && initialFormData) {
-      setImages(initialFormData.images);
-    }
-  }, [initialFormData, isSetupMode]);
-
-  // Fetch existing data in setup mode to prefill form
-  useEffect(() => {
-    const fetchExistingData = async () => {
-      if (!id || !isSetupMode) return;
-
-      try {
-        setIsLoadingData(true);
-
-        const response = await fetch(`/api/marketplace/${id}/images`, {
-          credentials: "include",
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-
-          // Ensure each image has a numerical index for ordering
-          const imagesWithOrder = data.map(
-            (img: LocationImage, index: number) => ({
-              ...img,
-              order: index + 1,
-            })
-          );
-
-          setImages(imagesWithOrder);
-        }
-      } catch (error) {
-        // Continue with empty gallery on error
-      } finally {
-        setIsLoadingData(false);
-      }
-    };
-
-    fetchExistingData();
-  }, [id, isSetupMode]);
-
-  // Fetch the images for standalone mode
+  // Fetch existing images when ID is available
   const fetchImages = useCallback(async () => {
-    if (!id || isSetupMode) return;
+    if (!id) return;
 
     try {
       setLoading(true);
@@ -166,55 +99,13 @@ export default function GalleryEditPage({
     } finally {
       setLoading(false);
     }
-  }, [id, isSetupMode]);
+  }, [id]);
 
   useEffect(() => {
-    if (id && !isSetupMode) {
+    if (id) {
       fetchImages();
     }
-  }, [fetchImages, id, isSetupMode]);
-
-  // UPDATED: Handle continue for setup mode with validation
-  const handleContinue = () => {
-    if (isSetupMode && onContinue) {
-      if (!validateGalleryForm()) {
-        setToast({
-          visible: true,
-          message: "Please upload at least one image to continue",
-          type: "error",
-        });
-        return;
-      }
-      onContinue({ images });
-    }
-  };
-
-  // UPDATED: Expose handleContinue to window for header button with validation
-  useEffect(() => {
-    if (isSetupMode) {
-      // @ts-ignore
-      window.marketplaceSetup = window.marketplaceSetup || {};
-      // @ts-ignore
-      window.marketplaceSetup.handleStepContinue = () => {
-        if (!validateGalleryForm()) {
-          setToast({
-            visible: true,
-            message: "Please upload at least one image to continue",
-            type: "error",
-          });
-          return;
-        }
-        handleContinue();
-      };
-
-      return () => {
-        // @ts-ignore
-        if (window.marketplaceSetup) {
-          delete window.marketplaceSetup.handleStepContinue;
-        }
-      };
-    }
-  }, [images, isSetupMode]);
+  }, [fetchImages, id]);
 
   // Handle progress updates during upload
   const handleProgressChange = (progress: number) => {
@@ -291,7 +182,7 @@ export default function GalleryEditPage({
         throw new Error("Failed to delete image");
       }
 
-      // Remove the image from the state
+      // Remove the image from the list
       setImages((prevImages) => prevImages.filter((img) => img.id !== imageId));
 
       setToast({
@@ -308,20 +199,18 @@ export default function GalleryEditPage({
     }
   };
 
-  // Handle drag start
+  // Drag and drop handlers
   const handleDragStart = (e: React.DragEvent, image: LocationImage) => {
     setIsDragging(true);
     setDraggedImage(image);
     e.dataTransfer.effectAllowed = "move";
   };
 
-  // Handle drag over
   const handleDragOver = (e: React.DragEvent, index: number) => {
     e.preventDefault();
     setDragOverIndex(index);
   };
 
-  // Handle drop
   const handleDrop = (e: React.DragEvent, dropIndex: number) => {
     e.preventDefault();
 
@@ -351,7 +240,6 @@ export default function GalleryEditPage({
     setDragOverIndex(null);
   };
 
-  // Handle drag end
   const handleDragEnd = () => {
     setIsDragging(false);
     setDraggedImage(null);
@@ -360,10 +248,10 @@ export default function GalleryEditPage({
 
   // Save function for standalone edit mode
   const handleSave = async () => {
-    if (!id || isSetupMode) return;
+    if (!id || loading) return;
 
     try {
-      // Update the order of images in the database
+      // Save the current order in the database
       const response = await fetch(`/api/marketplace/${id}/images/reorder`, {
         method: "PUT",
         headers: {
@@ -383,9 +271,9 @@ export default function GalleryEditPage({
         type: "success",
       });
 
-      // Navigate back to the location detail page after a brief delay
+      // Navigate back to the marketplace after a brief delay
       setTimeout(() => {
-        router.push(`/marketplace`);
+        router.push("/marketplace");
       }, 1500);
     } catch (err) {
       setToast({
@@ -397,30 +285,19 @@ export default function GalleryEditPage({
   };
 
   const handleClose = () => {
-    router.push(`/marketplace/`);
+    router.push("/marketplace");
   };
 
   const closeToast = () => {
     setToast((prev) => ({ ...prev, visible: false }));
   };
 
-  // Don't render until we have an ID
-  if (!id) {
+  // Show loading while ID or data is loading
+  if (!id || loading) {
     return (
       <div className={styles.container}>
         <div className={styles.loadingContainer}>
-          <p>Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Show loading while fetching existing data in setup mode
-  if (isSetupMode && isLoadingData) {
-    return (
-      <div className={styles.container}>
-        <div className={styles.loadingContainer}>
-          <p>Loading existing data...</p>
+          <p>Loading gallery...</p>
         </div>
       </div>
     );
@@ -428,16 +305,13 @@ export default function GalleryEditPage({
 
   return (
     <>
-      {/* Only show ActionHeader in standalone edit mode */}
-      {!isSetupMode && (
-        <ActionHeader
-          primaryAction={handleSave}
-          secondaryAction={handleClose}
-          primaryLabel="Save"
-          secondaryLabel="Close"
-          variant="edit"
-        />
-      )}
+      <ActionHeader
+        primaryAction={handleSave}
+        secondaryAction={handleClose}
+        primaryLabel="Save"
+        secondaryLabel="Close"
+        variant="edit"
+      />
 
       <div className={styles.container}>
         <div className={styles.subheader}>
@@ -471,9 +345,21 @@ export default function GalleryEditPage({
           preset={preset}
         />
 
-        {loading && !isSetupMode ? (
-          <div className={styles.loadingContainer}>Loading images...</div>
-        ) : error ? (
+        {/* Progress bar during upload */}
+        {isUploading && uploadProgress > 0 && (
+          <div className={styles.uploadProgress}>
+            <div className={styles.progressBar}>
+              <div
+                className={styles.progressFill}
+                style={{ width: `${uploadProgress}%` }}
+              />
+            </div>
+            <span className={styles.progressText}>{uploadProgress}%</span>
+          </div>
+        )}
+
+        {/* Images grid */}
+        {error ? (
           <div className={styles.errorContainer}>
             <p>Error: {error}</p>
             <Button

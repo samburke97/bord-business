@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import CountryCodeSelect from "@/components/ui/CountryCodeSelect";
 import TextInput from "@/components/ui/TextInput";
 import Toast from "@/components/ui/Toast";
@@ -28,27 +29,42 @@ interface FormErrors {
   socials?: string[];
 }
 
-// FIXED: Only accept params as required by Next.js pages
 interface ContactEditPageProps {
-  params: Promise<{ id: string }>;
+  centerId?: string;
+  formData?: any; // TODO: Define proper contact form data type
+  onContinue?: (data: any) => void;
+  // Legacy props for standalone edit mode
+  params?: Promise<{ id: string }>;
 }
 
-export default function ContactEditPage({ params }: ContactEditPageProps) {
+export default function ContactEditPage({
+  centerId,
+  formData: initialFormData,
+  onContinue,
+  params,
+}: ContactEditPageProps) {
+  // Determine if we're in setup mode (parent manages data) or standalone edit mode
+  const isSetupMode = !!centerId && !!onContinue;
+
+  // For standalone mode, we need to get ID from params
+  const [standaloneId, setStandaloneId] = useState<string | null>(null);
+  const id = isSetupMode ? centerId : standaloneId;
+
   const router = useRouter();
 
-  // Get the ID from params
-  const [id, setId] = useState<string | null>(null);
-
-  // Initialize ID from params
+  // Initialize standalone mode ID
   useEffect(() => {
-    const getId = async () => {
-      const resolvedParams = await params;
-      setId(resolvedParams.id);
-    };
-    getId();
-  }, [params]);
+    if (!isSetupMode && params) {
+      const getId = async () => {
+        const resolvedParams = await params;
+        setStandaloneId(resolvedParams.id);
+      };
+      getId();
+    }
+  }, [params, isSetupMode]);
 
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!isSetupMode); // Don't show loading in setup mode initially
+  const [isLoadingData, setIsLoadingData] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [toast, setToast] = useState<{
@@ -77,107 +93,342 @@ export default function ContactEditPage({ params }: ContactEditPageProps) {
 
   const [formErrors, setFormErrors] = useState<FormErrors>({});
 
-  // Fetch existing data when ID is available
+  // NEW: Add validation function
+  const validateContactForm = (): boolean => {
+    return !!(formData.website && formData.website.trim());
+  };
+
+  // Fetch existing data in setup mode to prefill form
   useEffect(() => {
     const fetchExistingData = async () => {
-      if (!id) return;
+      if (!id || !isSetupMode) return;
 
       try {
-        setIsLoading(true);
-
-        const response = await fetch(`/api/marketplace/${id}/contact`, {
-          credentials: "include",
-        });
+        setIsLoadingData(true);
+        const response = await fetch(`/api/marketplace/${id}`);
 
         if (response.ok) {
           const data = await response.json();
 
-          setFormData({
-            phone: data.phone || "",
-            countryCode: data.countryCode || "+44",
-            email: data.email || "",
-            website: data.website || "",
-            socials: data.socials || [
-              { platform: "Facebook", url: "" },
-              { platform: "Instagram", url: "" },
-              { platform: "TikTok", url: "" },
-              { platform: "Youtube", url: "" },
-              { platform: "X (Twitter)", url: "" },
-            ],
+          // Parse phone number
+          if (data.phone) {
+            const cleanedPhone = data.phone.trim().replace(/\s+/g, " ");
+
+            const duplicatedCodeMatch = cleanedPhone.match(
+              /^\+(\d+)\s+\+?(\d+)\s+(.*)$/
+            );
+            if (
+              duplicatedCodeMatch &&
+              duplicatedCodeMatch[1] === duplicatedCodeMatch[2]
+            ) {
+              setFormData((prev) => ({
+                ...prev,
+                countryCode: `+${duplicatedCodeMatch[1]}`,
+                phone: duplicatedCodeMatch[3],
+              }));
+            } else {
+              const phoneMatch = cleanedPhone.match(/^\+(\d+)\s*(.*)$/);
+              if (phoneMatch) {
+                setFormData((prev) => ({
+                  ...prev,
+                  countryCode: `+${phoneMatch[1]}`,
+                  phone: phoneMatch[2],
+                }));
+              } else {
+                setFormData((prev) => ({
+                  ...prev,
+                  phone: cleanedPhone,
+                }));
+              }
+            }
+          }
+
+          if (data.email) {
+            setFormData((prev) => ({
+              ...prev,
+              email: data.email,
+            }));
+          }
+
+          if (data.links && data.links.length > 0) {
+            const websiteLink = data.links.find(
+              (link: any) =>
+                link.type?.toLowerCase() === "website" || !link.type
+            );
+
+            if (websiteLink && websiteLink.url) {
+              setFormData((prev) => ({
+                ...prev,
+                website: websiteLink.url,
+              }));
+            }
+          }
+
+          if (data.socials && data.socials.length > 0) {
+            const updatedSocials = [...formData.socials];
+
+            data.socials.forEach((social: any) => {
+              const platformIndex = updatedSocials.findIndex(
+                (s) =>
+                  s.platform.toLowerCase() === social.platform?.toLowerCase()
+              );
+
+              if (platformIndex !== -1 && social.url) {
+                updatedSocials[platformIndex].url = social.url;
+              }
+            });
+
+            setFormData((prev) => ({
+              ...prev,
+              socials: updatedSocials,
+            }));
+          }
+        }
+      } catch (error) {
+        // Continue with empty form on error
+      } finally {
+        setIsLoadingData(false);
+      }
+    };
+
+    fetchExistingData();
+  }, [id, isSetupMode]);
+
+  // Fetch existing contact data for standalone mode
+  useEffect(() => {
+    const fetchContactData = async () => {
+      if (!id || isSetupMode) return;
+
+      try {
+        setIsLoading(true);
+        const response = await fetch(`/api/marketplace/${id}`);
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch location data");
+        }
+
+        const data = await response.json();
+
+        // Previous phone number parsing logic remains the same
+        if (data.phone) {
+          const cleanedPhone = data.phone.trim().replace(/\s+/g, " ");
+
+          const duplicatedCodeMatch = cleanedPhone.match(
+            /^\+(\d+)\s+\+?(\d+)\s+(.*)$/
+          );
+          if (
+            duplicatedCodeMatch &&
+            duplicatedCodeMatch[1] === duplicatedCodeMatch[2]
+          ) {
+            setFormData((prev) => ({
+              ...prev,
+              countryCode: `+${duplicatedCodeMatch[1]}`,
+              phone: duplicatedCodeMatch[3],
+            }));
+          } else {
+            const phoneMatch = cleanedPhone.match(/^\+(\d+)\s*(.*)$/);
+            if (phoneMatch) {
+              setFormData((prev) => ({
+                ...prev,
+                countryCode: `+${phoneMatch[1]}`,
+                phone: phoneMatch[2],
+              }));
+            } else {
+              setFormData((prev) => ({
+                ...prev,
+                phone: cleanedPhone,
+              }));
+            }
+          }
+        }
+
+        if (data.email) {
+          setFormData((prev) => ({
+            ...prev,
+            email: data.email,
+          }));
+        }
+
+        if (data.links && data.links.length > 0) {
+          const websiteLink = data.links.find(
+            (link: any) => link.type?.toLowerCase() === "website" || !link.type
+          );
+
+          if (websiteLink && websiteLink.url) {
+            setFormData((prev) => ({
+              ...prev,
+              website: websiteLink.url,
+            }));
+          }
+        }
+
+        if (data.socials && data.socials.length > 0) {
+          const updatedSocials = [...formData.socials];
+
+          data.socials.forEach((social: any) => {
+            const platformIndex = updatedSocials.findIndex(
+              (s) => s.platform.toLowerCase() === social.platform?.toLowerCase()
+            );
+
+            if (platformIndex !== -1 && social.url) {
+              updatedSocials[platformIndex].url = social.url;
+            }
           });
+
+          setFormData((prev) => ({
+            ...prev,
+            socials: updatedSocials,
+          }));
         }
       } catch (error) {
         console.error("Error fetching contact data:", error);
-        // Continue with empty form on error
+        setToast({
+          visible: true,
+          message: "Failed to load contact information",
+          type: "error",
+        });
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchExistingData();
-  }, [id]);
+    if (id && !isSetupMode) {
+      fetchContactData();
+    }
+  }, [id, isSetupMode]);
 
-  // Validation function
-  const validateContactForm = (): boolean => {
+  // UPDATED: Handle continue for setup mode with validation
+  const handleContinue = () => {
+    if (isSetupMode && onContinue) {
+      if (!validateContactForm()) {
+        setToast({
+          visible: true,
+          message: "Website URL is required to complete your profile",
+          type: "error",
+        });
+        return;
+      }
+      onContinue({ contact: formData });
+    }
+  };
+
+  // UPDATED: Expose handleContinue to window for header button with validation
+  useEffect(() => {
+    if (isSetupMode) {
+      // @ts-ignore
+      window.marketplaceSetup = window.marketplaceSetup || {};
+      // @ts-ignore
+      window.marketplaceSetup.handleStepContinue = () => {
+        if (!validateContactForm()) {
+          setToast({
+            visible: true,
+            message: "Website URL is required to complete your profile",
+            type: "error",
+          });
+          return;
+        }
+        handleContinue();
+      };
+
+      return () => {
+        // @ts-ignore
+        if (window.marketplaceSetup) {
+          delete window.marketplaceSetup.handleStepContinue;
+        }
+      };
+    }
+  }, [formData, isSetupMode]);
+
+  const handleCountryCodeChange = (value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      countryCode: value,
+    }));
+  };
+
+  const validatePhoneNumber = (input: string): string => {
+    return input.replace(/^\+\d+\s*/, "");
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+
+    // Reset form submitted and errors when user starts editing
+    setFormSubmitted(false);
+    setFormErrors({});
+
+    if (name === "phone") {
+      const cleanedPhoneNumber = validatePhoneNumber(value);
+      setFormData((prev) => ({
+        ...prev,
+        phone: cleanedPhoneNumber,
+      }));
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
+    }
+  };
+
+  const handleSocialChange = (index: number, value: string) => {
+    // Reset form submitted and errors when user starts editing
+    setFormSubmitted(false);
+    setFormErrors({});
+
+    const updatedSocials = [...formData.socials];
+    updatedSocials[index].url = value;
+
+    setFormData((prev) => ({
+      ...prev,
+      socials: updatedSocials,
+    }));
+  };
+
+  const validateForm = (): boolean => {
     const errors: FormErrors = {};
-    let isValid = true;
 
-    // Email validation
-    if (formData.email) {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(formData.email)) {
-        errors.email = "Please enter a valid email address";
-        isValid = false;
-      }
-    }
-
-    // Phone validation
-    if (formData.phone) {
-      const phoneRegex = /^[\d\s\-\(\)\+]+$/;
-      if (!phoneRegex.test(formData.phone)) {
-        errors.phone = "Please enter a valid phone number";
-        isValid = false;
-      }
-    }
-
-    // Website validation
-    if (formData.website) {
-      try {
-        const url = formData.website.startsWith("http")
-          ? formData.website
-          : `https://${formData.website}`;
-        new URL(url);
-      } catch {
-        errors.website = "Please enter a valid website URL";
-        isValid = false;
-      }
+    // Validate email if provided
+    if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) {
+      errors.email = "Invalid email address";
     }
 
     setFormErrors(errors);
-    return isValid;
+    return Object.keys(errors).length === 0;
   };
 
-  // Save function for standalone edit mode
-  const handleSave = async () => {
-    if (!id || isSaving) return;
+  const handleClose = () => {
+    if (!isSetupMode) {
+      router.push("/marketplace");
+    }
+  };
 
-    if (!validateContactForm()) {
-      setFormSubmitted(true);
+  const handleSubmit = async () => {
+    if (!id || isSaving || isSetupMode) return;
+
+    setFormSubmitted(true);
+
+    // Validate form before submission
+    if (!validateForm()) {
       return;
     }
 
     try {
       setIsSaving(true);
 
-      // Format phone number
+      // Format the phone number with country code
       let formattedPhone = null;
-      if (formData.phone && formData.phone.trim()) {
-        const cleanedPhoneNumber = formData.phone.trim();
-        formattedPhone = cleanedPhoneNumber.startsWith("+")
-          ? cleanedPhoneNumber
-          : `${formData.countryCode} ${cleanedPhoneNumber}`;
+      if (formData.phone.trim()) {
+        const cleanedPhoneNumber = formData.phone.trim().replace(/\s+/g, " ");
+
+        if (cleanedPhoneNumber.startsWith("+")) {
+          formattedPhone = cleanedPhoneNumber;
+        } else {
+          formattedPhone = `${formData.countryCode} ${cleanedPhoneNumber}`;
+        }
       }
 
+      // Prepare the payload
       const payload = {
         phone: formattedPhone,
         email: formData.email || null,
@@ -190,24 +441,26 @@ export default function ContactEditPage({ params }: ContactEditPageProps) {
           })),
       };
 
+      // Send the update
       const response = await fetch(`/api/marketplace/${id}/contact`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify(payload),
-        credentials: "include",
       });
 
       if (!response.ok) {
-        throw new Error("Failed to save contact information");
+        throw new Error("Failed to update contact information");
       }
 
       setToast({
         visible: true,
-        message: "Contact information saved successfully!",
+        message: "Contact information updated successfully",
         type: "success",
       });
 
-      // Redirect after delay
+      // Navigate back to the location detail page after a short delay
       setTimeout(() => {
         router.push("/marketplace");
       }, 1500);
@@ -222,117 +475,135 @@ export default function ContactEditPage({ params }: ContactEditPageProps) {
     }
   };
 
-  // Form handlers
-  const handleInputChange = (field: keyof ContactFormData, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-
-    // Clear error when user starts typing
-    if (formErrors[field]) {
-      setFormErrors((prev) => ({ ...prev, [field]: undefined }));
-    }
+  // Close the toast
+  const closeToast = () => {
+    setToast((prev) => ({ ...prev, visible: false }));
   };
 
-  const handleSocialChange = (index: number, url: string) => {
-    const newSocials = [...formData.socials];
-    newSocials[index] = { ...newSocials[index], url };
-    setFormData((prev) => ({ ...prev, socials: newSocials }));
-  };
-
-  // Show loading while ID or data is loading
-  if (!id || isLoading) {
+  // Don't render until we have an ID
+  if (!id) {
     return (
       <div className={styles.container}>
         <div className={styles.loadingContainer}>
-          <LoadingSpinner />
-          <p>Loading contact information...</p>
+          <p>Loading...</p>
         </div>
       </div>
     );
   }
 
+  // Show loading while fetching existing data in setup mode
+  if (isSetupMode && isLoadingData) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.loadingContainer}>
+          <p>Loading existing data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return <LoadingSpinner />;
+  }
+
   return (
-    <div className={styles.container}>
-      <ActionHeader
-        primaryAction={handleSave}
-        secondaryAction={() => router.push("/marketplace")}
-        isProcessing={isSaving}
-      />
-
-      <div className={styles.formContainer}>
-        <TitleDescription
-          title="Contact & Links"
-          description="Add your contact information and social media links so customers can reach you."
+    <>
+      {/* Only show ActionHeader in standalone edit mode */}
+      {!isSetupMode && (
+        <ActionHeader
+          primaryAction={handleSubmit}
+          secondaryAction={handleClose}
+          primaryLabel="Save"
+          secondaryLabel="Close"
+          variant="edit"
         />
+      )}
 
-        {/* Phone Section */}
-        <div className={styles.section}>
-          <label className={styles.label}>Phone Number</label>
-          <div className={styles.phoneContainer}>
-            <CountryCodeSelect
-              value={formData.countryCode}
-              onChange={(code) => handleInputChange("countryCode", code)}
-            />
-            <TextInput
-              value={formData.phone}
-              onChange={(e) => handleInputChange("phone", e.target.value)}
-              placeholder="Enter phone number"
-              error={formSubmitted ? formErrors.phone : undefined}
-            />
+      <div className={styles.container}>
+        <TitleDescription
+          title="Contact & Socials"
+          description="Please add all your businesses facilities and what sports you cater for."
+        />
+        <div className={styles.content}>
+          {/* Mobile Phone Input */}
+          <div className={styles.formGroup}>
+            <label>Mobile</label>
+            <div className={styles.phoneInputGroup}>
+              <CountryCodeSelect
+                value={formData.countryCode}
+                onChange={handleCountryCodeChange}
+              />
+              <TextInput
+                id="phone"
+                name="phone"
+                value={formData.phone}
+                onChange={handleInputChange}
+                placeholder="Enter number without country code"
+                error={formSubmitted ? formErrors.phone : null}
+              />
+            </div>
+            <div className={styles.helperText}>
+              Please enter only the number without the country code
+            </div>
           </div>
-        </div>
 
-        {/* Email Section */}
-        <div className={styles.section}>
-          <label className={styles.label}>Email Address</label>
+          {/* Business Email Input */}
           <TextInput
+            id="email"
+            name="email"
+            label="Business Email"
             value={formData.email}
-            onChange={(e) => handleInputChange("email", e.target.value)}
-            placeholder="Enter email address"
-            type="email"
-            error={formSubmitted ? formErrors.email : undefined}
+            onChange={handleInputChange}
+            placeholder="Enter your business email address"
+            error={formSubmitted ? formErrors.email : null}
           />
-        </div>
 
-        {/* Website Section */}
-        <div className={styles.section}>
-          <label className={styles.label}>Website</label>
+          {/* Website Input - REQUIRED */}
           <TextInput
+            id="website"
+            name="website"
+            label="Website*"
             value={formData.website}
-            onChange={(e) => handleInputChange("website", e.target.value)}
-            placeholder="Enter website URL"
-            error={formSubmitted ? formErrors.website : undefined}
+            onChange={handleInputChange}
+            placeholder="https://your-website.com"
+            required
+            error={
+              !formData.website.trim() ? "Website URL is required" : undefined
+            }
           />
-        </div>
 
-        {/* Social Media Section */}
-        <div className={styles.section}>
-          <label className={styles.label}>Social Media</label>
-          <div className={styles.socialsContainer}>
+          {/* Social Media Inputs */}
+          <div className={styles.formGroup}>
+            <label>Socials</label>
             {formData.socials.map((social, index) => (
-              <div key={social.platform} className={styles.socialItem}>
-                <span className={styles.socialPlatform}>{social.platform}</span>
+              <div key={social.platform} className={styles.socialInputGroup}>
+                <div className={styles.socialPlatform}>{social.platform}</div>
                 <TextInput
+                  id={`social-${social.platform}`}
                   value={social.url}
                   onChange={(e) => handleSocialChange(index, e.target.value)}
-                  placeholder={`Enter ${social.platform} URL`}
+                  placeholder={`${social.platform} link`}
                   error={
-                    formSubmitted ? formErrors.socials?.[index] : undefined
+                    formSubmitted && formErrors.socials
+                      ? formErrors.socials[index]
+                      : null
                   }
                 />
               </div>
             ))}
           </div>
         </div>
-      </div>
 
-      {/* Toast */}
-      {toast.visible && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast((prev) => ({ ...prev, visible: false }))}
-        />
-      )}
-    </div>
+        {toast.visible && (
+          <div className={styles.toastContainer}>
+            <Toast
+              message={toast.message}
+              type={toast.type}
+              onClose={closeToast}
+            />
+          </div>
+        )}
+      </div>
+    </>
   );
 }
