@@ -1,585 +1,359 @@
-// app/(detail)/marketplace/setup/page.tsx - COMPLETELY FIXED VERSION
 "use client";
 
-import React, { useState, useRef, Suspense, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
-import LocationDetailsHeader from "@/components/layouts/headers/LocationDetailsHeader";
-import Congratulations from "@/components/ui/Congratulations";
+import TitleDescription from "@/components/ui/TitleDescription";
+import TextInput from "@/components/ui/TextInput";
+import TextArea from "@/components/ui/TextArea";
+import ImageUploader from "@/lib/actions/ImageUploader";
+import ActionHeader from "@/components/layouts/headers/ActionHeader";
+import Toast from "@/components/ui/Toast";
 import styles from "./page.module.css";
+import { getCenterLogoProps } from "@/lib/cloudinary/upload-helpers";
 
-// Import the FIXED consolidated components
-import EditAboutPage from "./[id]/about/page";
-import GalleryEditPage from "./[id]/gallery/page";
-import OpeningTimesEditPage from "./[id]/opening-times/page";
-import FacilitiesEditPage from "./[id]/facilities/page";
-import ContactEditPage from "./[id]/contact/page";
+// FIXED: Make this work for both Next.js pages AND component usage
+interface EditAboutPageProps {
+  params: Promise<{ id: string }>;
+  // When used as component in setup flow, these will be passed via a wrapper
+  centerId?: string;
+  formData?: {
+    highlights: string[];
+    description: string;
+    logo: string | null;
+  };
+  onContinue?: (data: any) => void;
+}
 
-const steps = [
-  "About",
-  "Gallery",
-  "Opening Times",
-  "Facilities",
-  "Contact & Socials",
-];
-
-function MarketplaceSetupContent() {
+export default function EditAboutPage({
+  params,
+  centerId,
+  formData: initialFormData,
+  onContinue,
+}: EditAboutPageProps) {
   const router = useRouter();
-  const { data: session } = useSession();
 
-  // FIXED: Step persistence without clearing on page unload
-  const [currentStep, setCurrentStep] = useState(() => {
-    // Initialize currentStep from sessionStorage if available
-    if (typeof window !== "undefined") {
-      const savedStep = sessionStorage.getItem("marketplace-setup-step");
-      return savedStep ? parseInt(savedStep, 10) : 0;
+  // Get ID either from centerId prop (setup mode) or params (page mode)
+  const [id, setId] = useState<string | null>(centerId || null);
+  const isSetupMode = !!centerId && !!onContinue;
+
+  // Initialize ID from params if not in setup mode
+  useEffect(() => {
+    if (!centerId) {
+      const getId = async () => {
+        const resolvedParams = await params;
+        setId(resolvedParams.id);
+      };
+      getId();
     }
-    return 0;
+  }, [params, centerId]);
+
+  // Form state - initialized from parent data in setup mode
+  const [localFormData, setLocalFormData] = useState({
+    highlights: initialFormData?.highlights || ["", "", ""],
+    description: initialFormData?.description || "",
+    logo: initialFormData?.logo || null,
   });
 
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [centerId, setCenterId] = useState<string | null>(null);
+  // Loading state for data fetching
+  const [isLoadingData, setIsLoadingData] = useState(false);
 
-  // Prevent multiple initialization attempts
-  const [isInitializing, setIsInitializing] = useState(false);
-  const initializationRef = useRef<boolean>(false);
+  // Track if validation was attempted and description error
+  const [showDescriptionError, setShowDescriptionError] = useState(false);
 
-  // Parent manages all form data
-  const [formData, setFormData] = useState({
-    // About step data
-    about: {
-      highlights: ["", "", ""],
-      description: "",
-      logo: null as string | null,
-    },
-    // Gallery step data
-    gallery: {
-      images: [] as Array<{ id: string; imageUrl: string; order: number }>,
-    },
-    // Opening times step data
-    openingTimes: {
-      openingHours: {} as any,
-    },
-    // Facilities step data
-    facilities: {
-      facilities: [] as Array<{ id: string; name: string }>,
-    },
-    // Contact step data
-    contact: {
-      phone: "",
-      countryCode: "+44",
-      email: "",
-      website: "",
-      socials: [] as Array<{ platform: string; url: string }>,
-    },
-  });
-
-  const stepRef = useRef<HTMLDivElement>(null);
-
-  // FIXED: Save step to sessionStorage whenever it changes (no clearing on unload)
+  // Update local form data when parent data changes
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      sessionStorage.setItem("marketplace-setup-step", currentStep.toString());
+    if (isSetupMode && initialFormData) {
+      setLocalFormData({
+        highlights: initialFormData.highlights,
+        description: initialFormData.description,
+        logo: initialFormData.logo,
+      });
     }
-  }, [currentStep]);
+  }, [initialFormData, isSetupMode]);
 
-  // FIXED: Only clear step persistence when setup is actually completed (not on refresh)
+  // Fetch existing data when ID is available (for both modes)
   useEffect(() => {
-    // Clear when reaching congratulations step ONLY
-    if (currentStep >= steps.length) {
-      if (typeof window !== "undefined") {
-        sessionStorage.removeItem("marketplace-setup-step");
+    const fetchExistingData = async () => {
+      if (!id) return;
+
+      // In setup mode, only fetch if we don't have initial data
+      if (isSetupMode && initialFormData) return;
+
+      try {
+        setIsLoadingData(true);
+
+        const response = await fetch(`/api/marketplace/${id}/about`, {
+          credentials: "include",
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+
+          // Always ensure we have exactly 3 highlight slots
+          const existingHighlights = data.highlights || [];
+          const paddedHighlights = [
+            existingHighlights[0] || "",
+            existingHighlights[1] || "",
+            existingHighlights[2] || "",
+          ];
+
+          setLocalFormData({
+            highlights: paddedHighlights,
+            description: data.description || "",
+            logo: data.logoUrl || null,
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching about data:", error);
+        // Continue with empty form on error
+      } finally {
+        setIsLoadingData(false);
       }
-    }
-  }, [currentStep]);
+    };
 
-  // Helper function to create center from business
-  const createCenterFromBusiness = async (
-    businessId: string
-  ): Promise<string | null> => {
+    fetchExistingData();
+  }, [id, isSetupMode, initialFormData]);
+
+  // Cloudinary configuration
+  const cloudinaryProps = id
+    ? getCenterLogoProps(id)
+    : {
+        folder: "logos",
+        preset: "business_images",
+      };
+  const { folder, preset } = cloudinaryProps;
+
+  // UI state
+  const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState({
+    visible: false,
+    message: "",
+    type: "success" as "success" | "error",
+  });
+
+  // Check if description is valid
+  const isDescriptionValid = () => {
+    return localFormData.description.trim().length >= 10;
+  };
+
+  // Handle continue with basic validation
+  const handleContinue = () => {
+    if (isSetupMode && onContinue) {
+      // Check if description is valid
+      if (!isDescriptionValid()) {
+        setShowDescriptionError(true);
+        return; // Don't continue
+      }
+
+      // Clear error and continue
+      setShowDescriptionError(false);
+      onContinue(localFormData);
+    }
+  };
+
+  // Set up window function for continue button
+  useEffect(() => {
+    if (isSetupMode) {
+      // @ts-ignore
+      window.marketplaceSetup = window.marketplaceSetup || {};
+      // @ts-ignore
+      window.marketplaceSetup.handleStepContinue = handleContinue;
+
+      return () => {
+        // @ts-ignore
+        if (window.marketplaceSetup) {
+          delete window.marketplaceSetup.handleStepContinue;
+        }
+      };
+    }
+  }, [localFormData, isSetupMode]);
+
+  // Save function for standalone edit mode
+  const handleSave = async () => {
+    if (!id || saving || isSetupMode) return;
+
+    // Validate first
+    if (!isDescriptionValid()) {
+      setShowDescriptionError(true);
+      return;
+    }
+
     try {
-      const response = await fetch("/api/businesses/create-center", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ businessId }),
+      setSaving(true);
+      setShowDescriptionError(false);
+
+      const payload = {
+        highlights: localFormData.highlights.filter((h) => h.trim() !== ""),
+        description: localFormData.description.trim(),
+        logoUrl: localFormData.logo,
+      };
+
+      const response = await fetch(`/api/marketplace/${id}/about`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
         credentials: "include",
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to create center");
+        throw new Error("Failed to save about information");
       }
 
-      const result = await response.json();
-      return result.centerId;
+      setToast({
+        visible: true,
+        message: "About information saved successfully!",
+        type: "success",
+      });
+
+      // Redirect after delay in standalone mode
+      setTimeout(() => {
+        router.push("/marketplace");
+      }, 1500);
     } catch (error) {
-      return null;
-    }
-  };
-
-  // Initialize the flow with race condition protection
-  useEffect(() => {
-    const initializeSetup = async () => {
-      // Multiple levels of protection
-      if (
-        !session?.user?.id ||
-        isInitializing ||
-        initializationRef.current ||
-        centerId
-      ) {
-        return;
-      }
-
-      // Mark as initializing IMMEDIATELY
-      setIsInitializing(true);
-      initializationRef.current = true;
-
-      try {
-        setIsLoading(true);
-        setError(null);
-
-        // Get user's business status
-        const response = await fetch("/api/user/business-status", {
-          credentials: "include",
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to get business information");
-        }
-
-        const data = await response.json();
-
-        if (!data.business) {
-          setError("No business found. Please complete business setup first.");
-          return;
-        }
-
-        // Better center detection and creation logic
-        let centerToUse = null;
-
-        // Check if business already has a center
-        if (data.business.centers && data.business.centers.length > 0) {
-          // Use the most recent center
-          centerToUse = data.business.centers[0].id;
-        } else {
-          // Create center (API handles race conditions internally)
-          const newCenterId = await createCenterFromBusiness(data.business.id);
-
-          if (newCenterId) {
-            centerToUse = newCenterId;
-          } else {
-            setError("Failed to create location for business setup.");
-            return;
-          }
-        }
-
-        // Set center ID only if we don't already have one
-        if (centerToUse && !centerId) {
-          setCenterId(centerToUse);
-        }
-      } catch (error) {
-        setError("Failed to initialize marketplace setup. Please try again.");
-      } finally {
-        setIsLoading(false);
-        setIsInitializing(false);
-      }
-    };
-
-    initializeSetup();
-
-    // Cleanup on unmount
-    return () => {
-      initializationRef.current = false;
-    };
-  }, [session?.user?.id]);
-
-  // Reset initialization flag if user changes
-  useEffect(() => {
-    initializationRef.current = false;
-    setIsInitializing(false);
-  }, [session?.user?.id]);
-
-  // FIXED: Handle continue with proper data structure handling
-  const handleContinue = async (stepData: any) => {
-    if (!centerId) return;
-
-    console.log("handleContinue called with stepData:", stepData);
-
-    try {
-      setIsSaving(true);
-
-      // Update parent form data
-      const updatedFormData = { ...formData };
-
-      // Save based on current step
-      switch (currentStep) {
-        case 0: // About step
-          updatedFormData.about = { ...formData.about, ...stepData };
-          setFormData(updatedFormData);
-
-          // Save to database
-          const aboutPayload = {
-            highlights: updatedFormData.about.highlights.filter(
-              (h: string) => h.trim() !== ""
-            ),
-            description: updatedFormData.about.description.trim(),
-            logoUrl: updatedFormData.about.logo,
-          };
-
-          const aboutResponse = await fetch(
-            `/api/marketplace/${centerId}/about`,
-            {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(aboutPayload),
-              credentials: "include",
-            }
-          );
-
-          if (!aboutResponse.ok) {
-            throw new Error("Failed to save about information");
-          }
-
-          break;
-
-        case 1: // Gallery step
-          updatedFormData.gallery = { ...formData.gallery, ...stepData };
-          setFormData(updatedFormData);
-
-          // Save to database using reorder endpoint (since images are already uploaded individually)
-          if (
-            updatedFormData.gallery.images &&
-            updatedFormData.gallery.images.length > 0
-          ) {
-            const galleryPayload = {
-              images: updatedFormData.gallery.images.map(
-                (img: any, index: number) => ({
-                  id: img.id,
-                  imageUrl: img.imageUrl,
-                  order: index + 1,
-                })
-              ),
-            };
-
-            const galleryResponse = await fetch(
-              `/api/marketplace/${centerId}/images/reorder`,
-              {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(galleryPayload),
-                credentials: "include",
-              }
-            );
-
-            if (!galleryResponse.ok) {
-              throw new Error("Failed to save gallery");
-            }
-          }
-          break;
-
-        case 2: // Opening Times step
-          // FIXED: Handle opening times data structure correctly
-          // stepData comes as { openingHours: {...} } from component
-          updatedFormData.openingTimes = {
-            openingHours: stepData.openingHours,
-          };
-          setFormData(updatedFormData);
-
-          console.log("Saving opening times:", {
-            openingHours: stepData.openingHours,
-          });
-
-          // Save opening times
-          const openingTimesResponse = await fetch(
-            `/api/marketplace/${centerId}/opening-times`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ openingHours: stepData.openingHours }),
-              credentials: "include",
-            }
-          );
-
-          if (!openingTimesResponse.ok) {
-            const errorText = await openingTimesResponse.text();
-            console.error("Opening times save failed:", errorText);
-            throw new Error("Failed to save opening times");
-          }
-          break;
-
-        case 3: // Facilities step
-          // FIXED: Handle facilities data structure correctly
-          // stepData comes as { facilities: [...] } from component
-          updatedFormData.facilities = {
-            facilities: stepData.facilities || [],
-          };
-          setFormData(updatedFormData);
-
-          console.log("Saving facilities:", stepData.facilities);
-
-          // Save facilities (if any selected)
-          if (stepData.facilities && stepData.facilities.length > 0) {
-            const facilitiesPayload = {
-              facilities: stepData.facilities.map((f: any) => f.id),
-            };
-
-            const facilitiesResponse = await fetch(
-              `/api/marketplace/${centerId}/facilities`,
-              {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(facilitiesPayload),
-                credentials: "include",
-              }
-            );
-
-            if (!facilitiesResponse.ok) {
-              const errorText = await facilitiesResponse.text();
-              console.error("Facilities save failed:", errorText);
-              throw new Error("Failed to save facilities");
-            }
-          }
-          break;
-
-        case 4: // Contact step
-          // FIXED: Handle contact data structure correctly
-          // stepData comes as { contact: {...} } from component
-          updatedFormData.contact = {
-            ...formData.contact,
-            ...stepData.contact,
-          };
-          setFormData(updatedFormData);
-
-          console.log("Saving contact:", stepData.contact);
-
-          // Format phone number
-          let formattedPhone = null;
-          if (stepData.contact.phone && stepData.contact.phone.trim()) {
-            const cleanedPhoneNumber = stepData.contact.phone.trim();
-            formattedPhone = cleanedPhoneNumber.startsWith("+")
-              ? cleanedPhoneNumber
-              : `${stepData.contact.countryCode} ${cleanedPhoneNumber}`;
-          }
-
-          // Save contact information
-          const contactPayload = {
-            phone: formattedPhone,
-            email: stepData.contact.email || null,
-            website: stepData.contact.website || null,
-            socials: (stepData.contact.socials || [])
-              .filter((social: any) => social.url?.trim())
-              .map((social: any) => ({
-                platform: social.platform,
-                url: social.url.trim(),
-              })),
-          };
-
-          const contactResponse = await fetch(
-            `/api/marketplace/${centerId}/contact`,
-            {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(contactPayload),
-              credentials: "include",
-            }
-          );
-
-          if (!contactResponse.ok) {
-            const errorText = await contactResponse.text();
-            console.error("Contact save failed:", errorText);
-            throw new Error("Failed to save contact information");
-          }
-          break;
-      }
-
-      // Advance to next step
-      if (currentStep < steps.length - 1) {
-        setCurrentStep((prev) => prev + 1);
-      } else {
-        // Final step - show congratulations and clear persistence
-        setCurrentStep(steps.length);
-        if (typeof window !== "undefined") {
-          sessionStorage.removeItem("marketplace-setup-step");
-        }
-      }
-    } catch (error) {
-      console.error("Save error:", error);
-      setError(
-        `Failed to save ${steps[currentStep]} information. Please try again.`
-      );
+      setToast({
+        visible: true,
+        message: "Failed to save about information",
+        type: "error",
+      });
     } finally {
-      setIsSaving(false);
+      setSaving(false);
     }
   };
 
-  const handleBack = () => {
-    if (currentStep > 0) {
-      setCurrentStep((prev) => prev - 1);
-    } else {
-      // If we're at step 0, close and go back to marketplace
-      router.push("/marketplace");
+  // Form handlers
+  const handleHighlightChange = (
+    index: number,
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const newHighlights = [...localFormData.highlights];
+    newHighlights[index] = e.target.value;
+    setLocalFormData({ ...localFormData, highlights: newHighlights });
+  };
+
+  // Description change handler that clears error when valid
+  const handleDescriptionChange = (
+    e: React.ChangeEvent<HTMLTextAreaElement>
+  ) => {
+    const value = e.target.value;
+    setLocalFormData({ ...localFormData, description: value });
+
+    // Clear error if description becomes valid
+    if (showDescriptionError && value.trim().length >= 10) {
+      setShowDescriptionError(false);
     }
   };
 
-  const handleClose = () => {
-    router.push("/marketplace");
+  const handleLogoUpload = (url: string) => {
+    setLocalFormData({ ...localFormData, logo: url });
   };
 
-  const handleHeaderContinue = () => {
-    if (typeof window !== "undefined") {
-      // @ts-ignore
-      if (
-        window.marketplaceSetup &&
-        window.marketplaceSetup.handleStepContinue
-      ) {
-        // @ts-ignore
-        window.marketplaceSetup.handleStepContinue();
-      }
-    }
+  const handleLogoError = (error: string) => {
+    setToast({
+      visible: true,
+      message: `Upload failed: ${error}`,
+      type: "error",
+    });
   };
 
-  const renderStep = () => {
-    // Loading state while initializing
-    if (isLoading || !centerId) {
-      return (
-        <div className={styles.loading}>
-          <div className={styles.loadingContent}>
-            <div className={styles.loadingSpinner}></div>
-            <p>Setting up your marketplace profile...</p>
-          </div>
-        </div>
-      );
-    }
-
-    // Pass form data and onContinue to each step
-    switch (currentStep) {
-      case 0:
-        return (
-          <div ref={stepRef} className={styles.stepWrapper}>
-            <EditAboutPage
-              centerId={centerId}
-              formData={formData.about}
-              onContinue={handleContinue}
-            />
-          </div>
-        );
-      case 1:
-        return (
-          <div ref={stepRef} className={styles.stepWrapper}>
-            <GalleryEditPage
-              centerId={centerId}
-              formData={formData.gallery}
-              onContinue={handleContinue}
-            />
-          </div>
-        );
-      case 2:
-        return (
-          <div ref={stepRef} className={styles.stepWrapper}>
-            <OpeningTimesEditPage
-              centerId={centerId}
-              formData={formData.openingTimes}
-              onContinue={handleContinue}
-            />
-          </div>
-        );
-      case 3:
-        return (
-          <div ref={stepRef} className={styles.stepWrapper}>
-            <FacilitiesEditPage
-              centerId={centerId}
-              formData={formData.facilities}
-              onContinue={handleContinue}
-            />
-          </div>
-        );
-      case 4:
-        return (
-          <div ref={stepRef} className={styles.stepWrapper}>
-            <ContactEditPage
-              centerId={centerId}
-              formData={formData.contact}
-              onContinue={handleContinue}
-            />
-          </div>
-        );
-      case steps.length:
-        return (
-          <div ref={stepRef}>
-            <Congratulations
-              title="Congratulations"
-              primaryButtonText="Continue"
-              onContinue={() => router.push("/marketplace")}
-              onRemindLater={() => router.push("/marketplace")}
-            />
-          </div>
-        );
-      default:
-        return null;
-    }
-  };
-
-  // Show error state
-  if (error) {
+  // Show loading while ID or data is loading
+  if (!id || isLoadingData) {
     return (
       <div className={styles.container}>
-        <main className={styles.main}>
-          <div className={styles.errorContainer}>
-            <h2>Setup Error</h2>
-            <p>{error}</p>
-            <button
-              onClick={() => router.push("/marketplace")}
-              className={styles.errorButton}
-            >
-              Back to Marketplace
-            </button>
-          </div>
-        </main>
+        <div className={styles.loadingContainer}>
+          <p>Loading...</p>
+        </div>
       </div>
     );
   }
 
+  // Get error message for description
+  const getDescriptionError = () => {
+    if (!showDescriptionError) return null;
+
+    if (localFormData.description.trim().length === 0) {
+      return "Description is required";
+    }
+
+    if (localFormData.description.trim().length < 10) {
+      return "Description must be at least 10 characters";
+    }
+
+    return null;
+  };
+
   return (
     <div className={styles.container}>
-      {/* Header - shows for all steps except congratulations */}
-      {currentStep < steps.length && (
-        <LocationDetailsHeader
-          currentStep={currentStep}
-          totalSteps={steps.length}
-          steps={steps}
-          // FIXED: Step 1 (index 0) should show close button ('x')
-          onClose={currentStep === 0 ? handleClose : undefined}
-          // FIXED: All other steps (index > 0) should show back button
-          // BUG WAS HERE: onBack was incorrectly set to handleClose instead of handleBack
-          onBack={currentStep > 0 ? handleBack : undefined}
-          onContinue={handleHeaderContinue}
-          showContinue={true}
-          isLoading={isSaving}
+      {/* Only show ActionHeader in standalone edit mode */}
+      {!isSetupMode && (
+        <ActionHeader
+          primaryAction={handleSave}
+          secondaryAction={() => router.push("/marketplace")}
+          isProcessing={saving}
         />
       )}
 
-      <main className={styles.main}>
-        {/* Step Content */}
-        <div className={styles.content}>{renderStep()}</div>
-      </main>
-    </div>
-  );
-}
+      <div className={styles.formContainer}>
+        <TitleDescription
+          title="About"
+          description="Please include your business description, key facility highlights, and your logo."
+        />
 
-export default function MarketplaceSetupPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+        {/* Description - Show error when showDescriptionError is true */}
+        <div className={styles.section}>
+          <label className={styles.label}>Description*</label>
+          <TextArea
+            id="description"
+            placeholder="Enter description (minimum 10 characters)."
+            value={localFormData.description}
+            onChange={handleDescriptionChange}
+            maxLength={500}
+            showCharCount={true}
+            required
+            error={getDescriptionError()}
+          />
         </div>
-      }
-    >
-      <MarketplaceSetupContent />
-    </Suspense>
+
+        {/* Highlights */}
+        <div className={styles.section}>
+          <label className={styles.label}>Highlights</label>
+          <div className={styles.highlightsContainer}>
+            {localFormData.highlights.map((highlight, index) => (
+              <TextInput
+                key={index}
+                id={`highlight-${index}`}
+                label={`Highlight ${index + 1}`}
+                value={highlight}
+                onChange={(e) => handleHighlightChange(index, e)}
+                placeholder={`Enter highlight ${index + 1}`}
+                maxLength={100}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Logo */}
+        <div className={styles.section}>
+          <label className={styles.label}>Logo</label>
+          <ImageUploader
+            folder={folder}
+            preset={preset}
+            onUpload={handleLogoUpload}
+            onError={handleLogoError}
+            initialImage={localFormData.logo}
+            aspectRatio="1:1"
+            showProgress={true}
+          />
+        </div>
+      </div>
+
+      {/* Only render Toast when visible */}
+      {toast.visible && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast((prev) => ({ ...prev, visible: false }))}
+        />
+      )}
+    </div>
   );
 }

@@ -10,74 +10,44 @@ import ActionHeader from "@/components/layouts/headers/ActionHeader";
 import Toast from "@/components/ui/Toast";
 import styles from "./page.module.css";
 import { getCenterLogoProps } from "@/lib/cloudinary/upload-helpers";
-import { CloudinaryFolder, CloudinaryPreset } from "@/types/cloudinary";
 
+// FIXED: Only accept params as required by Next.js pages
 interface EditAboutPageProps {
-  centerId?: string;
-  formData?: {
-    highlights: string[];
-    description: string;
-    logo: string | null;
-  };
-  onContinue?: (data: any) => void;
-  // Next.js page props
-  params?: Promise<{ id: string }>;
+  params: Promise<{ id: string }>;
 }
 
-export default function EditAboutPage({
-  centerId,
-  formData: initialFormData,
-  onContinue,
-  params,
-}: EditAboutPageProps) {
-  // Determine if we're in setup mode (parent manages data) or standalone edit mode
-  const isSetupMode = !!centerId && !!onContinue;
-
-  // For standalone mode, we need to get ID from params
-  const [standaloneId, setStandaloneId] = useState<string | null>(null);
-  const id = isSetupMode ? centerId : standaloneId;
-
+export default function EditAboutPage({ params }: EditAboutPageProps) {
   const router = useRouter();
 
-  // Initialize standalone mode ID
-  useEffect(() => {
-    if (!isSetupMode && params) {
-      const getId = async () => {
-        const resolvedParams = await params;
-        setStandaloneId(resolvedParams.id);
-      };
-      getId();
-    }
-  }, [params, isSetupMode]);
+  // Get the ID from params
+  const [id, setId] = useState<string | null>(null);
 
-  // Form state - initialized from parent data in setup mode
+  // Initialize ID from params
+  useEffect(() => {
+    const getId = async () => {
+      const resolvedParams = await params;
+      setId(resolvedParams.id);
+    };
+    getId();
+  }, [params]);
+
+  // Form state - default empty values
   const [localFormData, setLocalFormData] = useState({
-    highlights: initialFormData?.highlights || ["", "", ""],
-    description: initialFormData?.description || "",
-    logo: initialFormData?.logo || null,
+    highlights: ["", "", ""],
+    description: "",
+    logo: null as string | null,
   });
 
   // Loading state for data fetching
-  const [isLoadingData, setIsLoadingData] = useState(false);
+  const [isLoadingData, setIsLoadingData] = useState(true);
 
   // Track if validation was attempted and description error
   const [showDescriptionError, setShowDescriptionError] = useState(false);
 
-  // Update local form data when parent data changes
-  useEffect(() => {
-    if (isSetupMode && initialFormData) {
-      setLocalFormData({
-        highlights: initialFormData.highlights,
-        description: initialFormData.description,
-        logo: initialFormData.logo,
-      });
-    }
-  }, [initialFormData, isSetupMode]);
-
-  // Fetch existing data in setup mode to prefill form
+  // Fetch existing data when ID is available
   useEffect(() => {
     const fetchExistingData = async () => {
-      if (!id || !isSetupMode) return;
+      if (!id) return;
 
       try {
         setIsLoadingData(true);
@@ -104,6 +74,7 @@ export default function EditAboutPage({
           });
         }
       } catch (error) {
+        console.error("Error fetching about data:", error);
         // Continue with empty form on error
       } finally {
         setIsLoadingData(false);
@@ -111,14 +82,14 @@ export default function EditAboutPage({
     };
 
     fetchExistingData();
-  }, [id, isSetupMode]);
+  }, [id]);
 
   // Cloudinary configuration
   const cloudinaryProps = id
     ? getCenterLogoProps(id)
     : {
-        folder: undefined,
-        preset: undefined,
+        folder: "logos",
+        preset: "business_images",
       };
   const { folder, preset } = cloudinaryProps;
 
@@ -135,44 +106,19 @@ export default function EditAboutPage({
     return localFormData.description.trim().length >= 10;
   };
 
-  // Handle continue with basic validation
-  const handleContinue = () => {
-    if (isSetupMode && onContinue) {
-      // Check if description is valid
-      if (!isDescriptionValid()) {
-        setShowDescriptionError(true);
-        return; // Don't continue
-      }
-
-      // Clear error and continue
-      setShowDescriptionError(false);
-      onContinue(localFormData);
-    }
-  };
-
-  // Set up window function for continue button
-  useEffect(() => {
-    if (isSetupMode) {
-      // @ts-ignore
-      window.marketplaceSetup = window.marketplaceSetup || {};
-      // @ts-ignore
-      window.marketplaceSetup.handleStepContinue = handleContinue;
-
-      return () => {
-        // @ts-ignore
-        if (window.marketplaceSetup) {
-          delete window.marketplaceSetup.handleStepContinue;
-        }
-      };
-    }
-  }, [localFormData, isSetupMode]);
-
   // Save function for standalone edit mode
   const handleSave = async () => {
-    if (!id || saving || isSetupMode) return;
+    if (!id || saving) return;
+
+    // Validate first
+    if (!isDescriptionValid()) {
+      setShowDescriptionError(true);
+      return;
+    }
 
     try {
       setSaving(true);
+      setShowDescriptionError(false);
 
       const payload = {
         highlights: localFormData.highlights.filter((h) => h.trim() !== ""),
@@ -197,7 +143,7 @@ export default function EditAboutPage({
         type: "success",
       });
 
-      // Redirect after delay in standalone mode
+      // Redirect after delay
       setTimeout(() => {
         router.push("/marketplace");
       }, 1500);
@@ -247,23 +193,12 @@ export default function EditAboutPage({
     });
   };
 
-  // Don't render until we have an ID
-  if (!id) {
+  // Show loading while ID or data is loading
+  if (!id || isLoadingData) {
     return (
       <div className={styles.container}>
         <div className={styles.loadingContainer}>
           <p>Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Show loading while fetching existing data in setup mode
-  if (isSetupMode && isLoadingData) {
-    return (
-      <div className={styles.container}>
-        <div className={styles.loadingContainer}>
-          <p>Loading existing data...</p>
         </div>
       </div>
     );
@@ -286,14 +221,11 @@ export default function EditAboutPage({
 
   return (
     <div className={styles.container}>
-      {/* Only show ActionHeader in standalone edit mode */}
-      {!isSetupMode && (
-        <ActionHeader
-          primaryAction={handleSave}
-          secondaryAction={() => router.push("/marketplace")}
-          isProcessing={saving}
-        />
-      )}
+      <ActionHeader
+        primaryAction={handleSave}
+        secondaryAction={() => router.push("/marketplace")}
+        isProcessing={saving}
+      />
 
       <div className={styles.formContainer}>
         <TitleDescription
@@ -338,13 +270,13 @@ export default function EditAboutPage({
         <div className={styles.section}>
           <label className={styles.label}>Logo</label>
           <ImageUploader
-            imageUrl={localFormData.logo}
-            onImageUpload={handleLogoUpload}
-            onError={handleLogoError}
             folder={folder}
             preset={preset}
-            alt="Business logo"
-            label="Logo"
+            onUpload={handleLogoUpload}
+            onError={handleLogoError}
+            initialImage={localFormData.logo}
+            aspectRatio="1:1"
+            showProgress={true}
           />
         </div>
       </div>

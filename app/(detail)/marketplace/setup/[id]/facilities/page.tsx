@@ -21,38 +21,34 @@ interface FacilityTag extends Facility {
 }
 
 interface FacilitiesPageProps {
+  params: Promise<{ id: string }>;
   centerId?: string;
-  formData?: any; // TODO: Define proper facilities form data type
+  formData?: any;
   onContinue?: (data: any) => void;
-  // Legacy props for standalone edit mode
-  params?: Promise<{ id: string }>;
 }
 
 export default function FacilitiesPage({
-  centerId,
-  formData: initialFormData,
-  onContinue,
   params,
+  centerId = undefined,
+  formData: initialFormData = undefined,
+  onContinue = undefined,
 }: FacilitiesPageProps) {
-  // Determine if we're in setup mode (parent manages data) or standalone edit mode
-  const isSetupMode = !!centerId && !!onContinue;
-
-  // For standalone mode, we need to get ID from params
-  const [standaloneId, setStandaloneId] = useState<string | null>(null);
-  const locationId = isSetupMode ? centerId : standaloneId;
-
   const router = useRouter();
 
-  // Initialize standalone mode ID
+  // Get ID either from centerId prop (setup mode) or params (page mode)
+  const [id, setId] = useState<string | null>(centerId || null);
+  const isSetupMode = !!centerId && !!onContinue;
+
+  // Initialize ID from params if not in setup mode
   useEffect(() => {
-    if (!isSetupMode && params) {
+    if (!centerId) {
       const getId = async () => {
         const resolvedParams = await params;
-        setStandaloneId(resolvedParams.id);
+        setId(resolvedParams.id);
       };
       getId();
     }
-  }, [params, isSetupMode]);
+  }, [params, centerId]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFacilities, setSelectedFacilities] = useState<Facility[]>([]);
@@ -69,19 +65,27 @@ export default function FacilitiesPage({
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Update selected facilities when parent data changes (setup mode)
+  useEffect(() => {
+    if (isSetupMode && initialFormData && initialFormData.facilities) {
+      setSelectedFacilities(initialFormData.facilities);
+    }
+  }, [initialFormData, isSetupMode]);
+
   // Fetch existing data in setup mode to prefill form
   useEffect(() => {
     const fetchExistingData = async () => {
-      if (!locationId || !isSetupMode) return;
+      if (!id) return;
+
+      // In setup mode, only fetch if we don't have initial data
+      if (isSetupMode && initialFormData) return;
 
       try {
         setIsLoadingData(true);
         setError(null);
 
         // Fetch facility tags from the Facilities group
-        const tagsResponse = await fetch(
-          `/api/marketplace/${locationId}/facilities`
-        );
+        const tagsResponse = await fetch(`/api/marketplace/${id}/facilities`);
 
         if (tagsResponse.ok) {
           const tagsData: FacilityTag[] = await tagsResponse.json();
@@ -99,59 +103,16 @@ export default function FacilitiesPage({
           );
         }
       } catch (error) {
+        console.error("Error fetching facilities data:", error);
         // Continue with empty form on error
       } finally {
         setIsLoadingData(false);
-      }
-    };
-
-    fetchExistingData();
-  }, [locationId, isSetupMode]);
-
-  // Fetch data for standalone mode
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!locationId || isSetupMode) return;
-
-      try {
-        setIsLoading(true);
-        setError(null);
-
-        // Fetch facility tags from the Facilities group
-        const tagsResponse = await fetch(
-          `/api/marketplace/${locationId}/facilities`
-        );
-
-        if (!tagsResponse.ok) {
-          throw new Error("Failed to fetch facility tags");
-        }
-
-        const tagsData: FacilityTag[] = await tagsResponse.json();
-        setAvailableFacilities(tagsData);
-        setFilteredFacilities(tagsData);
-
-        // Pre-select existing facilities
-        const selectedFacilitiesList = tagsData.filter((tag) => tag.isSelected);
-        setSelectedFacilities(
-          selectedFacilitiesList.map(
-            ({ isSelected, ...rest }) => rest as Facility
-          )
-        );
-      } catch (error) {
-        setError(
-          error instanceof Error
-            ? error.message
-            : "An unexpected error occurred"
-        );
-      } finally {
         setIsLoading(false);
       }
     };
 
-    if (locationId && !isSetupMode) {
-      fetchData();
-    }
-  }, [locationId, isSetupMode]);
+    fetchExistingData();
+  }, [id, isSetupMode, initialFormData]);
 
   // Handle continue for setup mode
   const handleContinue = () => {
@@ -160,7 +121,7 @@ export default function FacilitiesPage({
     }
   };
 
-  // FIXED: Expose handleContinue to window for header button using new pattern
+  // Set up window function for continue button
   useEffect(() => {
     if (isSetupMode) {
       // @ts-ignore
@@ -215,24 +176,21 @@ export default function FacilitiesPage({
   };
 
   const handleSave = async () => {
-    if (!locationId || isSubmitting || isSetupMode) return;
+    if (!id || isSubmitting || isSetupMode) return;
 
     try {
       setIsSubmitting(true);
       setError(null);
 
-      const response = await fetch(
-        `/api/marketplace/${locationId}/facilities`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            facilities: selectedFacilities.map((facility) => facility.id),
-          }),
-        }
-      );
+      const response = await fetch(`/api/marketplace/${id}/facilities`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          facilities: selectedFacilities.map((facility) => facility.id),
+        }),
+      });
 
       if (!response.ok) {
         throw new Error("Failed to update facilities");
@@ -240,9 +198,9 @@ export default function FacilitiesPage({
 
       setToast({ message: "Facilities updated successfully", type: "success" });
 
-      // Navigate back to location detail page after a short delay
+      // Navigate back to marketplace after a short delay
       setTimeout(() => {
-        router.push(`/marketplace`);
+        router.push("/marketplace");
       }, 1500);
     } catch (error) {
       console.error("Error saving facilities:", error);
@@ -261,23 +219,12 @@ export default function FacilitiesPage({
     }
   };
 
-  // Don't render until we have an ID
-  if (!locationId) {
+  // Show loading while ID or data is loading
+  if (!id || isLoading || isLoadingData) {
     return (
       <div className={styles.container}>
         <div className={styles.loadingContainer}>
-          <p>Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Show loading while fetching existing data in setup mode
-  if (isSetupMode && isLoadingData) {
-    return (
-      <div className={styles.container}>
-        <div className={styles.loadingContainer}>
-          <p>Loading existing data...</p>
+          <p>Loading facilities...</p>
         </div>
       </div>
     );
