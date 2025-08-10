@@ -1,4 +1,4 @@
-// middleware.ts - COMPLETE AND WORKING VERSION
+// middleware.ts - FIXED: No atob() for Edge Runtime
 import { NextResponse } from "next/server";
 import { NextRequest } from "next/server";
 import { SecurityHeaders } from "./lib/middleware/SecurityHeaders";
@@ -41,16 +41,15 @@ class EdgeAuthChecker {
           return null;
         }
 
-        // Decode the payload (middle part) using Web APIs
+        // FIXED: Replace atob() with Buffer.from() for Edge Runtime
         const base64Payload = parts[1];
-        // Add padding if needed
-        const paddedPayload =
-          base64Payload + "===".slice((base64Payload.length + 3) % 4);
+        // Replace URL-safe chars with base64 chars
+        const base64 = base64Payload.replace(/-/g, "+").replace(/_/g, "/");
+        // Add padding if missing
+        const padded = base64 + "===".slice((base64.length + 3) % 4);
 
-        // Use atob for base64 decoding (available in Edge Runtime)
-        const decodedPayload = atob(
-          paddedPayload.replace(/-/g, "+").replace(/_/g, "/")
-        );
+        // Decode base64 to string in Edge Runtime (Buffer is available)
+        const decodedPayload = Buffer.from(padded, "base64").toString("utf-8");
         const payload = JSON.parse(decodedPayload);
 
         // Check if token is expired
