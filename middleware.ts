@@ -1,4 +1,3 @@
-// middleware.ts - FIXED syntax error
 import { NextResponse } from "next/server";
 import { NextRequest } from "next/server";
 import { SecurityHeaders } from "./lib/middleware/SecurityHeaders";
