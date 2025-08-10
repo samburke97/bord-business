@@ -35,7 +35,6 @@ export async function runCleanupJob() {
 // API endpoint version
 // app/api/admin/cleanup-pending/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { cleanupPendingUsers } from "@/scripts/cleanup-pending-users";
 
 export async function POST(request: NextRequest) {
   try {

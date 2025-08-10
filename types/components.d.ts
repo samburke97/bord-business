@@ -66,3 +66,29 @@ export interface JourneyUpdateResponse {
     totalTime: number;
   };
 }
+
+export interface SportItem {
+  id: string;
+  name: string;
+  imageUrl?: string | null;
+}
+
+// Fix PhoneInputProps
+export interface PhoneInputProps {
+  id?: string;
+  label?: string;
+  value: string;
+  countryCode: string;
+  onChange: (value: string) => void;
+  onCountryChange: (countryCode: string) => void;
+  placeholder?: string;
+  error?: string;
+  required?: boolean;
+  disabled?: boolean;
+}
+
+// Fix missing Next.js page props
+export interface PageProps {
+  params: Promise<{ [key: string]: string | string[] }>;
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
+}

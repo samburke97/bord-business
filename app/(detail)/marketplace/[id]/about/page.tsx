@@ -11,6 +11,10 @@ import ActionHeader from "@/components/layouts/headers/ActionHeader";
 import Toast from "@/components/ui/Toast";
 import styles from "../../setup/[id]/about/page.module.css";
 import { getCenterLogoProps } from "@/lib/cloudinary/upload-helpers";
+import {
+  CloudinaryFolder,
+  CloudinaryPreset,
+} from "@/lib/cloudinary/CloudinaryUploader";
 
 interface AboutPageProps {
   params: Promise<{ id: string }>;
@@ -88,8 +92,8 @@ export default function AboutPage({ params }: AboutPageProps) {
   const cloudinaryProps = id
     ? getCenterLogoProps(id)
     : {
-        folder: "logos",
-        preset: "business_images",
+        folder: "logos" as CloudinaryFolder,
+        preset: "business_images" as CloudinaryPreset,
       };
   const { folder, preset } = cloudinaryProps;
 
@@ -270,13 +274,13 @@ export default function AboutPage({ params }: AboutPageProps) {
         <div className={styles.section}>
           <label className={styles.label}>Logo</label>
           <ImageUploader
+            imageUrl={localFormData.logo}
+            onImageUpload={handleLogoUpload}
+            onError={handleLogoError}
             folder={folder}
             preset={preset}
-            onUpload={handleLogoUpload}
-            onError={handleLogoError}
-            initialImage={localFormData.logo}
-            aspectRatio="1:1"
-            showProgress={true}
+            alt="Business logo"
+            label="Logo"
           />
         </div>
       </div>

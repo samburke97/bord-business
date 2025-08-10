@@ -238,13 +238,13 @@ export default function EditAboutPage({
         <div className={styles.section}>
           <label className={styles.label}>Logo</label>
           <ImageUploader
+            imageUrl={localFormData.logo}
+            onImageUpload={handleLogoUpload}
+            onError={handleLogoError}
             folder={folder}
             preset={preset}
-            onUpload={handleLogoUpload}
-            onError={handleLogoError}
-            initialImage={localFormData.logo}
-            aspectRatio="1:1"
-            showProgress={true}
+            alt="Business logo"
+            label="Logo"
           />
         </div>
       </div>

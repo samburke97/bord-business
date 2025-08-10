@@ -20,25 +20,43 @@ interface LocationImage {
   order?: number;
 }
 
-// FIXED: Only accept params as required by Next.js pages
+// Support both standalone mode (with params) and setup mode (with centerId, formData, onContinue)
 interface GalleryEditPageProps {
-  params: Promise<{ id: string }>;
+  // Setup mode props
+  centerId?: string;
+  formData?: {
+    images: Array<{ id: string; imageUrl: string; order: number }>;
+  };
+  onContinue?: (data: any) => void;
+  // Standalone mode props
+  params?: Promise<{ id: string }>;
 }
 
-export default function GalleryEditPage({ params }: GalleryEditPageProps) {
+export default function GalleryEditPage({
+  centerId,
+  formData: initialFormData,
+  onContinue,
+  params,
+}: GalleryEditPageProps) {
   const router = useRouter();
 
-  // Get the ID from params
-  const [id, setId] = useState<string | null>(null);
+  // Determine if we're in setup mode (parent manages data) or standalone edit mode
+  const isSetupMode = !!centerId && !!onContinue;
 
-  // Initialize ID from params
+  // For standalone mode, we need to get ID from params
+  const [standaloneId, setStandaloneId] = useState<string | null>(null);
+  const id = isSetupMode ? centerId : standaloneId;
+
+  // Initialize standalone mode ID
   useEffect(() => {
-    const getId = async () => {
-      const resolvedParams = await params;
-      setId(resolvedParams.id);
-    };
-    getId();
-  }, [params]);
+    if (!isSetupMode && params) {
+      const getId = async () => {
+        const resolvedParams = await params;
+        setStandaloneId(resolvedParams.id);
+      };
+      getId();
+    }
+  }, [params, isSetupMode]);
 
   // Reference to the ImageUploader component
   const uploaderRef = useRef<ButtonImageUploaderRef>(null);
@@ -48,11 +66,13 @@ export default function GalleryEditPage({ params }: GalleryEditPageProps) {
     ? getCenterGalleryImageProps(id)
     : { folder: undefined, preset: undefined };
 
-  // Form state - default empty values
-  const [images, setImages] = useState<LocationImage[]>([]);
+  // Form state - initialized from parent data in setup mode
+  const [images, setImages] = useState<LocationImage[]>(
+    initialFormData?.images || []
+  );
 
   // Loading and UI state
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!isSetupMode); // Don't show loading in setup mode initially
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -71,9 +91,47 @@ export default function GalleryEditPage({ params }: GalleryEditPageProps) {
   const [draggedImage, setDraggedImage] = useState<LocationImage | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
-  // Fetch existing images when ID is available
+  // Update local form data when parent data changes
+  useEffect(() => {
+    if (initialFormData) {
+      setImages(initialFormData.images || []);
+    }
+  }, [initialFormData]);
+
+  // Fetch existing data in setup mode to prefill form
+  useEffect(() => {
+    const fetchExistingData = async () => {
+      if (!id || !isSetupMode) return;
+
+      try {
+        const response = await fetch(`/api/marketplace/${id}/images`, {
+          credentials: "include",
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+
+          // Ensure each image has a numerical index for ordering
+          const imagesWithOrder = data.map(
+            (img: LocationImage, index: number) => ({
+              ...img,
+              order: index + 1,
+            })
+          );
+
+          setImages(imagesWithOrder);
+        }
+      } catch (error) {
+        // Continue with empty form on error
+      }
+    };
+
+    fetchExistingData();
+  }, [id, isSetupMode]);
+
+  // Fetch existing images when ID is available (standalone mode)
   const fetchImages = useCallback(async () => {
-    if (!id) return;
+    if (!id || isSetupMode) return;
 
     try {
       setLoading(true);
@@ -99,7 +157,7 @@ export default function GalleryEditPage({ params }: GalleryEditPageProps) {
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, isSetupMode]);
 
   useEffect(() => {
     if (id) {
@@ -246,6 +304,19 @@ export default function GalleryEditPage({ params }: GalleryEditPageProps) {
     setDragOverIndex(null);
   };
 
+  // Continue function for setup mode
+  const handleContinue = () => {
+    if (!onContinue) return;
+
+    // Pass the current images data to the parent
+    onContinue({
+      images: images.map((img, index) => ({
+        ...img,
+        order: index + 1,
+      })),
+    });
+  };
+
   // Save function for standalone edit mode
   const handleSave = async () => {
     if (!id || loading) return;
@@ -306,9 +377,9 @@ export default function GalleryEditPage({ params }: GalleryEditPageProps) {
   return (
     <>
       <ActionHeader
-        primaryAction={handleSave}
+        primaryAction={isSetupMode ? handleContinue : handleSave}
         secondaryAction={handleClose}
-        primaryLabel="Save"
+        primaryLabel={isSetupMode ? "Continue" : "Save"}
         secondaryLabel="Close"
         variant="edit"
       />

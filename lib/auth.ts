@@ -70,13 +70,15 @@ export const authOptions: NextAuthOptions = {
           } else {
             // Create new user
             const newUser = await OAuthService.createNewUser(user, account);
-            Object.assign(user, {
-              id: newUser.id,
-              globalRole: newUser.globalRole,
-              isVerified: newUser.isVerified,
-              isActive: newUser.isActive,
-              status: newUser.status,
-            });
+            if (newUser) {
+              Object.assign(user, {
+                id: newUser.id,
+                globalRole: newUser.globalRole,
+                isVerified: newUser.isVerified,
+                isActive: newUser.isActive,
+                status: newUser.status,
+              });
+            }
           }
         }
         return true;
@@ -97,7 +99,7 @@ export const authOptions: NextAuthOptions = {
     },
 
     async jwt({ token, user, account, trigger }) {
-      return SessionService.buildJWT(token, user, account, trigger);
+      return SessionService.buildJWT(token, user, account, trigger || "signIn");
     },
 
     async redirect({ url, baseUrl }) {

@@ -7,5 +7,5 @@ interface DetailsPageProps {
 }
 
 export default function DetailsPage({ params }: DetailsPageProps) {
-  return <DetailsEditPage params={params} />;
+  return <DetailsEditPage />;
 }

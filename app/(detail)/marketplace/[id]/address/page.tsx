@@ -7,5 +7,5 @@ interface AddressPageProps {
 }
 
 export default function AddressPage({ params }: AddressPageProps) {
-  return <AddressEditPage params={params} />;
+  return <AddressEditPage />;
 }

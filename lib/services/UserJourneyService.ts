@@ -340,7 +340,7 @@ export class UserJourneyService {
 
       if (typeof window === "undefined") {
         console.log(`Server: Session update triggered for user ${userId}`);
-        process.emit("journey-session-update", { userId, cacheData });
+        // Note: Server-side session updates are handled by NextAuth callbacks
       }
 
       if (typeof window !== "undefined") {

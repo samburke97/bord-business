@@ -52,7 +52,7 @@ export function useJourneyUpdate() {
     if (typeof window !== "undefined") {
       window.addEventListener(
         "journey-session-update",
-        handleSessionUpdate as EventListener
+        handleSessionUpdate as unknown as EventListener
       );
     }
 
@@ -60,7 +60,7 @@ export function useJourneyUpdate() {
       if (typeof window !== "undefined") {
         window.removeEventListener(
           "journey-session-update",
-          handleSessionUpdate as EventListener
+          handleSessionUpdate as unknown as EventListener
         );
       }
     };
@@ -126,7 +126,7 @@ export function useJourneyUpdate() {
           step: changes.currentStep,
           intention: changes.intention,
           hasViewedSuccess: changes.hasViewedSuccess,
-          onboardingData: changes.onboardingData,
+          // onboardingData: changes.onboardingData, // Removed - not part of UserJourneyState
 
           // Convert dates to ISO strings for JSON serialization
           emailVerifiedAt: changes.emailVerifiedAt?.toISOString(),

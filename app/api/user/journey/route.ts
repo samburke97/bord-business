@@ -253,7 +253,11 @@ export async function POST(
       {
         success: false,
         message,
-        performance: { totalTime },
+        performance: {
+          databaseTime: 0,
+          sessionTime: 0,
+          totalTime,
+        },
       },
       { status }
     );

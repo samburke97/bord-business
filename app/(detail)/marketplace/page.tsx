@@ -7,9 +7,9 @@ export default function MarketplaceDetailPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // Redirect to marketplace setup
     router.push("/marketplace/setup");
   }, [router]);
 
-  return null; // This page will redirect, so no content needed
+  return null;
 }
+

@@ -59,7 +59,6 @@ export default function MarketplacePage() {
 
       // If user needs business setup, they haven't completed marketplace setup
       if (data.needsSetup || !data.business) {
-        console.log("❌ User needs business setup or no business found");
         setHasCompletedSetup(false);
         return;
       }
@@ -77,12 +76,9 @@ export default function MarketplacePage() {
         // (we can add more validation later if needed)
         setHasCompletedSetup(true);
       } else {
-        console.log("❌ No centers found for business");
         setHasCompletedSetup(false);
       }
     } catch (error) {
-      console.error("❌ Error checking setup status:", error);
-      setError((error as Error).message);
       setHasCompletedSetup(false);
     } finally {
       setIsInitialLoading(false);

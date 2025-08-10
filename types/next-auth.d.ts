@@ -11,6 +11,9 @@ declare module "next-auth" {
       status: string;
       hasBusinessConnection: boolean;
       isProfileComplete: boolean;
+      firstName?: string;
+      lastName?: string;
+      lastJourneyRefresh?: number;
     } & DefaultSession["user"];
   }
 

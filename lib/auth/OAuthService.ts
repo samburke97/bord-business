@@ -57,7 +57,7 @@ export class OAuthService {
     const hasOtherOAuthProviders = existingUser.accounts.length > 0;
 
     if (hasEmailCredentials || hasOtherOAuthProviders) {
-      const existingMethods = [];
+      const existingMethods: string[] = [];
       if (hasEmailCredentials) existingMethods.push("email");
       existingUser.accounts.forEach((acc) => {
         if (!existingMethods.includes(acc.provider)) {
@@ -136,8 +136,15 @@ export class OAuthService {
     } catch (error) {
       // Handle concurrent creation
       if (
-        error.code === "P2002" ||
-        error.message.includes("Unique constraint")
+        (error &&
+          typeof error === "object" &&
+          "code" in error &&
+          error.code === "P2002") ||
+        (error &&
+          typeof error === "object" &&
+          "message" in error &&
+          typeof error.message === "string" &&
+          error.message.includes("Unique constraint"))
       ) {
         console.log("🔄 Concurrent creation detected, retrying...");
         return await this.handleExistingUser(user, account);

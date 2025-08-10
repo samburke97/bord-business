@@ -128,7 +128,7 @@ export const authRateLimit = createRateLimit({
   maxRequests: 5, // 5 attempts per window
   blockDurationMs: 30 * 60 * 1000, // 30 min block after limit
   keyGenerator: (req) =>
-    `auth:${req.ip || req.headers.get("x-forwarded-for") || "unknown"}`,
+    `auth:${req.headers.get("x-forwarded-for") || "unknown"}`,
 });
 
 export const passwordResetRateLimit = createRateLimit({
@@ -136,14 +136,14 @@ export const passwordResetRateLimit = createRateLimit({
   maxRequests: 3, // 3 reset attempts per hour
   blockDurationMs: 24 * 60 * 60 * 1000, // 24 hour block
   keyGenerator: (req) =>
-    `reset:${req.ip || req.headers.get("x-forwarded-for") || "unknown"}`,
+    `reset:${req.headers.get("x-forwarded-for") || "unknown"}`,
 });
 
 export const verificationRateLimit = createRateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   maxRequests: 3, // 3 verification emails per window
   keyGenerator: (req) =>
-    `verify:${req.ip || req.headers.get("x-forwarded-for") || "unknown"}`,
+    `verify:${req.headers.get("x-forwarded-for") || "unknown"}`,
 });
 
 // ============================================================================

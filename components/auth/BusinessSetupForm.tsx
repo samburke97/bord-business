@@ -33,6 +33,7 @@ interface FormErrors {
   firstName?: string;
   lastName?: string;
   dateOfBirth?: string;
+  countryCode?: string;
   mobile?: string;
   password?: string;
   confirmPassword?: string;
