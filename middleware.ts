@@ -1,4 +1,4 @@
-// middleware.ts - FIXED: Use EdgeAuthChecker instead of AuthChecker
+// middleware.ts - COMPLETE AND WORKING VERSION
 import { NextResponse } from "next/server";
 import { NextRequest } from "next/server";
 import { SecurityHeaders } from "./lib/middleware/SecurityHeaders";
@@ -115,7 +115,7 @@ export async function middleware(req: NextRequest) {
     // Apply security headers
     SecurityHeaders.apply(response);
 
-    // FIXED: Use EdgeAuthChecker instead of AuthChecker
+    // Get user info using Edge-compatible method
     const userInfo = await EdgeAuthChecker.getUserInfo(req);
 
     // BLOCK: ACTIVE users from accessing signup routes
@@ -149,7 +149,7 @@ export async function middleware(req: NextRequest) {
       return response;
     }
 
-    // FIXED: Complex inactive user checks
+    // FIXED: Complex inactive user checks - COMPLETE CONDITION
     if (
       userInfo.isActive === false &&
       !(
