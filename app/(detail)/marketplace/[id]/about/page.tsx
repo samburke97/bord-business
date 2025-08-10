@@ -9,7 +9,7 @@ import TextArea from "@/components/ui/TextArea";
 import ImageUploader from "@/lib/actions/ImageUploader";
 import ActionHeader from "@/components/layouts/headers/ActionHeader";
 import Toast from "@/components/ui/Toast";
-import styles from "../../setup/[id]/about/page.module.css";
+import styles from "@/components/marketplace/setup/[id]/about/page.module.css";
 import { getCenterLogoProps } from "@/lib/cloudinary/upload-helpers";
 import {
   CloudinaryFolder,

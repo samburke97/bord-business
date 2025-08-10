@@ -20,8 +20,6 @@ const nextConfig = {
     ],
   },
 
-  serverComponentsExternalPackages: ["@prisma/client", "bcrypt"],
-
   env: {
     NEXTAUTH_URL: process.env.NEXTAUTH_URL,
   },
