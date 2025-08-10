@@ -1,6 +1,6 @@
 "use client";
 
-import OpeningTimesEditPage from "../../setup/[id]/opening-times/page";
+import OpeningTimesEditPage from "../../../../../components/marketplace/setup/[id]/opening-times/page";
 
 interface OpeningTimesPageProps {
   params: Promise<{ id: string }>;

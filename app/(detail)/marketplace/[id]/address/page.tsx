@@ -1,6 +1,6 @@
 "use client";
 
-import AddressEditPage from "../../setup/[id]/address/page";
+import AddressEditPage from "../../../../../components/marketplace/setup/[id]/address/page";
 
 interface AddressPageProps {
   params: Promise<{ id: string }>;

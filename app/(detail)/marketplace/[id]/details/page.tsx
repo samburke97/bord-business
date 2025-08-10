@@ -1,6 +1,6 @@
 "use client";
 
-import DetailsEditPage from "../../setup/[id]/details/page";
+import DetailsEditPage from "../../../../../components/marketplace/setup/[id]/details/page";
 
 interface DetailsPageProps {
   params: Promise<{ id: string }>;

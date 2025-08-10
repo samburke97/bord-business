@@ -1,56 +1,31 @@
-// app/(detail)/marketplace/setup/[id]/about/page.tsx
+// app/(detail)/marketplace/setup/[id]/about/page.tsx - COMPONENT VERSION FOR SETUP FLOW
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import TitleDescription from "@/components/ui/TitleDescription";
 import TextInput from "@/components/ui/TextInput";
 import TextArea from "@/components/ui/TextArea";
 import ImageUploader from "@/lib/actions/ImageUploader";
-import ActionHeader from "@/components/layouts/headers/ActionHeader";
 import Toast from "@/components/ui/Toast";
 import styles from "./page.module.css";
 import { getCenterLogoProps } from "@/lib/cloudinary/upload-helpers";
 
 interface EditAboutPageProps {
-  centerId?: string;
-  formData?: {
+  centerId: string;
+  formData: {
     highlights: string[];
     description: string;
     logo: string | null;
   };
-  onContinue?: (data: any) => void;
-  // Legacy props for standalone edit mode
-  params?: Promise<{ id: string }>;
+  onContinue: (data: any) => void;
 }
 
 export default function EditAboutPage({
   centerId,
   formData: initialFormData,
   onContinue,
-  params,
 }: EditAboutPageProps) {
-  // Determine if we're in setup mode (parent manages data) or standalone edit mode
-  const isSetupMode = !!centerId && !!onContinue;
-
-  // For standalone mode, we need to get ID from params
-  const [standaloneId, setStandaloneId] = useState<string | null>(null);
-  const id = isSetupMode ? centerId : standaloneId;
-
-  const router = useRouter();
-
-  // Initialize standalone mode ID
-  useEffect(() => {
-    if (!isSetupMode && params) {
-      const getId = async () => {
-        const resolvedParams = await params;
-        setStandaloneId(resolvedParams.id);
-      };
-      getId();
-    }
-  }, [params, isSetupMode]);
-
-  // Form state - initialized from parent data in setup mode
+  // Form state - initialized from parent data
   const [localFormData, setLocalFormData] = useState({
     highlights: initialFormData?.highlights || ["", "", ""],
     description: initialFormData?.description || "",
@@ -65,24 +40,24 @@ export default function EditAboutPage({
 
   // Update local form data when parent data changes
   useEffect(() => {
-    if (isSetupMode && initialFormData) {
+    if (initialFormData) {
       setLocalFormData({
         highlights: initialFormData.highlights,
         description: initialFormData.description,
         logo: initialFormData.logo,
       });
     }
-  }, [initialFormData, isSetupMode]);
+  }, [initialFormData]);
 
-  // Fetch existing data in setup mode to prefill form
+  // Fetch existing data to prefill form
   useEffect(() => {
     const fetchExistingData = async () => {
-      if (!id || !isSetupMode) return;
+      if (!centerId) return;
 
       try {
         setIsLoadingData(true);
 
-        const response = await fetch(`/api/marketplace/${id}/about`, {
+        const response = await fetch(`/api/marketplace/${centerId}/about`, {
           credentials: "include",
         });
 
@@ -111,16 +86,13 @@ export default function EditAboutPage({
     };
 
     fetchExistingData();
-  }, [id, isSetupMode]);
+  }, [centerId]);
 
   // Cloudinary configuration
-  const cloudinaryProps = id
-    ? getCenterLogoProps(id)
-    : { folder: "", preset: "" };
+  const cloudinaryProps = getCenterLogoProps(centerId);
   const { folder, preset } = cloudinaryProps;
 
   // UI state
-  const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState({
     visible: false,
     message: "",
@@ -134,80 +106,31 @@ export default function EditAboutPage({
 
   // Handle continue with basic validation
   const handleContinue = () => {
-    if (isSetupMode && onContinue) {
-      // Check if description is valid
-      if (!isDescriptionValid()) {
-        setShowDescriptionError(true);
-        return; // Don't continue
-      }
-
-      // Clear error and continue
-      setShowDescriptionError(false);
-      onContinue(localFormData);
+    // Check if description is valid
+    if (!isDescriptionValid()) {
+      setShowDescriptionError(true);
+      return; // Don't continue
     }
+
+    // Clear error and continue
+    setShowDescriptionError(false);
+    onContinue(localFormData);
   };
 
   // Set up window function for continue button
   useEffect(() => {
-    if (isSetupMode) {
+    // @ts-ignore
+    window.marketplaceSetup = window.marketplaceSetup || {};
+    // @ts-ignore
+    window.marketplaceSetup.handleStepContinue = handleContinue;
+
+    return () => {
       // @ts-ignore
-      window.marketplaceSetup = window.marketplaceSetup || {};
-      // @ts-ignore
-      window.marketplaceSetup.handleStepContinue = handleContinue;
-
-      return () => {
-        // @ts-ignore
-        if (window.marketplaceSetup) {
-          delete window.marketplaceSetup.handleStepContinue;
-        }
-      };
-    }
-  }, [localFormData, isSetupMode]);
-
-  // Save function for standalone edit mode
-  const handleSave = async () => {
-    if (!id || saving || isSetupMode) return;
-
-    try {
-      setSaving(true);
-
-      const payload = {
-        highlights: localFormData.highlights.filter((h) => h.trim() !== ""),
-        description: localFormData.description.trim(),
-        logoUrl: localFormData.logo,
-      };
-
-      const response = await fetch(`/api/marketplace/${id}/about`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to save about information");
+      if (window.marketplaceSetup) {
+        delete window.marketplaceSetup.handleStepContinue;
       }
-
-      setToast({
-        visible: true,
-        message: "About information saved successfully!",
-        type: "success",
-      });
-
-      // Redirect after delay in standalone mode
-      setTimeout(() => {
-        router.push("/marketplace");
-      }, 1500);
-    } catch (error) {
-      setToast({
-        visible: true,
-        message: "Failed to save about information",
-        type: "error",
-      });
-    } finally {
-      setSaving(false);
-    }
-  };
+    };
+  }, [localFormData]);
 
   // Form handlers
   const handleHighlightChange = (
@@ -244,19 +167,8 @@ export default function EditAboutPage({
     });
   };
 
-  // Don't render until we have an ID
-  if (!id) {
-    return (
-      <div className={styles.container}>
-        <div className={styles.loadingContainer}>
-          <p>Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Show loading while fetching existing data in setup mode
-  if (isSetupMode && isLoadingData) {
+  // Show loading while fetching existing data
+  if (isLoadingData) {
     return (
       <div className={styles.container}>
         <div className={styles.loadingContainer}>
@@ -283,15 +195,6 @@ export default function EditAboutPage({
 
   return (
     <div className={styles.container}>
-      {/* Only show ActionHeader in standalone edit mode */}
-      {!isSetupMode && (
-        <ActionHeader
-          onSave={handleSave}
-          onCancel={() => router.push("/marketplace")}
-          isLoading={saving}
-        />
-      )}
-
       <div className={styles.formContainer}>
         <TitleDescription
           title="About"
@@ -320,6 +223,7 @@ export default function EditAboutPage({
             {localFormData.highlights.map((highlight, index) => (
               <TextInput
                 key={index}
+                id={`highlight-${index}`}
                 label={`Highlight ${index + 1}`}
                 value={highlight}
                 onChange={(e) => handleHighlightChange(index, e)}
