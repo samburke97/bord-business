@@ -114,85 +114,34 @@
 //   matcher: ["/((?!_next/static|_next/image|favicon.ico|public/).*)"],
 // };
 
-// middleware.ts - STEP-BY-STEP DEBUG VERSION
+// middleware.ts - TEMPORARY DEBUG VERSION
 import { NextResponse } from "next/server";
 import { NextRequest } from "next/server";
 
 export async function middleware(req: NextRequest) {
-  console.log("🚀 Step-by-step middleware for:", req.nextUrl.pathname);
+  console.log("🚀 Middleware started for:", req.nextUrl.pathname);
 
   try {
+    // Test basic functionality first
     const response = NextResponse.next();
 
-    // STEP 1: Test SecurityHeaders import
-    console.log("📝 Testing SecurityHeaders import...");
-    try {
-      const { SecurityHeaders } = await import(
-        "./lib/middleware/SecurityHeaders"
-      );
-      console.log("✅ SecurityHeaders imported successfully");
+    // Test environment variables
+    console.log("🔑 NEXTAUTH_SECRET exists:", !!process.env.NEXTAUTH_SECRET);
+    console.log("🔑 NODE_ENV:", process.env.NODE_ENV);
 
-      // Test applying headers
-      SecurityHeaders.apply(response);
-      console.log("✅ SecurityHeaders applied successfully");
-    } catch (error) {
-      console.error("❌ SecurityHeaders error:", error);
-      throw new Error("SecurityHeaders failed");
-    }
+    // Test basic response headers
+    response.headers.set("X-Debug", "middleware-working");
 
-    // STEP 2: Test RouteGuard import
-    console.log("🚦 Testing RouteGuard import...");
-    try {
-      const { RouteGuard } = await import("./lib/middleware/RouteGuard");
-      console.log("✅ RouteGuard imported successfully");
-
-      // Test route checking
-      const isPublic = RouteGuard.requiresAuthentication(req.nextUrl.pathname);
-      console.log("✅ RouteGuard.requiresAuthentication:", !isPublic);
-    } catch (error) {
-      console.error("❌ RouteGuard error:", error);
-      throw new Error("RouteGuard failed");
-    }
-
-    // STEP 3: Test AuthChecker import (but don't call getUserInfo yet)
-    console.log("🔐 Testing AuthChecker import...");
-    try {
-      const { AuthChecker } = await import("./lib/middleware/AuthChecker");
-      console.log("✅ AuthChecker imported successfully");
-    } catch (error) {
-      console.error("❌ AuthChecker import error:", error);
-      throw new Error("AuthChecker import failed");
-    }
-
-    // STEP 4: Test getToken import
-    console.log("🎫 Testing getToken import...");
-    try {
-      const { getToken } = await import("next-auth/jwt");
-      console.log("✅ getToken imported successfully");
-
-      // Test NEXTAUTH_SECRET availability
-      console.log(
-        "🔑 NEXTAUTH_SECRET available:",
-        !!process.env.NEXTAUTH_SECRET
-      );
-      console.log(
-        "🔑 NEXTAUTH_SECRET length:",
-        process.env.NEXTAUTH_SECRET?.length || 0
-      );
-    } catch (error) {
-      console.error("❌ getToken import error:", error);
-      throw new Error("getToken import failed");
-    }
-
-    console.log("🎉 All components imported successfully");
+    console.log("✅ Basic middleware working");
     return response;
   } catch (error) {
-    console.error("💥 Step-by-step middleware error:", error);
+    console.error("💥 Middleware error:", error);
 
-    return new NextResponse(`Middleware Error: ${error.message}`, {
+    // Return a simple response even on error
+    return new NextResponse("Middleware Error", {
       status: 500,
       headers: {
-        "X-Debug-Error": error.message,
+        "X-Debug-Error": "true",
       },
     });
   }
