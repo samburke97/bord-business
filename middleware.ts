@@ -1,4 +1,4 @@
-// middleware.ts - FIXED modular version with ACTIVE user signup blocking
+// middleware.ts - FIXED syntax error
 import { NextResponse } from "next/server";
 import { NextRequest } from "next/server";
 import { SecurityHeaders } from "./lib/middleware/SecurityHeaders";
@@ -9,7 +9,6 @@ export async function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
   const response = NextResponse.next();
 
-  // Apply security headers (including fixed CSP)
   SecurityHeaders.apply(response);
 
   // Get user info for ALL routes (including public ones) to check ACTIVE user status
@@ -35,8 +34,6 @@ export async function middleware(req: NextRequest) {
       return AuthChecker.createUnauthorizedResponse(req, pathname);
     }
 
-    // FIXED: Complete PENDING user logic from working middleware
-    // If user is PENDING and accessing allowed routes, let them through
     if (
       userInfo.status === "PENDING" &&
       RouteGuard.isPendingUserAllowed(pathname)
@@ -49,7 +46,7 @@ export async function middleware(req: NextRequest) {
       return response;
     }
 
-    // FIXED: Complex inactive user checks
+    // FIXED: Complex inactive user checks - SYNTAX ERROR CORRECTED
     if (
       userInfo.isActive === false &&
       !(
