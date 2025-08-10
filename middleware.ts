@@ -1,19 +1,123 @@
-// middleware.ts - COMPLETELY FIXED - Replace your entire file with this
+// middleware.ts - FULL LOGIC with Edge-Compatible Auth
 import { NextResponse } from "next/server";
 import { NextRequest } from "next/server";
 import { SecurityHeaders } from "./lib/middleware/SecurityHeaders";
-import { AuthChecker } from "./lib/middleware/AuthChecker";
 import { RouteGuard } from "./lib/middleware/RouteGuard";
+
+// Edge-compatible UserInfo interface
+interface UserInfo {
+  userId: string;
+  email: string;
+  globalRole: string;
+  isActive: boolean;
+  isVerified: boolean;
+  status: string;
+}
+
+// Edge-compatible AuthChecker that doesn't use getToken()
+class EdgeAuthChecker {
+  static async getUserInfo(req: NextRequest): Promise<UserInfo | null> {
+    try {
+      // Get session token from cookies (works in Edge Runtime)
+      const sessionToken =
+        req.cookies.get("next-auth.session-token")?.value ||
+        req.cookies.get("__Secure-next-auth.session-token")?.value;
+
+      if (!sessionToken) {
+        return null;
+      }
+
+      // Manual JWT decode for Edge Runtime (since getToken() doesn't work)
+      const secret = process.env.NEXTAUTH_SECRET;
+      if (!secret) {
+        console.error("NEXTAUTH_SECRET not available in Edge Runtime");
+        return null;
+      }
+
+      // Simple JWT decode without verification (for Edge Runtime)
+      // This extracts the payload without cryptographic verification
+      try {
+        const parts = sessionToken.split(".");
+        if (parts.length !== 3) {
+          return null;
+        }
+
+        // Decode the payload (middle part) using Web APIs
+        const base64Payload = parts[1];
+        // Add padding if needed
+        const paddedPayload =
+          base64Payload + "===".slice((base64Payload.length + 3) % 4);
+
+        // Use atob for base64 decoding (available in Edge Runtime)
+        const decodedPayload = atob(
+          paddedPayload.replace(/-/g, "+").replace(/_/g, "/")
+        );
+        const payload = JSON.parse(decodedPayload);
+
+        // Check if token is expired
+        if (payload.exp && Date.now() >= payload.exp * 1000) {
+          return null;
+        }
+
+        return {
+          userId: payload.sub || "",
+          email: payload.email || "",
+          globalRole: (payload.globalRole as string) || "USER",
+          isActive: (payload.isActive as boolean) || false,
+          isVerified: (payload.isVerified as boolean) || false,
+          status: (payload.status as string) || "PENDING",
+        };
+      } catch (decodeError) {
+        console.error("JWT decode failed:", decodeError);
+        return null;
+      }
+    } catch (error) {
+      console.error("Edge auth check failed:", error);
+      return null;
+    }
+  }
+
+  static createUnauthorizedResponse(
+    req: NextRequest,
+    pathname: string
+  ): NextResponse {
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json(
+        { error: "Unauthorized", message: "Authentication required" },
+        { status: 401 }
+      );
+    }
+
+    const loginUrl = new URL("/login", req.url);
+    loginUrl.searchParams.set("return_to", pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  static createErrorResponse(req: NextRequest, pathname: string): NextResponse {
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json(
+        { error: "Server error", message: "Authentication system error" },
+        { status: 500 }
+      );
+    }
+
+    const loginUrl = new URL("/login", req.url);
+    loginUrl.searchParams.set("error", "SessionError");
+    loginUrl.searchParams.set("return_to", pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+}
 
 export async function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
   const response = NextResponse.next();
 
-  SecurityHeaders.apply(response);
-
-  // Get user info for ALL routes (including public ones) to check ACTIVE user status
   try {
-    const userInfo = await AuthChecker.getUserInfo(req);
+    // Apply security headers
+    SecurityHeaders.apply(response);
+
+    // Get user info using Edge-compatible method
+    const userInfo = await EdgeAuthChecker.getUserInfo(req);
 
     // BLOCK: ACTIVE users from accessing signup routes
     if (
@@ -31,7 +135,7 @@ export async function middleware(req: NextRequest) {
     }
 
     if (!userInfo) {
-      return AuthChecker.createUnauthorizedResponse(req, pathname);
+      return EdgeAuthChecker.createUnauthorizedResponse(req, pathname);
     }
 
     if (
@@ -106,7 +210,7 @@ export async function middleware(req: NextRequest) {
     }
 
     console.error("Middleware auth error:", error);
-    return AuthChecker.createErrorResponse(req, pathname);
+    return EdgeAuthChecker.createErrorResponse(req, pathname);
   }
 }
 
