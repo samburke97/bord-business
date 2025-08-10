@@ -1,8 +1,8 @@
-// middleware.ts - FIXED modular version with ACTIVE user signup blocking
+// middleware.ts - Edge Runtime compatible version
 import { NextResponse } from "next/server";
 import { NextRequest } from "next/server";
 import { SecurityHeaders } from "./lib/middleware/SecurityHeaders";
-import { AuthChecker } from "./lib/middleware/AuthChecker";
+import { EdgeAuthChecker } from "./lib/middleware/EdgeAuthChecker";
 import { RouteGuard } from "./lib/middleware/RouteGuard";
 
 export async function middleware(req: NextRequest) {
@@ -14,7 +14,8 @@ export async function middleware(req: NextRequest) {
 
   // Get user info for ALL routes (including public ones) to check ACTIVE user status
   try {
-    const userInfo = await AuthChecker.getUserInfo(req);
+    // FIXED: Use EdgeAuthChecker instead of AuthChecker for Vercel Edge compatibility
+    const userInfo = await EdgeAuthChecker.getUserInfo(req);
 
     // BLOCK: ACTIVE users from accessing signup routes
     if (
@@ -32,7 +33,7 @@ export async function middleware(req: NextRequest) {
     }
 
     if (!userInfo) {
-      return AuthChecker.createUnauthorizedResponse(req, pathname);
+      return EdgeAuthChecker.createUnauthorizedResponse(req, pathname);
     }
 
     // FIXED: Complete PENDING user logic from working middleware
@@ -109,7 +110,7 @@ export async function middleware(req: NextRequest) {
     }
 
     console.error("Middleware auth error:", error);
-    return AuthChecker.createErrorResponse(req, pathname);
+    return EdgeAuthChecker.createErrorResponse(req, pathname);
   }
 }
 
