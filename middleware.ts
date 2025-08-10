@@ -1,3 +1,4 @@
+// middleware.ts - COMPLETELY FIXED - Replace your entire file with this
 import { NextResponse } from "next/server";
 import { NextRequest } from "next/server";
 import { SecurityHeaders } from "./lib/middleware/SecurityHeaders";
