@@ -1,0 +1,184 @@
+/* app/(list)/calendar/page.module.css */
+
+.pageContainer {
+  display: flex;
+  justify-content: center;
+  padding: var(--spacing-xl);
+  width: 100%;
+  min-height: calc(100vh - 136px);
+}
+
+.container {
+  width: 100%;
+  max-width: 1200px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--spacing-xl);
+  padding-bottom: var(--spacing-lg);
+  border-bottom: 1px solid var(--out-light);
+}
+
+.createButton {
+  flex-shrink: 0;
+}
+
+.calendarGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--spacing-lg);
+}
+
+.calendarCard {
+  background: var(--con-lightest);
+  border: 1px solid var(--out-light);
+  border-radius: 12px;
+  padding: var(--spacing-lg);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.calendarCard:hover {
+  border-color: var(--primary-color);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.1);
+  transform: translateY(-2px);
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+}
+
+.cardIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: var(--primary-100);
+  border-radius: 8px;
+  color: var(--primary-color);
+}
+
+.statusBadge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  background: var(--con-light);
+  border: 1px solid var(--out-light);
+  border-radius: 16px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  text-transform: capitalize;
+  color: var(--for-medium);
+}
+
+.statusDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.statusDot.active {
+  background: var(--primary-color);
+}
+
+.statusDot.inactive {
+  background: var(--for-medium);
+}
+
+.cardContent {
+  margin-bottom: var(--spacing-lg);
+}
+
+.cardTitle {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--for-darkest);
+  margin: 0 0 var(--spacing-sm) 0;
+}
+
+.cardLocation {
+  font-size: var(--font-size-sm);
+  color: var(--for-medium);
+  margin: 0 0 var(--spacing-sm) 0;
+}
+
+.cardMeta {
+  font-size: var(--font-size-xs);
+  color: var(--for-light);
+  margin: 0;
+}
+
+.cardFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--out-lightest);
+}
+
+.viewText {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--primary-color);
+}
+
+.cardFooter svg {
+  color: var(--primary-color);
+  transition: transform 0.2s ease;
+}
+
+.calendarCard:hover .cardFooter svg {
+  transform: translateX(2px);
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--spacing-2xl) var(--spacing-xl);
+  margin-top: var(--spacing-xl);
+}
+
+.emptyStateIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  background: var(--con-light);
+  border-radius: 50%;
+  color: var(--for-light);
+  margin-bottom: var(--spacing-lg);
+}
+
+.emptyStateButton {
+  margin-top: var(--spacing-xl);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .pageContainer {
+    padding: var(--spacing-md);
+  }
+
+  .header {
+    flex-direction: column;
+    gap: var(--spacing-md);
+    align-items: stretch;
+  }
+
+  .calendarGrid {
+    grid-template-columns: 1fr;
+  }
+}
