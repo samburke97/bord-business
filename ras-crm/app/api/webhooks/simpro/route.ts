@@ -1,4 +1,3 @@
-// app/api/webhooks/simpro/route.ts
 // ─────────────────────────────────────────────────────────────────────────────
 // SimPRO sends: { name: "Job", action: "updated", reference: { companyID: 0, jobID: 10862 } }
 // All job fetching / address resolution delegates to lib/simpro/client.ts
