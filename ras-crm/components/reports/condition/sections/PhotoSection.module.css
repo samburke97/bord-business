@@ -1,0 +1,141 @@
+/* components/reports/condition/sections/PhotoSection.module.css */
+
+/* ── Progress bar (editor-only) ─────────────────────────────────────────── */
+.progressOuter {
+  width: 794px;
+  height: 4px;
+  background: var(--out-light, #f5f5f5);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+  position: relative;
+}
+
+.progressBar {
+  height: 100%;
+  background: var(--primary-400, #74db89);
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.progressLabel {
+  font-size: 0.7rem;
+  color: var(--for-light, #9ca3af);
+  margin-top: 6px;
+}
+
+/* ── Empty state ────────────────────────────────────────────────────────── */
+.emptyPage {
+  width: 794px;
+  height: 1123px;
+  background: #fff;
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.1),
+    0 1px 4px rgba(0, 0, 0, 0.06);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2.75rem;
+}
+
+.empty {
+  width: 100%;
+  background: var(--con-light, #fafafa);
+  border: 1px dashed var(--out-medium, #d9dbdb);
+  border-radius: 8px;
+  padding: 3rem 2rem;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--for-light, #9ca3af);
+}
+
+/* ── A4 page block — fixed height, matches PDF exactly ──────────────────── */
+.page {
+  width: 794px;
+  height: 1123px;
+  background: #fff;
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.1),
+    0 1px 4px rgba(0, 0, 0, 0.06);
+  border-radius: 4px;
+  overflow: hidden;
+  flex-shrink: 0;
+  position: relative; /* needed for absolute page number */
+}
+
+/* Inner content — padding matches print CSS exactly */
+.pageContent {
+  width: 100%;
+  height: 100%;
+  padding: 2.75rem;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+/* ── Page number ─────────────────────────────────────────────────────────── */
+.pageNumber {
+  position: absolute;
+  bottom: 1.25rem;
+  right: 2.75rem;
+  font-family: "Inter", Arial, sans-serif;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #9ca3af;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.pageNumberTotal {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #9ca3af;
+}
+
+/* ── Date separator ─────────────────────────────────────────────────────── */
+.dateHeader {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-shrink: 0;
+}
+
+.dateHeaderLine {
+  flex: 1;
+  height: 1px;
+  background: #e5e7eb;
+}
+
+.dateHeaderText {
+  font-family: "Inter", Arial, sans-serif;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #9ca3af;
+  white-space: nowrap;
+  padding: 0 0.25rem;
+}
+
+/* ── Photo row — 3 columns ──────────────────────────────────────────────── */
+.photoRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.875rem;
+  margin-bottom: 0.875rem;
+  flex-shrink: 0;
+  align-items: start; /* prevent partial rows from stretching taller cells */
+}
+
+.pageContent > .photoRow:last-child {
+  margin-bottom: 0;
+}
+
+.photoCell {
+  min-width: 0; /* prevent grid blowout */
+  width: 100%; /* lock cell to its 1fr column — no expansion on partial rows */
+}
