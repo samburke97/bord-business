@@ -1,184 +1,450 @@
-/* app/(list)/calendar/page.module.css */
+/* app/(detail)/calendar/[id]/page.module.css */
 
 .pageContainer {
-  display: flex;
-  justify-content: center;
-  padding: var(--spacing-xl);
   width: 100%;
-  min-height: calc(100vh - 136px);
+  height: 100vh;
+  background: #ffffff;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
 }
 
-.container {
-  width: 100%;
-  max-width: 1200px;
-}
-
+/* Header - exactly matching your layout */
 .header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: var(--spacing-xl);
-  padding-bottom: var(--spacing-lg);
-  border-bottom: 1px solid var(--out-light);
-}
-
-.createButton {
+  align-items: center;
+  padding: 16px 24px;
+  border-bottom: 1px solid #e5e7eb;
+  background: white;
+  z-index: 10;
   flex-shrink: 0;
-}
-
-.calendarGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: var(--spacing-lg);
-}
-
-.calendarCard {
-  background: var(--con-lightest);
-  border: 1px solid var(--out-light);
-  border-radius: 12px;
-  padding: var(--spacing-lg);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  position: relative;
-}
-
-.calendarCard:hover {
-  border-color: var(--primary-color);
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.1);
-  transform: translateY(-2px);
-}
-
-.cardHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--spacing-md);
-}
-
-.cardIcon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  background: var(--primary-100);
-  border-radius: 8px;
-  color: var(--primary-color);
-}
-
-.statusBadge {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 12px;
-  background: var(--con-light);
-  border: 1px solid var(--out-light);
-  border-radius: 16px;
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-medium);
-  text-transform: capitalize;
-  color: var(--for-medium);
-}
-
-.statusDot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-}
-
-.statusDot.active {
-  background: var(--primary-color);
-}
-
-.statusDot.inactive {
-  background: var(--for-medium);
-}
-
-.cardContent {
-  margin-bottom: var(--spacing-lg);
-}
-
-.cardTitle {
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-semibold);
-  color: var(--for-darkest);
-  margin: 0 0 var(--spacing-sm) 0;
-}
-
-.cardLocation {
-  font-size: var(--font-size-sm);
-  color: var(--for-medium);
-  margin: 0 0 var(--spacing-sm) 0;
-}
-
-.cardMeta {
-  font-size: var(--font-size-xs);
-  color: var(--for-light);
   margin: 0;
 }
 
-.cardFooter {
+.headerLeft {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding-top: var(--spacing-md);
-  border-top: 1px solid var(--out-lightest);
+  gap: 16px;
 }
 
-.viewText {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  color: var(--primary-color);
+.headerCenter {
+  display: flex;
+  align-items: center;
+  gap: 16px;
 }
 
-.cardFooter svg {
-  color: var(--primary-color);
-  transition: transform 0.2s ease;
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
-.calendarCard:hover .cardFooter svg {
-  transform: translateX(2px);
+/* View Mode Container */
+.viewModeContainer {
+  position: relative;
 }
 
-.emptyState {
+.viewModeButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: white;
+  color: #374151;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.viewModeButton:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+
+.viewModeMenu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  z-index: 50;
+  margin-top: 4px;
+}
+
+.viewModeMenuItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 16px;
+  border: none;
+  background: none;
+  color: #374151;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  text-align: left;
+}
+
+.viewModeMenuItem:hover {
+  background: #f3f4f6;
+}
+
+.viewModeMenuItem.active {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+/* Date Range */
+.dateRange {
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  min-width: 120px;
+  text-align: center;
+  font-family: var(--font-family);
+}
+
+/* Facility Button - Green like in screenshot */
+.facilityButton {
+  background: #16a34a !important;
+  color: white !important;
+  border: none !important;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.facilityButton:hover {
+  background: #15803d !important;
+}
+
+/* Add Button - Dark like in screenshot */
+.addButton {
+  background: #1f2937 !important;
+  color: white !important;
+  border: none !important;
+}
+
+.addButton:hover {
+  background: #111827 !important;
+}
+
+/* Calendar Container - FLUSH to edges, no padding/margin */
+.calendarContainer {
+  flex: 1;
+  overflow: auto;
+  background: #ffffff;
+  position: relative;
+  margin: 0;
+  padding: 0;
+  height: calc(100vh - 73px); /* Subtract header height */
+}
+
+/* Day View Styles */
+.dayView {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+}
+
+.dayHeader {
+  display: flex;
+  border-bottom: 1px solid #e5e7eb;
+  background: #ffffff;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.dayHeaderCell {
+  flex: 1;
+  height: 100px;
+  background: #fafafa;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  text-align: center;
-  padding: var(--spacing-2xl) var(--spacing-xl);
-  margin-top: var(--spacing-xl);
+  gap: 4px;
+  padding: 16px;
+  margin: 0;
 }
 
-.emptyStateIcon {
+.dayNumber {
+  font-size: 24px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+}
+
+.dayName {
+  font-size: 14px;
+  color: #6b7280;
+  font-weight: 500;
+  margin: 0;
+}
+
+.timeGrid {
+  flex: 1;
+  overflow: auto;
+  margin: 0;
+  padding: 0;
+}
+
+.timeRow {
+  display: flex;
+  border-bottom: 1px solid #f3f4f6;
+  height: 80px;
+  margin: 0;
+}
+
+.timeCell {
+  width: 80px;
+  height: 100%;
+  border-right: 1px solid #e5e7eb;
+  background: #fafafa;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: flex-start;
+  padding: 8px 12px;
+  flex-shrink: 0;
+  margin: 0;
+}
+
+.timeLabel {
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 500;
+  line-height: 1;
+  margin: 0;
+}
+
+.timeUnit {
+  font-size: 10px;
+  color: #9ca3af;
+  line-height: 1;
+  margin-top: 2px;
+}
+
+.gridCell {
+  flex: 1;
+  height: 100%;
+  background: white;
+  transition: background-color 0.2s ease;
+  cursor: pointer;
+  margin: 0;
+  border: none;
+}
+
+.gridCell:hover {
+  background: #f9fafb;
+}
+
+/* Month View Styles */
+.monthView {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+}
+
+.weekHeaders {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+  margin: 0;
+}
+
+.weekHeader {
+  padding: 20px 8px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 500;
+  color: #6b7280;
+  border-right: 1px solid #e5e7eb;
+  background: #ffffff;
+  margin: 0;
+}
+
+.weekHeader:last-child {
+  border-right: none;
+}
+
+.monthGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  flex: 1;
+  margin: 0;
+}
+
+.monthCell {
+  position: relative;
+  height: 140px;
+  border-right: 1px solid #e5e7eb;
+  border-bottom: 1px solid #e5e7eb;
+  background: white;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  overflow: hidden;
+  margin: 0;
+}
+
+.monthCell:hover {
+  background: #f8fafc;
+}
+
+.monthCell:nth-child(7n) {
+  border-right: none;
+}
+
+.monthCell.otherMonth {
+  background: #ffffff;
+  color: #d1d5db;
+}
+
+.monthCell.otherMonth .dateNumber {
+  color: #d1d5db;
+}
+
+.dateNumber {
+  font-size: 16px;
+  font-weight: 400;
+  color: #111827;
+  margin-bottom: 8px;
+  line-height: 1;
+  align-self: flex-start;
+}
+
+.dateNumber.today {
+  background: #111827;
+  color: white;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 64px;
-  height: 64px;
-  background: var(--con-light);
-  border-radius: 50%;
-  color: var(--for-light);
-  margin-bottom: var(--spacing-lg);
+  font-weight: 500;
+  font-size: 14px;
 }
 
-.emptyStateButton {
-  margin-top: var(--spacing-xl);
+/* Remove ALL margins and padding globally within calendar */
+.calendarContainer * {
+  box-sizing: border-box;
+}
+
+/* Professional scrollbar - thinner */
+.calendarContainer::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.calendarContainer::-webkit-scrollbar-track {
+  background: #f8fafc;
+}
+
+.calendarContainer::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.calendarContainer::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 /* Responsive Design */
 @media (max-width: 768px) {
-  .pageContainer {
-    padding: var(--spacing-md);
-  }
-
   .header {
     flex-direction: column;
-    gap: var(--spacing-md);
+    gap: 12px;
     align-items: stretch;
+    padding: 12px 16px;
   }
 
-  .calendarGrid {
-    grid-template-columns: 1fr;
+  .headerLeft,
+  .headerCenter,
+  .headerRight {
+    justify-content: space-between;
   }
+
+  .dateRange {
+    min-width: auto;
+  }
+
+  .timeCell {
+    width: 60px;
+    padding: 4px 8px;
+  }
+
+  .timeLabel {
+    font-size: 10px;
+  }
+
+  .timeUnit {
+    display: none;
+  }
+
+  .dayHeaderCell {
+    height: 80px;
+    padding: 12px;
+  }
+
+  .dayNumber {
+    font-size: 20px;
+  }
+
+  .dayName {
+    font-size: 12px;
+  }
+
+  .timeRow {
+    height: 60px;
+  }
+
+  .monthCell {
+    height: 100px;
+    padding: 8px;
+  }
+
+  .weekHeader {
+    padding: 12px 4px;
+    font-size: 12px;
+  }
+}
+
+/* Ensure no body/html margins affect calendar */
+.pageContainer {
+  position: relative;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+/* Focus states for accessibility */
+.gridCell:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: -2px;
+}
+
+.monthCell:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: -2px;
 }
